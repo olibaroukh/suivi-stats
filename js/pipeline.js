@@ -224,7 +224,7 @@
     // 8. Équipes : export RH (repris du mois précédent s'il n'est pas fourni) + stats Cosium par vendeur
     const Eq = root.Equipe || (typeof require !== 'undefined' ? require('./engine/equipe.js') : null);
     let personnes = null;
-    if (un('rh')) { const r = Eq.rh(XLSX, un('rh').wb); personnes = r.personnes; sources.rh = { statut: 'recu', detail: `${r.personnes.length} personnes (${r.exclus} lignes écartées : postes exclus ou sans site)` }; }
+    if (un('rh')) { const r = Eq.rh(XLSX, un('rh').wb); personnes = r.personnes; sources.rh = { statut: 'recu', detail: `${r.personnes.length} personnes (${r.exclus} lignes écartées : postes non retenus ou sans site)` }; }
     else if (photoPrecedente && photoPrecedente.rh) { personnes = photoPrecedente.rh; sources.rh = { statut: 'repris', detail: 'export RH du mois précédent' }; }
     let stats = null;
     if (vendeurs.length) { stats = Eq.indexVendeurs(vendeurs.map(v => ({ report: v.pr.report, rows: v.pr.rows }))); sources.stat_indiv = { statut: 'recu', detail: `${Object.keys(stats).length} matricules` }; }

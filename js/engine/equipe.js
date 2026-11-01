@@ -2,8 +2,8 @@
 (function (root) {
   'use strict';
 
-  // Postes à ne pas prendre en compte (règle d'Olivier)
-  const POSTES_EXCLUS = ['', 'animateur reseaux', 'chateau', 'directeur de pole', 'formateur', 'franchise', 'logistique', 'siege itinerant', 'siege sedentaire'];
+  // Seuls ces postes comptent dans les effectifs présents (règle d'Olivier) ; tous les autres sont ignorés
+  const POSTES_RETENUS = ['audioprothesiste', 'manager', 'monteur', 'opticien/vendeur', 'optometriste/contactologue', 'technicien audio'];
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   const mat = v => { if (v == null || v === '') return null; const s = typeof v === 'number' ? String(Math.round(v)) : String(v).trim().replace(/\.0+$/, ''); return /^\d+$/.test(s) ? (s.replace(/^0+(?=\d)/, '')) : null; };
   const code = v => { const s = String(v == null ? '' : v).trim().toUpperCase(); return /^\d+A?$/.test(s) ? s.replace(/^0+(?=\d)/, '') : null; };
@@ -19,7 +19,7 @@
     for (const r of rows) {
       const g = k => r[Object.keys(r).find(x => norm(x) === norm(k))];
       const m = mat(g('Matricule')), poste = String(g('Poste') || '').trim();
-      if (!m || POSTES_EXCLUS.includes(norm(poste))) { exclus++; continue; }
+      if (!m || !POSTES_RETENUS.includes(norm(poste))) { exclus++; continue; }
       const codes = String(g('Codes sites') || '').split(/[,;]/).map(code).filter(Boolean);
       if (!codes.length) { exclus++; continue; }
       out.push({ matricule: m, prenom: String(g('Prénom') || '').trim(), nom: String(g('Nom') || '').trim(), poste, entree: date(g("Date d'entrée") || g('Date d’entrée')), codes });
@@ -84,6 +84,6 @@
     return out;
   }
 
-  const api = { rh, indexVendeurs, parMagasin, POSTES_EXCLUS };
+  const api = { rh, indexVendeurs, parMagasin, POSTES_RETENUS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Equipe = api;
 })(typeof self !== 'undefined' ? self : this);
