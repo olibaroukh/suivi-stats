@@ -115,6 +115,20 @@
       const res = await Pipeline.construire({ fichiers: S.fichiers, pastes: { lyleoo: $('#paste-lyleoo').value, ocm: $('#paste-ocm').value, site: $('#paste-site').value },
         annee, mois, ref: S.ref, spec: S.spec, etatAnnee, photoPrecedente: precedent, workerRatings: wr, listesConfidence: listes });
       if (alerteW) res.rapport.alertes.unshift(alerteW);
+      // Mr Qualité : mis à jour une fois par an → dernier fichier connu conservé hors année (config/mr-qualite.json)
+      try {
+        const sm = res.rapport.sources.mr_qualite;
+        if (sm && sm.statut === 'recu') {
+          const out = {}; for (const c in res.photo.magasins) { const v = res.photo.magasins[c].N.CK; if (v != null) out[c] = v; }
+          await Store.ecrireJSON('config/mr-qualite.json', { fichier: sm.detail.split(' – ')[0], importeLe: new Date().toISOString().slice(0, 10), mois: `${annee}-${pad(mois)}`, scores: out });
+        } else {
+          const mq = await Store.lireJSON('config/mr-qualite.json');
+          if (mq && mq.scores) {
+            let n = 0; for (const c in mq.scores) { const m = res.photo.magasins[c]; if (m) { m.N.CK = mq.scores[c]; n++; } }
+            res.rapport.sources.mr_qualite = { statut: 'repris', detail: `dernier fichier connu (${mq.fichier || '?'}, importé le ${(mq.importeLe || '').split('-').reverse().join('/')}) – ${n} magasins` };
+          }
+        }
+      } catch (e) { console.warn('Mr Qualité', e); }
       const sa = await santeWorker(annee, mois);
       if (sa && !sa.erreur) {
         res.photo.sante = sa; const n = Object.values(sa.magasins).filter(x => x.score != null).length;
