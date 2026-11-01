@@ -1,0 +1,1013 @@
+{
+ "langues": {
+  "FRANCAIS": "fr",
+  "HEBREU": "he",
+  "ANGLAIS": "en",
+  "ESPAGNOL": "es",
+  "FLAMAND": "nl",
+  "ALLEMAND": "de"
+ },
+ "libelles": [
+  {
+   "base": "Statistiques A Fin",
+   "fr": "Statistiques A Fin",
+   "he": "סטטיסטיקות סופיות",
+   "en": "Stats end of",
+   "es": "Estadísticas a Finales",
+   "nl": "Statistieken einde",
+   "de": "Statistik am"
+  },
+  {
+   "base": "Manager",
+   "fr": "Manager",
+   "he": "מנהל",
+   "en": "Manager",
+   "es": "Encargado",
+   "nl": "Manager",
+   "de": "Manager"
+  },
+  {
+   "base": "Effectif Optique",
+   "fr": "Effectif Optique",
+   "he": "צוות אופטי",
+   "en": "Optical employee",
+   "es": "Plantilla Optica",
+   "nl": "Optisch personeel",
+   "de": "Optik Belegschaft"
+  },
+  {
+   "base": "Effectif audio",
+   "fr": "Effectif audio",
+   "he": "צוות אודיו",
+   "en": "Hearing Care employee",
+   "es": "Plantilla Audio",
+   "nl": "Audio personeel",
+   "de": "Hören Belegschaft"
+  },
+  {
+   "base": "Effectif Théorique",
+   "fr": "Effectif Théorique",
+   "he": "צוות תאורטי",
+   "en": "ideal manpower",
+   "es": "Plantilla Teórica",
+   "nl": "Theoretisch personeel",
+   "de": "Theoretisch Belegschaft"
+  },
+  {
+   "base": "CA (k€) / Mois /Opticiens",
+   "fr": "CA (k€) / Mois /Opticiens",
+   "he": "יעד/חודש/אופטיקאי",
+   "en": "Sales Revenue / month / optical employee",
+   "es": "Facturación (k€) / Mes / Ópticos",
+   "nl": "Omzet (k€) / Maand / Optiek",
+   "de": "Umsatz/Monat/Optiker"
+  },
+  {
+   "base": "Date d’Ouverture",
+   "fr": "Date d’Ouverture",
+   "he": "תאריך פתיחה",
+   "en": "Opening Date",
+   "es": "Fecha de apertura",
+   "nl": null,
+   "de": "Eröffnungsdatum"
+  },
+  {
+   "base": "OBJECTIF:",
+   "fr": "OBJECTIF:",
+   "he": "יעד",
+   "en": "TARGET",
+   "es": "OBJETIVO:",
+   "nl": "DOELSTELLING:",
+   "de": "Ziel"
+  },
+  {
+   "base": "CA GÉNÉRÉ:",
+   "fr": "CA GÉNÉRÉ:",
+   "he": "CAשנוצר",
+   "en": "Sales revenue generated",
+   "es": "Facturación generada :",
+   "nl": "Gegenereerde omzet",
+   "de": "Umsatz generiert"
+  },
+  {
+   "base": "CA MANQUANT",
+   "fr": "CA MANQUANT",
+   "he": "CA שחסר",
+   "en": "Sales revenue missing",
+   "es": "Facturación pendiente :",
+   "nl": "Ontbrekende verkoopopbrengsten",
+   "de": "Umsatz fehlend"
+  },
+  {
+   "base": "Restant par mois",
+   "fr": "Restant par mois",
+   "he": "נשאר לחודש",
+   "en": "Remaining per month",
+   "es": "Queda por mes",
+   "nl": "Resterende per maand",
+   "de": "fehlend pro Monat"
+  },
+  {
+   "base": "Potentiel CA",
+   "fr": "Potentiel CA",
+   "he": "CA פוטנציאלי",
+   "en": "Potential Sales Revenue",
+   "es": "Facturación Potencial",
+   "nl": "Potentiële verkoopopbrengsten",
+   "de": "möglicher Umsatz"
+  },
+  {
+   "base": "Positionnement potentiel",
+   "fr": "Positionnement potentiel",
+   "he": "דירוג פוטנציאלי",
+   "en": "Potential positionning",
+   "es": "Posicionamiento potencial",
+   "nl": "Potentiële positionering",
+   "de": "mögliche Positionierung"
+  },
+  {
+   "base": "Objectifs",
+   "fr": "Objectifs",
+   "he": "יעד",
+   "en": "Targets",
+   "es": "Objetivos",
+   "nl": "Doelstellingen",
+   "de": "Ziele"
+  },
+  {
+   "base": "Statistiques",
+   "fr": "Statistiques",
+   "he": "סטטיסטיקה",
+   "en": "Statistics",
+   "es": "Estadísticas",
+   "nl": "Statistieken",
+   "de": "Statistiken"
+  },
+  {
+   "base": "Perte CA",
+   "fr": "Perte CA",
+   "he": "הפסד מחזור",
+   "en": "Sales Revenue missed",
+   "es": "Perdida de Facturación",
+   "nl": "Gemiste verkoopopbrengsten",
+   "de": "Umsatz Verlust"
+  },
+  {
+   "base": "OPTIQUE",
+   "fr": "OPTIQUE",
+   "he": "אופטי",
+   "en": "OPTICS",
+   "es": "OPTICA",
+   "nl": "Optiek",
+   "de": "Optik Belegschaft"
+  },
+  {
+   "base": "CONTACTO",
+   "fr": "CONTACTO",
+   "he": "עדשות",
+   "en": "CONTACT LENSES",
+   "es": "CONTACTO",
+   "nl": "Contactlenzen",
+   "de": "Kontaktlinsen"
+  },
+  {
+   "base": "Panier Moyen",
+   "fr": "Panier Moyen",
+   "he": "ממוצע מכירה",
+   "en": "AOV",
+   "es": "Precio Medio",
+   "nl": "Gemiddelde verkoopprijs",
+   "de": "Durchschnittspreis"
+  },
+  {
+   "base": "Nb de Ventes",
+   "fr": "Nb de Ventes",
+   "he": "מספר מכירות",
+   "en": "Number of Sales",
+   "es": "Número de ventas",
+   "nl": "Aantal verkopen",
+   "de": "Anzahl Verkäufe"
+  },
+  {
+   "base": "Pmoyen 1er Paire",
+   "fr": "Pmoyen 1er Paire",
+   "he": "ממוצע מכירה זוג ראשון",
+   "en": "1st pair average price",
+   "es": "Pmedio primera Gafa",
+   "nl": "1e paar gemiddelde prijs",
+   "de": "Durchschnittspreis 1te Brille"
+  },
+  {
+   "base": "Unif Individualisés",
+   "fr": "Unif Individualisés",
+   "he": "אוניפוקל",
+   "en": "Freeform unifocals",
+   "es": "Mono Individualizados",
+   "nl": "Freeform unifocaal",
+   "de": "Freeform Einstärkengläser"
+  },
+  {
+   "base": "Anti Reflet HG",
+   "fr": "Anti Reflet HG",
+   "he": "אנטי רפלקס HG",
+   "en": "Top Range of AR Coating",
+   "es": "Anti Reflejante Alta Gama",
+   "nl": "Topklasse Anti reflectie coating",
+   "de": "Super Entspiegelung HQ"
+  },
+  {
+   "base": "Transition",
+   "fr": "Transition",
+   "he": "מתחלף",
+   "en": "Transition",
+   "es": "Fotocromático",
+   "nl": "meekleurend",
+   "de": "selbsttönend"
+  },
+  {
+   "base": "% SOP",
+   "fr": "% SOP",
+   "he": "%ביטוח שלווה",
+   "en": "% of OPC",
+   "es": "% SOP",
+   "nl": "% van OPC",
+   "de": "% SOP"
+  },
+  {
+   "base": "% Multifocal",
+   "fr": "% Multifocal",
+   "he": "% מולטיפוקל",
+   "en": "% of mutifocals",
+   "es": "% Multifocal",
+   "nl": "% Multifocaal",
+   "de": "% Gleitsichtgläser"
+  },
+  {
+   "base": "Pack Confort",
+   "fr": "Pack Confort",
+   "he": "חבילת שדרוג",
+   "en": "Pack Confort",
+   "es": "Pack Confort",
+   "nl": "Comfort Pack",
+   "de": "Pack Comfort"
+  },
+  {
+   "base": "Taux de Concrétisation",
+   "fr": "Taux de Concrétisation",
+   "he": "שיעור סגירת מכירות",
+   "en": "Quote CR",
+   "es": "Tasa de Concretización",
+   "nl": "Offerte omzettingspercentage",
+   "de": "% bestätigte Verkäufe"
+  },
+  {
+   "base": "Evol de Fréquentation",
+   "fr": "Evol de Fréquentation",
+   "he": "אבולוציה של זרם לקוח",
+   "en": "Attendance Evolution",
+   "es": "Evol del aforo",
+   "nl": "Verwachtingsevolutie",
+   "de": "% Steigerung Anzahl Verkäufe"
+  },
+  {
+   "base": "Nd de Lyleoo",
+   "fr": "Nb de Lyleoo",
+   "he": null,
+   "en": null,
+   "es": null,
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "AUDIO",
+   "fr": "AUDIO",
+   "he": "אודיו",
+   "en": "HEARING CARE",
+   "es": "AUDIO",
+   "nl": "Gehoorzorg (Audio)",
+   "de": "AUDIO"
+  },
+  {
+   "base": "P moyen Prothèse",
+   "fr": "P moyen Prothèse",
+   "he": "ממוצע מכירות מכשירי שמיעה",
+   "en": "HA Average Price",
+   "es": "P medio prótesis",
+   "nl": "Hoortoestel Gemiddelde prijs",
+   "de": "Durchschnittspreis Hörgerate"
+  },
+  {
+   "base": "% Garantie",
+   "fr": "% Garantie",
+   "he": "%ביטוח",
+   "en": "% of HC Cover",
+   "es": "% Garantía",
+   "nl": "% of garantie’s",
+   "de": "% SOP"
+  },
+  {
+   "base": "% Ventes  Add",
+   "fr": "% Ventes  Add",
+   "he": "% מכירות משלימות",
+   "en": "% of additional sales",
+   "es": "% Ventas adicionales",
+   "nl": "% van extra verkoop",
+   "de": "% Zusatz Verkaufe"
+  },
+  {
+   "base": "% Stéréo",
+   "fr": "% Stéréo",
+   "he": "% לקוחות עם רכישת מכשיר ל2 אוזניים",
+   "en": "% ot Stereo",
+   "es": "% Stereo",
+   "nl": "% Stereo",
+   "de": "% Paar Hörgerat"
+  },
+  {
+   "base": "% TC audio",
+   "fr": "% TC audio",
+   "he": "% TC אודיו",
+   "en": "% of HC CR",
+   "es": "% TC audio",
+   "nl": "% Van het omzettingspercentage hoorzorg",
+   "de": "% bestätigte Verkäufe Audio"
+  },
+  {
+   "base": "Durée moyen d’essai",
+   "fr": "Durée moyen d’essai",
+   "he": "ממוצע תקופה ניסיון",
+   "en": "Trial Period length",
+   "es": "Duración media de prueba",
+   "nl": "Proefperiode Gemiddelde duur",
+   "de": "Durchschnittstestdauer"
+  },
+  {
+   "base": "% de Dépistage",
+   "fr": "% de Dépistage",
+   "he": "% סינונים",
+   "en": "% of HA Screening",
+   "es": "% de Depistaje",
+   "nl": "% van HA-onderzoek",
+   "de": "% Zusatz Hörtest"
+  },
+  {
+   "base": "RENTABILITÉ",
+   "fr": "RENTABILITÉ",
+   "he": "רווחיות",
+   "en": "Profitability ",
+   "es": "RENTABILIDAD",
+   "nl": "Resultaten",
+   "de": "Rentabilität"
+  },
+  {
+   "base": "%MdC",
+   "fr": "%MdC",
+   "he": "%MDC",
+   "en": "% PL",
+   "es": "% MdC",
+   "nl": "% van huismerk",
+   "de": "% Exclusivmarken"
+  },
+  {
+   "base": "% Lukkas",
+   "fr": "% Lukkas",
+   "he": "% LUKKAS",
+   "en": "% of Lukkas",
+   "es": "% Lukkas",
+   "nl": "% van Lukkas",
+   "de": "% Lukkas"
+  },
+  {
+   "base": "% Ouiezen Premium",
+   "fr": "% Ouiezen Premium",
+   "he": "% Ouiezen Premium",
+   "en": "% of Ouiezen Premium",
+   "es": "% Ouiezen Premium",
+   "nl": "% Ouiezen Premium",
+   "de": "% Ouiezen Premium"
+  },
+  {
+   "base": "Seuil de Performance",
+   "fr": "Seuil de Performance",
+   "he": "סף יהילות",
+   "en": "Performance Threshold ",
+   "es": "Umbral de Eficiencia",
+   "nl": "Prestatiedrempel",
+   "de": "Break-Even Point"
+  },
+  {
+   "base": "Renta Salariale",
+   "fr": "Renta Salariale",
+   "he": "ריווח משכורות",
+   "en": "Salary profitability",
+   "es": "Renta Salarial",
+   "nl": "Salaris winstgevendheid",
+   "de": "Belegschafts Rentabilität"
+  },
+  {
+   "base": "Challenge Manager",
+   "fr": "Challenge Manager",
+   "he": "אתגר של המנהל",
+   "en": "Manager Challenge",
+   "es": "Challenge Encargado",
+   "nl": "Manager Uitdaging",
+   "de": "Challenge Manager"
+  },
+  {
+   "base": "Gain: 3 jours d’hébergement au château",
+   "fr": "Gain: 3 jours d’hébergement au château",
+   "he": "מתנה: 3 ימי לינה בטירה",
+   "en": "Price - 3 days in the Castle",
+   "es": "Recompensa: 3 días de alojamiento al castillo",
+   "nl": "Prijs - 3 dagen in het kasteel",
+   "de": "Gewinn : 3 Tage Aufenthalt im Schloss"
+  },
+  {
+   "base": " Réalisé en 2025",
+   "fr": "Réalisé en 2024",
+   "he": "בוצע ב 2025",
+   "en": "Achieved in 2025",
+   "es": "Realizado en 2025",
+   "nl": "Bereikt in 2025",
+   "de": "Erreicht 2025"
+  },
+  {
+   "base": "Objectif 2026",
+   "fr": "Objectif 2026",
+   "he": "2026 יע",
+   "en": "2026 Target",
+   "es": "Objetivo 2026",
+   "nl": "Doel 2026",
+   "de": "Ziel 2026"
+  },
+  {
+   "base": "Réalisé en 2025",
+   "fr": "Réalisé en 2025",
+   "he": "2025 בוצע ב",
+   "en": "Achieved in 2025",
+   "es": "Realizado en 2025",
+   "nl": "Bereikt in 2025",
+   "de": "Erreicht 2025"
+  },
+  {
+   "base": "Pilotage Ca 2026",
+   "fr": "Pilotage Ca 2026",
+   "he": "קוקפיט CA 2026",
+   "en": "Managing 2026 Sales Revenue",
+   "es": "Pilotaje Facturación 2026",
+   "nl": "Beheer van verkoopopbrengsten 2026",
+   "de": "Steuerung Umsatz 2026"
+  },
+  {
+   "base": "Analyse Du Panier Moyen Optique",
+   "fr": "Analyse Du Panier Moyen Optique",
+   "he": "ניתוח ממוצע מכירות אופטיות",
+   "en": "AOV analysis",
+   "es": "Análisis del Precio Medio Optica",
+   "nl": "Optische gemiddelde verkoopanalyse",
+   "de": "Optik Durchschnittspreis Analyse"
+  },
+  {
+   "base": "Cumul Ca",
+   "fr": "Cumul Ca",
+   "he": "Caמצטבר",
+   "en": "Total Sales Revenue",
+   "es": "Facturación acumulada",
+   "nl": "Cumulatieve verkoopopbrengsten",
+   "de": "Umsatz Häufung"
+  },
+  {
+   "base": "Dépistage",
+   "fr": "Dépistage",
+   "he": null,
+   "en": "Hearing Screening",
+   "es": null,
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Ca / Mois Restant",
+   "fr": "Ca / Mois Restant",
+   "he": "CA/חודש שנשאר",
+   "en": "Sales Revenue / Remaining month",
+   "es": "Facturación (k€) / Mes pendiente",
+   "nl": "Omzet / resterende maand",
+   "de": "Umsatz / restlichen Monate"
+  },
+  {
+   "base": "NdV",
+   "fr": "NdV",
+   "he": "מספר מכירות",
+   "en": "Number Of Sales",
+   "es": "NdV",
+   "nl": "Aantal verkopen",
+   "de": "Verfäufe Nummer"
+  },
+  {
+   "base": "Tx De C",
+   "fr": "Tx De C",
+   "he": "אחוז סגירת מכירות",
+   "en": "Quote CR",
+   "es": "Tasa De C",
+   "nl": "Tarief Offertegesprek",
+   "de": "Bestätigte verkaufe"
+  },
+  {
+   "base": "Magasin",
+   "fr": "Magasin",
+   "he": "חנות",
+   "en": "Store",
+   "es": "Tienda",
+   "nl": "Winkel",
+   "de": "Geschäft"
+  },
+  {
+   "base": "Janvier",
+   "fr": "Janvier",
+   "he": "ינואר",
+   "en": "January",
+   "es": "Enero",
+   "nl": "Januari",
+   "de": "Januar"
+  },
+  {
+   "base": "Février",
+   "fr": "Février",
+   "he": "פברואר",
+   "en": "February",
+   "es": "Febrero",
+   "nl": "Februari",
+   "de": "Februar"
+  },
+  {
+   "base": "Mars",
+   "fr": "Mars",
+   "he": "מרץ",
+   "en": "march",
+   "es": "Marzo",
+   "nl": "Maart",
+   "de": "März"
+  },
+  {
+   "base": "Avril",
+   "fr": "Avril",
+   "he": "אפריל",
+   "en": "april",
+   "es": "Abril",
+   "nl": "April",
+   "de": "April"
+  },
+  {
+   "base": "Mai",
+   "fr": "Mai",
+   "he": "מאי",
+   "en": "May",
+   "es": "Mayo",
+   "nl": "Mei",
+   "de": "Mai"
+  },
+  {
+   "base": "Juin",
+   "fr": "Juin",
+   "he": "יוני",
+   "en": "June",
+   "es": "Junio",
+   "nl": "Juni",
+   "de": "Juni"
+  },
+  {
+   "base": "Juillet",
+   "fr": "Juillet",
+   "he": "יולי",
+   "en": "July",
+   "es": "Julio",
+   "nl": "Juli",
+   "de": "Juli"
+  },
+  {
+   "base": "Aout",
+   "fr": "Aout",
+   "he": "אוגוסט",
+   "en": "August",
+   "es": "Agosto",
+   "nl": "Augustus",
+   "de": "August"
+  },
+  {
+   "base": "Séptembre",
+   "fr": "Séptembre",
+   "he": "ספטמבר",
+   "en": "September",
+   "es": "Septiembre",
+   "nl": "September",
+   "de": "September"
+  },
+  {
+   "base": "Octobre",
+   "fr": "Octobre",
+   "he": "אוקטובר",
+   "en": "October",
+   "es": "Octubre",
+   "nl": "Oktober",
+   "de": "Oktober"
+  },
+  {
+   "base": "Novembre",
+   "fr": "Novembre",
+   "he": "נובמבר",
+   "en": "November",
+   "es": "Noviembre",
+   "nl": "November",
+   "de": "November"
+  },
+  {
+   "base": "Décembre",
+   "fr": "Décembre",
+   "he": "דצמבר",
+   "en": "December",
+   "es": "Diciembre",
+   "nl": "December",
+   "de": "Dezember"
+  },
+  {
+   "base": "GOOGLE",
+   "fr": "GOOGLE",
+   "he": "גוגל",
+   "en": "GOOGLE",
+   "es": "GOOGLE",
+   "nl": "Google",
+   "de": "GOOGLE"
+  },
+  {
+   "base": "Nombre d’avis",
+   "fr": "Nombre d’avis",
+   "he": "מספר ביקורות",
+   "en": "Nb of Reviews",
+   "es": "Numero de reseñas",
+   "nl": "Aantal Google beoordelingen",
+   "de": "Anzahl Meinungen"
+  },
+  {
+   "base": "Note",
+   "fr": "Note",
+   "he": "הערה",
+   "en": "Mark",
+   "es": "Puntuacion",
+   "nl": "Score",
+   "de": "Note"
+  },
+  {
+   "base": "Avis Manquants",
+   "fr": "Avis Manquants",
+   "he": null,
+   "en": null,
+   "es": null,
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Statistiques",
+   "fr": "Statistiques",
+   "he": "סטטיסטיקות",
+   "en": "Statistics",
+   "es": "Estadisticas",
+   "nl": "Statistieken",
+   "de": "Statistik"
+  },
+  {
+   "base": "Perte CA",
+   "fr": "Perte CA",
+   "he": "הפסד במחזור",
+   "en": "Sales Revenue missing",
+   "es": "Perdida de Facturacion",
+   "nl": "Verkoopopbrengsten die ontbreken",
+   "de": "Umsatzverlust"
+  },
+  {
+   "base": "CA",
+   "fr": "CA",
+   "he": "מחזור",
+   "en": "Sales Revenue",
+   "es": "Facturacion",
+   "nl": "Verkoopsopbrengsten",
+   "de": "Umsatz"
+  },
+  {
+   "base": "Augmentation de l’optical Platinium",
+   "fr": "Augmentation de l’optical Platinium",
+   "he": "עלייה בביטוח שלווה",
+   "en": "OPC increased",
+   "es": "Aumento de la Optical Prevoyance",
+   "nl": "Verhoging van de optische garantie’s",
+   "de": "Steigerung SOP"
+  },
+  {
+   "base": "Augmentation du Pack Confort",
+   "fr": "Augmentation du Pack Confort",
+   "he": "עלייה בחבילת שידרוג",
+   "en": "Confort Pack Increased",
+   "es": "Aumento del Pack Confort",
+   "nl": "Verhoging van het Comfort Pack",
+   "de": "Steigerung Pack Confort"
+  },
+  {
+   "base": "Augmentation du Panier Moyen Optique",
+   "fr": "Augmentation du Panier Moyen Optique",
+   "he": "עלייה בממוצע מכירה אופטי",
+   "en": "Optical AOV increased",
+   "es": "Aumento del Precio Medio Optica",
+   "nl": "Optische gemiddelde prijsverhoging",
+   "de": "Steigerung Durchschnittspreis Optik"
+  },
+  {
+   "base": "Augmentation du Taux de Concrétisation",
+   "fr": "Augmentation du Taux de Concrétisation",
+   "he": "עלייה באחוז סגירת מכירות",
+   "en": "Convertion Rate increased",
+   "es": "Aumento de la Tasa de Concretizacion",
+   "nl": "Stijging omzettingspercentage",
+   "de": "Steigerung % bestätigte Verkäufe"
+  },
+  {
+   "base": "Augmentation du Taux de MdC",
+   "fr": "Augmentation du Taux de MdC",
+   "he": "עלייה באחוז MDC",
+   "en": "Private Label Rate increased",
+   "es": "Aumento de la Tasa MdC",
+   "nl": "Verhoging van het eigen merk",
+   "de": "Steigerung % Exklusivmarken"
+  },
+  {
+   "base": "Augmentation Free Form + Premium",
+   "fr": "Augmentation Free Form + Premium",
+   "he": "עלייה במספר פרי-פורם ופרמיום",
+   "en": "Freeform Rate increased",
+   "es": "Aumento Free Form + Premium",
+   "nl": "Tariefsverhoging eigen merk",
+   "de": "Steigerung Freeform"
+  },
+  {
+   "base": "Augmenter le nombre de vente audio",
+   "fr": "Augmenter le nombre de vente audio",
+   "he": "להעלות מספר מכירות אודיו",
+   "en": "Increase HC sales Increase (no premium)",
+   "es": "Aumento del numero de ventas Audio",
+   "nl": "Freeform Verhoging (geen premie)",
+   "de": "Steigerung Anzahl Verkäufe Audio"
+  },
+  {
+   "base": "Augmenter le taux de Dépistage Audio",
+   "fr": "Augmenter le taux de Dépistage Audio",
+   "he": "להעלות אחוז סינונים",
+   "en": "Increase HC Screening",
+   "es": "Aumento de la tasa de pruebas auditivas",
+   "nl": "Verhoging tarief hoortoestellen",
+   "de": "Steigerung % Hörtest"
+  },
+  {
+   "base": "Augmenter note google",
+   "fr": "Augmenter note google",
+   "he": "להעלות דירוג בגוגל",
+   "en": "Increase Google Review",
+   "es": "Aumento de la puntuacion Google",
+   "nl": "Google Review toename",
+   "de": "Steigerung Note Google"
+  },
+  {
+   "base": "Ventes grâce à la distribution de Flyers",
+   "fr": "Ventes grâce à la distribution de Flyers",
+   "he": "מכירות בזכות חלוקת פליירים",
+   "en": "Number of sales from flyers distribution",
+   "es": "Ventas gracias a la distribucion de propaganda",
+   "nl": "Aantal verkopen door verspreiding van flyers",
+   "de": "Verkäufe auf Grund von Flyern"
+  },
+  {
+   "base": "Marges",
+   "fr": "Marges",
+   "he": null,
+   "en": null,
+   "es": null,
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Verres",
+   "fr": "Verres",
+   "he": null,
+   "en": null,
+   "es": null,
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Montures",
+   "fr": "Montures",
+   "he": null,
+   "en": null,
+   "es": null,
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Contacto",
+   "fr": "Contacto",
+   "he": "עדשות",
+   "en": "CONTACT LENSES",
+   "es": "CONTACTO",
+   "nl": "Contactlenzen",
+   "de": "Kontaktlinsen"
+  },
+  {
+   "base": "Audio",
+   "fr": "Audio",
+   "he": "אודיו",
+   "en": "HEARING CARE",
+   "es": "AUDIO",
+   "nl": "Gehoorzorg (Audio)",
+   "de": "AUDIO"
+  },
+  {
+   "base": "Globale",
+   "fr": "Globale",
+   "he": null,
+   "en": null,
+   "es": null,
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Mr Qualité",
+   "fr": "Mr Qualité",
+   "he": "אדון איכות",
+   "en": "Mystery shopper",
+   "es": "Sr Calidad",
+   "nl": "Mr kwaliteit",
+   "de": "Herr Qualität"
+  },
+  {
+   "base": "Passage 1",
+   "fr": "Passage 1",
+   "he": "ביקורת 1",
+   "en": "1st visit",
+   "es": "Pasaje 1",
+   "nl": "Passage 1 (éen)",
+   "de": "Besuch 1"
+  },
+  {
+   "base": "Total des Avoirs",
+   "fr": "Total des Avoirs",
+   "he": null,
+   "en": "Credit Note Total",
+   "es": null,
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Tx de Récupération",
+   "fr": "Tx de Récupération",
+   "he": null,
+   "en": "Recovery Rate",
+   "es": null,
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Taux d’Indus",
+   "fr": "Taux d’indus",
+   "he": null,
+   "en": "Overdue Rate",
+   "es": null,
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "% Panier A",
+   "fr": "% Panier A",
+   "he": " ",
+   "en": " ",
+   "es": " ",
+   "nl": " ",
+   "de": " "
+  },
+  {
+   "base": "% Recommande Verres",
+   "fr": "% Recommande Verres",
+   "he": " ",
+   "en": " ",
+   "es": " ",
+   "nl": " ",
+   "de": " "
+  }
+ ],
+ "mois": [
+  {
+   "base": "Janvier",
+   "fr": "Janvier",
+   "he": "ינואר",
+   "en": "January",
+   "es": "Enero",
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Février",
+   "fr": "Février",
+   "he": "פברואר",
+   "en": "February",
+   "es": "Febrero",
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Mars",
+   "fr": "Mars",
+   "he": "מרץ",
+   "en": "March",
+   "es": "Marzo",
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Avril",
+   "fr": "Avril",
+   "he": "אפריל",
+   "en": "April",
+   "es": "Abril",
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Mai",
+   "fr": "Mai",
+   "he": "מאי",
+   "en": "May",
+   "es": "Mayo",
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Juin",
+   "fr": "Juin",
+   "he": "יוני",
+   "en": "June",
+   "es": "Junio",
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Juillet",
+   "fr": "Juillet",
+   "he": "יולי",
+   "en": "July",
+   "es": "Julio",
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Aout",
+   "fr": "Aout",
+   "he": "אוגוסט",
+   "en": "August",
+   "es": "Agosto",
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Septembre",
+   "fr": "Septembre",
+   "he": "ספטמבר",
+   "en": "September",
+   "es": "Septiembre",
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Octobre",
+   "fr": "Octobre",
+   "he": "אוקטובר",
+   "en": "October",
+   "es": "Octubre",
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Novembre",
+   "fr": "Novembre",
+   "he": "נובמבר",
+   "en": "November",
+   "es": "Noviembre",
+   "nl": null,
+   "de": null
+  },
+  {
+   "base": "Décembre",
+   "fr": "Décembre",
+   "he": "דצמבר",
+   "en": "December",
+   "es": "Diciembre",
+   "nl": null,
+   "de": null
+  }
+ ]
+}

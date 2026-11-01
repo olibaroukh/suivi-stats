@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suivi statistique</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="app-head">
+  <h1>Suivi statistique</h1>
+  <nav>
+    <button data-vue="import" class="actif">Import du mois</button>
+    <button data-vue="fiches">Fiches magasins</button>
+    <button data-vue="reglages">Réglages</button>
+  </nav>
+  <div class="dossier" id="etat-dossier">Aucun dossier</div>
+</header>
+
+<main>
+  <!-- IMPORT -->
+  <section class="vue actif" id="vue-import">
+    <div class="carte" id="carte-dossier-requis" hidden>
+      <h2>Choisir le dossier de travail</h2>
+      <p class="aide">Sélectionne ton dossier « Suivi Stats » dans Dropbox. L'appli y lit le référentiel et les objectifs, et y enregistre chaque mois. Aucune donnée n'est envoyée en ligne.</p>
+      <button class="primaire" id="btn-dossier">Choisir le dossier…</button>
+      <button id="btn-autoriser" hidden>Autoriser l'accès au dossier</button>
+    </div>
+
+    <div class="carte">
+      <div class="ligne-outils">
+        <h2 style="margin:0">Mois traité</h2>
+        <select id="imp-mois"></select>
+        <select id="imp-annee"></select>
+        <span class="muted" id="imp-info"></span>
+      </div>
+    </div>
+
+    <div class="grille2">
+      <div class="carte">
+        <h2>1. Fichiers reçus</h2>
+        <p class="aide">Dépose en vrac les ZIP Cosium (les 4 mails de chaque serveur), les Excel (marges, renta salariale, taux d'indus, Confidence, rentabilités, avis Google, External Relations, export RH) et la liste des avoirs. L'appli reconnaît chaque fichier.</p>
+        <div class="depot" id="depot">Glisse les fichiers ici<br>ou <label style="color:var(--accent-2);cursor:pointer;text-decoration:underline">parcours<input type="file" id="inp-fichiers" multiple hidden></label></div>
+        <div class="liste-fichiers" id="liste-fichiers"></div>
+      </div>
+      <div class="carte">
+        <h2>2. Copier-coller</h2>
+        <p class="aide">Colle le contenu des pages web (un ou plusieurs mois à la fois).</p>
+        <label>Lyleoo</label><textarea id="paste-lyleoo" placeholder="Mois	Profil	Dossiers créés…"></textarea>
+        <label>OCM (Intranet)</label><textarea id="paste-ocm" placeholder="Nom	Type d'implantation	Ville…"></textarea>
+        <label>Site internet (les 2 tableaux du mail)</label><textarea id="paste-site" placeholder="#	Panier HT M+verres…"></textarea>
+      </div>
+    </div>
+
+    <div class="carte" id="carte-confidence" hidden>
+      <h2>Listes Confidence prises en compte</h2>
+      <div class="chk" id="chk-confidence"></div>
+    </div>
+
+    <div class="carte">
+      <div class="ligne-outils">
+        <button class="primaire" id="btn-calculer">Calculer le mois</button>
+        <button id="btn-enregistrer" disabled>Enregistrer la photo du mois</button>
+        <span class="muted" id="calc-info"></span>
+      </div>
+      <div class="barre" id="barre-calc" hidden><div></div></div>
+    </div>
+
+    <div class="carte" id="carte-rapport" hidden>
+      <h2>Rapport de contrôle</h2>
+      <table class="statuts" id="tab-sources"></table>
+      <h2 style="margin-top:14px">Points à vérifier</h2>
+      <ul class="alertes" id="liste-alertes"></ul>
+      <details><summary class="muted">Journal détaillé</summary><ul class="alertes" id="liste-journal"></ul></details>
+    </div>
+  </section>
+
+  <!-- FICHES -->
+  <section class="vue" id="vue-fiches">
+    <div class="carte">
+      <div class="ligne-outils">
+        <select id="fi-photo"></select>
+        <input id="fi-recherche" placeholder="Rechercher un magasin, un code, un AR…" style="flex:1;min-width:220px">
+        <select id="fi-filtre-pays"><option value="">Tous les pays</option></select>
+        <select id="fi-filtre-type"><option value="">Succursales et franchises</option><option>Succursale</option><option>Franchise</option></select>
+        <select id="fi-langue"><option value="">Langue du magasin</option><option value="fr">Français</option></select>
+      </div>
+    </div>
+    <div class="zone-fiche">
+      <div>
+        <div class="liste-mag" id="liste-mag"></div>
+        <div class="carte" style="margin-top:12px">
+          <button id="btn-pdf-un" style="width:100%">PDF de cette fiche</button>
+          <button class="primaire" id="btn-pdf-tous" style="width:100%;margin-top:8px">Générer les PDF de la sélection</button>
+          <div class="barre" id="barre-pdf" hidden><div></div></div>
+          <p class="aide" id="pdf-info"></p>
+        </div>
+      </div>
+      <div class="apercu" id="apercu"><p class="muted" style="padding:20px">Choisis un mois enregistré puis un magasin.</p></div>
+    </div>
+  </section>
+
+  <!-- RÉGLAGES -->
+  <section class="vue" id="vue-reglages">
+    <div class="grille2">
+      <div class="carte">
+        <h2>Référentiel magasins</h2>
+        <p class="aide" id="ref-info">—</p>
+        <div class="ligne-outils">
+          <label class="muted">Importer (Excel)<input type="file" id="inp-ref" accept=".xlsx,.xls"></label>
+          <button id="btn-export-ref">Exporter en Excel</button>
+        </div>
+      </div>
+      <div class="carte">
+        <h2>Objectifs</h2>
+        <p class="aide" id="obj-info">—</p>
+        <div class="ligne-outils">
+          <label class="muted">Importer (Excel)<input type="file" id="inp-obj" accept=".xlsx,.xls"></label>
+          <button id="btn-export-obj">Exporter en Excel</button>
+        </div>
+      </div>
+      <div class="carte">
+        <h2>Avis Google – Worker</h2>
+        <p class="aide">La clé reste sur cet ordinateur (jamais dans le code publié).</p>
+        <input id="w-url" placeholder="https://zimbra-relay.….workers.dev" style="width:100%;margin-bottom:6px">
+        <input id="w-cle" type="password" placeholder="Clé X-Store-Token" style="width:100%;margin-bottom:6px">
+        <button id="btn-w-save">Enregistrer</button> <button id="btn-w-test">Tester</button> <span class="muted" id="w-info"></span>
+      </div>
+      <div class="carte">
+        <h2>Reprises de l'année</h2>
+        <p class="aide" id="rep-info">Cumuls déjà chargés pour l'année (Lyleoo, OCM, site internet, avis Google).</p>
+        <label class="muted">Importer un fichier de reprise (.json)<input type="file" id="inp-reprise" accept=".json"></label>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/jszip.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="lib/html2canvas.min.js"></script>
+<script src="js/engine/cosium.js"></script>
+<script src="js/engine/hub.js"></script>
+<script src="js/engine/sources.js"></script>
+<script src="js/engine/lyleoo.js"></script>
+<script src="js/engine/ocm.js"></script>
+<script src="js/engine/site.js"></script>
+<script src="js/pipeline.js"></script>
+<script src="js/fiche.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

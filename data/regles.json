@@ -1,0 +1,118 @@
+{
+  "_info": "Règles métier de l'appli de suivi — modifiables sans toucher au code.",
+  "serveurs_prefixe": {
+    "01": "EURO",
+    "12": "CANADA",
+    "35": "IRLANDE",
+    "41": "SUISSE",
+    "44": "UK",
+    "59": "MARTINIQUE",
+    "97": "ISRAEL"
+  },
+  "codes_cumules": {
+    "_info": "Codes secondaires additionnés au code principal (une seule fiche). CA additionné, % et moyennes recalculés.",
+    "pays": [
+      "CANADA"
+    ],
+    "regle": "code + 'A' -> code"
+  },
+  "hors_referentiel": "ignoré (après le cumul Canada : 8001A est d'abord ajouté à 8001)",
+  "codes_ignores": {
+    "_info": "Codes Cosium non pris en compte (fermés, annulés, ou suffixe A hors Canada).",
+    "motifs": [
+      "old",
+      "Annul",
+      "A reutil",
+      "-KO",
+      "^\\d+A$ (hors Canada)"
+    ]
+  },
+  "sources_absentes_par_serveur": {
+    "IRLANDE": {
+      "contacto": 0
+    }
+  },
+  "rh": {
+    "postes_exclus": [
+      "",
+      "Animateur Réseaux",
+      "Château",
+      "Directeur de pole",
+      "Formateur",
+      "Franchisé",
+      "Logistique",
+      "Siège itinérant",
+      "Siège sédentaire"
+    ],
+    "site_multiple": "la personne compte dans chaque magasin listé",
+    "sans_code_site": "ignoré",
+    "colonnes_ignorees": [
+      "Noms sites"
+    ],
+    "taux_presence": 1,
+    "lien_vendeur": "matricule (zéros de tête ignorés)"
+  },
+  "valeur_manquante": "reprendre la valeur du mois précédent",
+  "traductions": {
+    "fiche": [
+      "langue locale du magasin",
+      "français"
+    ],
+    "rtl": [
+      "he"
+    ]
+  },
+  "accessoires_audio": {
+    "serveurs": [
+      "ISRAEL"
+    ],
+    "colonne": "PERFECT CLEAN Qt",
+    "autres_serveurs": "non chargé"
+  },
+  "lyleoo": {
+    "colonnes": [
+      "Dossiers soumis classiques",
+      "Dossiers soumis express"
+    ],
+    "periode": "copier-coller mensuel, additionné aux mois précédents de la même année",
+    "remise_a_zero": "janvier",
+    "rapprochement": "colonne Nom Lyleoo du référentiel"
+  },
+  "avoirs": {
+    "source": "Cosium, liste des factures de type Avoir (CSV)",
+    "calcul": "somme des montants TTC depuis janvier, par centre, jusqu'au dernier jour du mois traité",
+    "a_venir": "récupération automatique dans Cosium"
+  },
+  "confidence": {
+    "listes": "choisies chaque mois dans l'appli parmi celles présentes dans l'export",
+    "global": "somme des listes cochées"
+  },
+  "referentiel": {
+    "export": "le référentiel doit pouvoir être exporté (Excel) pour mise à jour puis réimporté",
+    "manager": "lu dans la colonne Manager du référentiel"
+  },
+  "visites_prescripteurs": "compteur remis à zéro en 2026 : les écarts avec l'ancien fichier sont normaux",
+  "ocm": {
+    "source": "copier-coller de la page Intranet des interventions (mois lu dans la date de chaque ligne)",
+    "comptage": "par site : ventes, livraisons, dépistages, réglages ; annulations = N.O.T « A »",
+    "cumul": "additionné mois après mois sur l'année, remise à zéro en janvier",
+    "reprise_2026": "cumul janvier → septembre repris de l'ancien fichier (contrôlé identique), octobre ajouté par copier-coller"
+  },
+  "site_internet": {
+    "source": "copier-coller des 2 tableaux du mail de fin de mois (CA CUMULE MENSUEL + CA OPTIQUE)",
+    "mois": "lu sur la ligne « OC.fr MM/AAAA »",
+    "cumul": "somme des mois : CA N, CA N-1, nb équipements optique (NB lunettes de vue cumulé) ; panier = Σ(nb × panier HT M+verres) / Σ nb",
+    "reprise_2026": "janvier → septembre repris de l'ancien fichier (contrôlé identique)"
+  },
+  "rentabilites": {
+    "source": "reportings trimestriels T20_T21 (France) et T10 (International), onglet CONSODETAIL",
+    "lecture": "lignes repérées par libellé (CA HT, Marge brute, Loyers chargés, Publicité, Personnel, Résultat d'exploitation), colonnes montant (k€ ×1000) et % du CA (×100) par code magasin",
+    "frequence": "trimestrielle ; le dernier trimestre reçu est conservé les mois suivants"
+  },
+  "avis_google": {
+    "optique": "Worker Cloudflare /google-ratings si le magasin y figure (rafraîchi chaque semaine), sinon valeur la plus récente des fichiers AVIS_SUR_GOOGLE",
+    "audio": "valeur la plus récente des fichiers AVIS_SUR_GOOGLE (onglet AUDITION)",
+    "fichier": "reçu irrégulièrement ; date lue dans le nom (JJMMAAAA) ; chaque fichier reçu est conservé",
+    "cle_worker": "saisie une fois dans les réglages de l'appli, jamais dans le code"
+  }
+}
