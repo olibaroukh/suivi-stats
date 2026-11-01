@@ -56,7 +56,7 @@
                    ['€ Pack Confort', o.pcEur, nz(n.AE), 'eur'],
                    ['Taux de Concrétisation', o.tc, pct(n.AF), 'pct', perte.tc],
                    ['Evol de Fréquentation', null, div(n.ET, p.ET) != null ? n.ET / p.ET - 1 : null, 'evol'],
-                   ['Nd de Lyleoo', o.lyleoo != null ? o.lyleoo * m : null, (n.BY != null || n.BZ != null) ? (n.BY || 0) + (n.BZ || 0) : null, 'nb'],
+                   ['Nb de Lyleoo', o.lyleoo != null ? o.lyleoo * m : null, (n.BY != null || n.BZ != null) ? (n.BY || 0) + (n.BZ || 0) : null, 'nb'],
                  ] },
       contacto: { ca: nz(n.R), part: div(n.R, ca), evol: div(n.R, p.R) != null ? n.R / p.R - 1 : null },
       audio: { ca: nz(n.Q), part: div(n.Q, ca), evol: div(n.Q, p.Q) != null ? n.Q / p.Q - 1 : null,
