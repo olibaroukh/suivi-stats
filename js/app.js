@@ -250,26 +250,36 @@
     const siege = (await Store.lireJSON(`config/objectifs-siege-${CK.cle.slice(0, 4)}.json`)) || {};
     const md = Cockpit.construire(CK.photo, S.ref, p, th, { tri, objectifs: S.objectifs, taux: await tauxChange(), siege });
     const triLib = $('#ck-tri').selectedOptions[0].textContent.replace('Tri : ', '');
-    const poser = h => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h })}</div>`; return $('#ck-apercu .cockpit'); };
-    let page = poser(640);
+    const poser = (h, pages) => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h, pages })}</div>`; return [...$('#ck-apercu').querySelectorAll('.cockpit')]; };
+    let pages = poser(640, 1), page = pages[0];
     // Hauteur réellement disponible pour la liste, puis second rendu calé dessus
     const blocs = page.querySelector('.ck-blocs');
-    if (blocs && md.type === 'multi') { const h = blocs.clientHeight; if (h > 100) page = poser(h); }
-    else if (blocs) { const th = blocs.querySelector('thead'); const h = blocs.clientHeight - (th ? th.offsetHeight : 0) - 4; if (h > 100) page = poser(h); }
-    const ok = ajusterCockpit(page);
-    const echelle = () => { const w = $('#ck-apercu').clientWidth - 28; const sc = Math.min(1, w / Cockpit.W_PAGE); const e = $('#ck-apercu .ck-echelle'); e.style.transform = `scale(${sc})`; e.style.height = (Cockpit.H_PAGE * sc) + 'px'; };
+    let hL = 640;
+    if (blocs && md.type === 'multi') { const h = blocs.clientHeight; if (h > 100) { hL = h; pages = poser(h, 1); } }
+    else if (blocs) { const th = blocs.querySelector('thead'); const h = blocs.clientHeight - (th ? th.offsetHeight : 0) - 4; if (h > 100) pages = poser(h, 1); }
+    let ok = pages.every(ajusterCockpit);
+    // Franchisés : plusieurs pages autorisées quand il y a trop de lignes
+    if (!ok && md.type === 'multi' && p.multiPages) {
+      for (let nP = 2; nP <= 6 && !ok; nP++) { pages = poser(hL, nP); ok = pages.every(ajusterCockpit); }
+    }
+    page = pages[0];
+    const echelle = () => { const w = $('#ck-apercu').clientWidth - 28; const sc = Math.min(1, w / Cockpit.W_PAGE); const e = $('#ck-apercu .ck-echelle'); e.style.transform = `scale(${sc})`; e.style.height = ((Cockpit.H_PAGE + 18) * pages.length * sc) + 'px'; };
     echelle(); window.onresize = echelle;
-    $('#ck-info').innerHTML = ok ? `${md.type === 'siege' ? '' : md.lignes.length + ' lignes · '}A3 paysage, 1 page.` : '<b style="color:var(--ko)">Attention : ce cockpit dépasse une page A3, même resserré. Choisis un périmètre plus restreint.</b>';
+    $('#ck-info').innerHTML = ok ? `${md.type === 'siege' ? '' : md.lignes.length + ' lignes · '}A3 paysage, ${pages.length} page${pages.length > 1 ? 's' : ''}.` : '<b style="color:var(--ko)">Attention : ce cockpit dépasse une page A3, même resserré. Choisis un périmètre plus restreint.</b>';
     return ok;
   }
   async function pdfCockpit() {
     const page = $('#ck-apercu .cockpit'); if (!page) return;
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
     const e = $('#ck-apercu .ck-echelle'); const t = e.style.transform; e.style.transform = 'none';
-    const canvas = await html2canvas(page, { scale: 2, backgroundColor: '#ffffff', logging: false });
-    e.style.transform = t;
     const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' });
-    doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 420, 297);
+    const toutes = [...$('#ck-apercu').querySelectorAll('.cockpit')];
+    for (let i = 0; i < toutes.length; i++) {
+      const canvas = await html2canvas(toutes[i], { scale: 2, backgroundColor: '#ffffff', logging: false });
+      if (i) doc.addPage('a3', 'landscape');
+      doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 420, 297);
+    }
+    e.style.transform = t;
     const nom = `Cockpit - ${$('#ck-perim').selectedOptions[0].textContent} - ${$('#ck-theme').selectedOptions[0].textContent} - ${CK.cle}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
     telecharger(doc.output('blob'), nom);
   }
@@ -311,6 +321,17 @@
         localStorage.setItem('bilan_ar_session', JSON.stringify({ token: d.sessionToken, ar: d.ar, exp: Date.now() + d.expiresInMs }));
         majSante();
       } catch (e) { $('#s-info').textContent = 'Erreur : ' + e.message; }
+    };
+    $('#btn-s-maj').onclick = async () => {
+      const a = +$('#imp-annee').value, m = +$('#imp-mois').value, k = `${a}-${pad(m)}`;
+      const ph = await Store.lireJSON(`donnees/${k}/photo.json`); if (!ph) { $('#s-maj-info').textContent = `Aucun mois enregistré pour ${MOIS[m - 1]} ${a}.`; return; }
+      $('#s-maj-info').textContent = 'Récupération…';
+      const sa = await santeWorker(a, m);
+      if (!sa) { $('#s-maj-info').textContent = 'Worker non configuré.'; return; }
+      if (sa.erreur) { $('#s-maj-info').textContent = sa.erreur === 'session' ? 'Connecte-toi d’abord (ci-dessus).' : 'Erreur : ' + sa.erreur; return; }
+      ph.sante = sa; ph.sources = ph.sources || {}; ph.sources.sante = { statut: 'recu', detail: `${Object.values(sa.magasins).filter(x => x.score != null).length} magasins notés${sa.apercu ? ' – aperçu indicatif' : ''}` };
+      await Store.ecrireJSON(`donnees/${k}/photo.json`, ph); CK.cle = null; if (S.photo && S.photo.annee === a && S.photo.mois === m) S.photo = ph;
+      $('#s-maj-info').textContent = `Score santé ajouté à ${MOIS[m - 1]} ${a} : ${ph.sources.sante.detail}.`;
     };
     $('#inp-reprise').onchange = async e => {
       const f = e.target.files[0]; if (!f) return; const rep = JSON.parse(await f.text()); const a = rep.annee;

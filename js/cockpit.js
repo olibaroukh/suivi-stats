@@ -116,10 +116,10 @@
     [...new Set(act.filter(succFr).map(r => r.ar))].filter(Boolean).sort().forEach(a =>
       out.push({ id: 'ar:' + a, lib: 'AR – ' + a, groupeLib: 'France', filtre: r => succFr(r) && r.ar === a, themes: ['complet', 'ca', 'optique', 'audio', 'restes', 'renta'] }));
     out.push({ id: 'ocm', lib: 'OCM (camions succursales)', groupeLib: 'France', filtre: r => fr(r) && norm(r.ar) === 'OCM', themes: ['ca', 'optique', 'audio', 'restes'] });
-    out.push({ id: 'franchises', lib: 'Franchises France – par franchisé', groupeLib: 'Franchises', filtre: r => fr(r) && r.type === 'Franchise', regrouper: r => r.groupe, themes: ['ca', 'optique', 'audio'] });
+    out.push({ id: 'franchises', lib: 'Franchises France – par franchisé', groupeLib: 'Franchises', filtre: r => fr(r) && r.type === 'Franchise', regrouper: r => r.groupe, multiPages: true, themes: ['complet', 'ca', 'optique', 'audio'] });
     const grp = {}; act.filter(r => fr(r) && r.type === 'Franchise').forEach(r => { grp[r.groupe] = (grp[r.groupe] || 0) + 1; });
     Object.keys(grp).filter(g => grp[g] >= 2).sort().forEach(g =>
-      out.push({ id: 'groupe:' + g, lib: 'Groupe – ' + g, groupeLib: 'Franchises', filtre: r => fr(r) && r.type === 'Franchise' && r.groupe === g, themes: ['ca', 'optique', 'audio'] }));
+      out.push({ id: 'groupe:' + g, lib: 'Groupe – ' + g, groupeLib: 'Franchises', filtre: r => fr(r) && r.type === 'Franchise' && r.groupe === g, multiPages: true, themes: ['complet', 'ca', 'optique', 'audio'] }));
     out.push({ id: 'inter', lib: 'International – tous pays', groupeLib: 'International', filtre: r => !fr(r), sousTotal: r => r.pays, multiDevise: true, themes: ['ca', 'optique', 'audio', 'renta'] });
     [...new Set(act.filter(r => !fr(r)).map(r => r.pays))].sort().forEach(p =>
       out.push({ id: 'pays:' + p, lib: 'Pays – ' + p, groupeLib: 'International', filtre: r => r.pays === p, themes: ['ca', 'optique', 'audio', 'renta'] }));
@@ -278,27 +278,39 @@
     const ligneSyn = (l, cls, lib) => `<tr class="${cls}"><td class="nm" colspan="2"><b>${esc(lib || l.nom)}</b>${l.n ? `<small>${l.n} mag.</small>` : ''}</td>${cellules(l, md.devTotal)}</tr>`;
     const synthese = `<table class="ck-syn"><thead><tr><th class="nm" colspan="2">${esc(md.sousLib || 'Périmètre')}</th>${md.cols.map(k => `<th>${esc(COL[k].lib)}</th>`).join('')}</tr></thead><tbody>
       ${md.sous.map(s => ligneSyn(s, '')).join('')}${ligneSyn(md.total, 'tot', 'TOTAL ' + (md.perim.lib.split(' – ')[1] || md.perim.lib))}</tbody></table>`;
-    const tops = md.top.map(t => `<div class="ck-top"><div class="l">Top 3 · ${esc(t.lib)}</div>${t.liste.map((x, i) => `<div class="r"><span>${['🥇', '🥈', '🥉'][i]}</span><b>${esc(x[0])}</b><em>${f(x[1], t.fmt, md.devTotal)}</em></div>`).join('') || '<div class="r muted">–</div>'}</div>`).join('');
+    const tops = md.top.filter(t => t.liste.length).map(t => `<div class="ck-top"><div class="l">Top 3 · ${esc(t.lib)}</div>${t.liste.map((x, i) => `<div class="r"><span>${['🥇', '🥈', '🥉'][i]}</span><b>${esc(x[0])}</b><em>${f(x[1], t.fmt, md.devTotal)}</em></div>`).join('') || '<div class="r muted">–</div>'}</div>`).join('');
     const compteurs = md.compteurs.map(([l, v]) => `<div class="ck-cpt"><div class="v">${nb(v)}</div><div class="l">${esc(l)}</div></div>`).join('');
 
     if (md.type === 'multi') {
-      const nS = md.theme.sections.length;
-      const hL = Math.max(10, Math.min(24, ((opts.hListe || 640) - nS * 62) / (nS * (n + 1))));
-      const fsM = Math.max(7.2, Math.min(11.5, hL * 0.62));
-      const secs = md.theme.sections.map(se => {
-        const cols = se.groupes.flatMap(g => g[1]);
-        const cellsC = (l, dev) => cols.map((k, i) => `<td class="${cl(k, l.v[k], md.obj)}${COL[k].fort ? ' fort' : ''}${se.groupes.some(g => g[1][0] === k) && i ? ' sep' : ''}">${f(l.v[k], COL[k].fmt, dev)}</td>`).join('');
-        return `<section class="ck-sec"><h2><span>${esc(se.lib)}</span></h2><table class="ck-liste ck-multi" style="--h:${hL.toFixed(1)}px;--fs:${fsM.toFixed(1)}px"><thead>
-          <tr class="grp"><th class="rg"></th><th class="nm"></th>${se.groupes.map(g => `<th colspan="${g[1].length}" class="sep">${esc(g[0])}</th>`).join('')}</tr>
-          <tr><th class="rg">#</th><th class="nm">Magasin</th>${cols.map((k, i) => `<th class="${se.groupes.some(g => g[1][0] === k) && i ? 'sep' : ''}">${esc(COL[k].lib)}</th>`).join('')}</tr></thead>
-          <tbody>${md.lignes.map(l => `<tr><td class="rg">${esc(l.rang)}</td><td class="nm"><b>${esc(l.nom)}</b><small>${esc(l.code)}</small></td>${cellsC(l, l.dev || md.devTotal)}</tr>`).join('')}
-          <tr class="tot"><td class="rg"></td><td class="nm"><b>TOTAL</b><small>${n} mag.</small></td>${cellsC(md.total, md.devTotal)}</tr></tbody></table></section>`;
-      }).join('');
-      return `<div class="cockpit multi" data-blocs="1">
-      ${entete(md.perim.lib, md.theme.lib)}
-      <div class="ck-haut"><div class="ck-cpts">${compteurs}</div><div class="ck-tops quatre">${tops}</div></div>
-      <div class="ck-corps ck-blocs">${secs}</div>
-      ${pied}</div>`;
+      // Colonnes sans aucune donnée sur le périmètre (ex. reporting pour les franchises) : retirées
+      const plein = k => md.total.v[k] != null || md.lignes.some(l => l.v[k] != null);
+      const sections = md.theme.sections.map(se => ({ lib: se.lib, groupes: se.groupes.map(g => [g[0], g[1].filter(plein)]).filter(g => g[1].length) })).filter(se => se.groupes.length);
+      const nS = sections.length, nP = Math.max(1, opts.pages || 1), parPage = Math.ceil(n / nP);
+      const libLigne = md.perim.regrouper ? 'Franchisé' : 'Magasin';
+      const pages = [];
+      for (let pI = 0; pI < nP; pI++) {
+        const ls = md.lignes.slice(pI * parPage, (pI + 1) * parPage), dern = pI === nP - 1;
+        const hDisp = (opts.hListe || 640) + (pI ? 70 : 0);
+        const hL = Math.max(10, Math.min(24, (hDisp - nS * 62) / (nS * (ls.length + (dern ? 1 : 0)))));
+        const fsM = Math.max(7.2, Math.min(11.5, hL * 0.62));
+        const secs = sections.map(se => {
+          const cols = se.groupes.flatMap(g => g[1]);
+          const debut = k => se.groupes.some(g => g[1][0] === k);
+          const cellsC = (l, dev) => cols.map((k, i) => `<td class="${cl(k, l.v[k], md.obj)}${COL[k].fort ? ' fort' : ''}${debut(k) && i ? ' sep' : ''}">${f(l.v[k], COL[k].fmt, dev)}</td>`).join('');
+          return `<section class="ck-sec"><h2><span>${esc(se.lib)}</span></h2><table class="ck-liste ck-multi" style="--h:${hL.toFixed(1)}px;--fs:${fsM.toFixed(1)}px"><thead>
+            <tr class="grp"><th class="rg"></th><th class="nm"></th>${se.groupes.map(g => `<th colspan="${g[1].length}" class="sep">${esc(g[0])}</th>`).join('')}</tr>
+            <tr><th class="rg">#</th><th class="nm">${libLigne}</th>${cols.map((k, i) => `<th class="${debut(k) && i ? 'sep' : ''}">${esc(COL[k].lib)}</th>`).join('')}</tr></thead>
+            <tbody>${ls.map(l => `<tr><td class="rg">${esc(l.rang)}</td><td class="nm"><b>${esc(l.nom)}</b><small>${esc(l.code)}</small></td>${cellsC(l, l.dev || md.devTotal)}</tr>`).join('')}
+            ${dern ? `<tr class="tot"><td class="rg"></td><td class="nm"><b>TOTAL</b><small>${n} ${md.perim.regrouper ? 'franchisés' : 'mag.'}</small></td>${cellsC(md.total, md.devTotal)}</tr>` : ''}</tbody></table></section>`;
+        }).join('');
+        const piedP = nP > 1 ? pied.replace('</footer>', `<span><b>Page ${pI + 1} / ${nP}</b></span></footer>`) : pied;
+        pages.push(`<div class="cockpit multi${pI ? ' suite' : ''}" data-blocs="1">
+        ${entete(md.perim.lib + (pI ? ' (suite)' : ''), md.theme.lib)}
+        ${pI ? '' : `<div class="ck-haut"><div class="ck-cpts">${compteurs}</div><div class="ck-tops quatre">${tops}</div></div>`}
+        <div class="ck-corps ck-blocs">${secs}</div>
+        ${piedP}</div>`);
+      }
+      return pages.join('');
     }
     return `<div class="cockpit" data-blocs="${blocs}">
       ${entete(md.perim.lib, md.theme.lib)}
