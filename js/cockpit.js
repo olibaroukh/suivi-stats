@@ -251,7 +251,7 @@
     const titreMois = `À fin ${MOIS[md.photo.mois - 1]} ${md.photo.annee}`;
     const periode = `cumul du 1er janvier au ${new Date(md.photo.annee, md.photo.mois, 0).toLocaleDateString('fr-FR')}`;
     const entete = (perimLib, themeLib) => `<header class="ck-head"><img src="${logo}" alt=""><div class="ck-t"><div class="ck-label">${esc(titreMois)} · ${esc(periode)}</div><h1>${esc(perimLib)}</h1></div><div class="ck-theme">${esc(themeLib)}</div></header>`;
-    const pied = `<footer class="ck-pied"><span>Optical Center · Suivi statistique · généré le ${new Date().toLocaleDateString('fr-FR')}</span><span>N-1 : même période de l’année précédente${md.multi || md.type === 'siege' ? ' · totaux multi-devises convertis en € (taux en Réglages)' : ''}</span></footer>`;
+    const pied = `<footer class="ck-pied"><span>Optical Center · Suivi statistique · généré le ${new Date().toLocaleDateString('fr-FR')}</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span><span>N-1 : même période de l’année précédente${md.multi || md.type === 'siege' ? ' · totaux multi-devises convertis en € (taux en Réglages)' : ''}</span></footer>`;
 
     if (md.type === 'siege') return rendreSiege(md, { esc, f, nb, entete, pied });
 

@@ -276,7 +276,7 @@
       <div class="gros-kpi"><div class="l">${esc(t('Panier Moyen'))}</div><div class="v">${eur(c.audio.panier)}</div>${evo(c.audio.panierEvol, c.audio.panierEvolPct, eur)}</div>
       <div class="gros-kpi"><div class="l">${esc(t('Nb de Ventes'))}</div><div class="v">${nb(c.audio.ventes)}${c.audio.protheses != null ? `<small class="sous-v">${nb(c.audio.protheses)} ${lang === 'fr' ? 'prothèses' : esc(t('P moyen Prothèse').replace(/^P moyen /, ''))}</small>` : ''}</div>${evo(c.audio.ventesEvol, c.audio.ventesEvolPct, x => nb(x))}</div>
     </div>${tableKpi(c.audio.kpis)}`)}
-  <footer class="f-pied"><span>${esc(titreMois)} · ${esc(mag.magasin)}</span><span>1 / 2</span></footer>
+  <footer class="f-pied"><span>${esc(titreMois)} · ${esc(mag.magasin)}</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span><span>1 / 2</span></footer>
 </div>`;
 
     const page2 = `
@@ -318,7 +318,7 @@
     ${challenge('LE MANAGER LEADER', 'Une semaine de CP pour le manager (sous réserve d’avoir été en poste les 12 mois de l’année)', ch.ml, ch.sml)}
     ${challenge('LE MAGASIN D’EXCELLENCE', '3 jours de CP pour toute l’équipe (effectif au 31 décembre, proratisé au temps de présence)', ch.me, ch.sme)}
   </div>`)}
-  <footer class="f-pied"><span>Généré le ${new Date(photo.genereLe).toLocaleDateString('fr-FR')} · Objectifs : ${c.o._source}${repris.length ? ' · Reprises du mois précédent : ' + repris.map(k => esc((root.Pipeline && root.Pipeline.LIBELLE_SOURCE[k]) || k)).join(', ') : ''}</span><span>2 / 2</span></footer>
+  <footer class="f-pied"><span>Généré le ${new Date(photo.genereLe).toLocaleDateString('fr-FR')} · Objectifs : ${c.o._source}${repris.length ? ' · Reprises du mois précédent : ' + repris.map(k => esc((root.Pipeline && root.Pipeline.LIBELLE_SOURCE[k]) || k)).join(', ') : ''}</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span><span>2 / 2</span></footer>
 </div>`;
     return page1 + page2;
   }
