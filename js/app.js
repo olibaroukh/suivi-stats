@@ -17,7 +17,7 @@
     $('#imp-mois').innerHTML = MOIS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join(''); $('#imp-mois').value = prev.getMonth() + 1;
     $('#imp-annee').innerHTML = [0, 1, 2].map(k => `<option>${now.getFullYear() - k}</option>`).join(''); $('#imp-annee').value = prev.getFullYear();
     document.querySelectorAll('.app-head nav button').forEach(b => b.onclick = () => vue(b.dataset.vue));
-    brancherImport(); brancherFiches(); brancherReglages();
+    brancherImport(); brancherFiches(); brancherReglages(); brancherCockpits();
     $('#w-url').value = localStorage.getItem('workerUrl') || 'https://zimbra-relay.oli-baroukh.workers.dev';
     $('#w-cle').value = localStorage.getItem('workerCle') || '';
     if (!Store.supporte()) { $('#etat-dossier').textContent = 'Navigateur non compatible : utiliser Chrome'; }
@@ -31,9 +31,9 @@
     $('#etat-dossier').textContent = '📁 ' + (Store.nomDossier() || 'mémoire (non enregistré)');
     S.ref = (await Store.lireJSON('config/referentiel.json')) || [];
     S.objectifs = (await Store.lireJSON(`config/objectifs-${$('#imp-annee').value}.json`)) || (await Store.lireJSON('config/objectifs.json')) || {};
-    majInfosReglages(); await listerPhotos();
+    majInfosReglages(); await listerPhotos(); remplirPerimetres(); brancherTaux();
   }
-  function vue(v) { document.querySelectorAll('.vue').forEach(x => x.classList.toggle('actif', x.id === 'vue-' + v)); document.querySelectorAll('.app-head nav button').forEach(b => b.classList.toggle('actif', b.dataset.vue === v)); }
+  function vue(v) { if (v === 'cockpits' && !$('#ck-apercu .cockpit')) setTimeout(afficherCockpit, 0); document.querySelectorAll('.vue').forEach(x => x.classList.toggle('actif', x.id === 'vue-' + v)); document.querySelectorAll('.app-head nav button').forEach(b => b.classList.toggle('actif', b.dataset.vue === v)); }
 
   // ---------- Import ----------
   function brancherImport() {
@@ -141,6 +141,7 @@
   }
   async function listerPhotos() {
     const ks = (await Store.lister('donnees')).filter(n => /^\d{4}-\d{2}$/.test(n)).sort().reverse();
+    $('#ck-photo').innerHTML = ks.length ? ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)} (cumul depuis janvier)</option>`).join('') : '<option value="">Aucun mois enregistré</option>';
     $('#fi-photo').innerHTML = ks.length ? ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join('') : '<option value="">Aucun mois enregistré</option>';
     if (ks.length) await chargerPhoto(ks[0]);
   }
@@ -216,6 +217,72 @@
   }
 
   // ---------- Réglages ----------
+  // ---------------- Cockpits ----------------
+  const CK = { photo: null, cle: null, perims: [] };
+  async function tauxChange() { return Object.assign({}, Cockpit.TAUX_DEFAUT, (await Store.lireJSON('config/taux-change.json')) || {}); }
+  function remplirPerimetres() {
+    CK.perims = Cockpit.perimetres(S.ref);
+    const groupes = [...new Set(CK.perims.map(p => p.groupeLib))];
+    const avant = $('#ck-perim').value;
+    $('#ck-perim').innerHTML = groupes.map(g => `<optgroup label="${esc(g)}">${CK.perims.filter(p => p.groupeLib === g).map(p => `<option value="${esc(p.id)}">${esc(p.lib)}</option>`).join('')}</optgroup>`).join('');
+    if (avant && CK.perims.some(p => p.id === avant)) $('#ck-perim').value = avant;
+    remplirThemes();
+  }
+  function remplirThemes() {
+    const p = CK.perims.find(x => x.id === $('#ck-perim').value); if (!p) return;
+    const avant = $('#ck-theme').value;
+    $('#ck-theme').innerHTML = p.themes.map(t => `<option value="${t}">${t === 'siege' ? 'Synthèse réseau' : Cockpit.THEMES[t].lib}</option>`).join('');
+    if (p.themes.includes(avant)) $('#ck-theme').value = avant;
+    $('#ck-theme').disabled = p.themes.length < 2; $('#ck-tri').disabled = !!p.special;
+  }
+  function ajusterCockpit(page) {
+    const b = page.querySelector('.ck-blocs');
+    const deborde = () => page.scrollHeight > page.clientHeight + 1 || (b && b.scrollHeight > b.clientHeight + 1);
+    ['serre', 'tres-serre', 'ultra-serre'].forEach(c => { if (deborde()) page.classList.add(c); });
+    return !deborde();
+  }
+  async function afficherCockpit() {
+    const k = $('#ck-photo').value; if (!k) return;
+    if (CK.cle !== k) { CK.photo = await Store.lireJSON(`donnees/${k}/photo.json`); CK.cle = k; }
+    const p = CK.perims.find(x => x.id === $('#ck-perim').value); if (!p || !CK.photo) return;
+    const th = $('#ck-theme').value; let tri = $('#ck-tri').value;
+    if (tri === '__theme') tri = th !== 'siege' ? Cockpit.THEMES[th].tri : 'code';
+    const md = Cockpit.construire(CK.photo, S.ref, p, th, { tri, objectifs: S.objectifs, taux: await tauxChange() });
+    const triLib = $('#ck-tri').selectedOptions[0].textContent.replace('Tri : ', '');
+    const poser = h => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h })}</div>`; return $('#ck-apercu .cockpit'); };
+    let page = poser(640);
+    // Hauteur réellement disponible pour la liste, puis second rendu calé dessus
+    const blocs = page.querySelector('.ck-blocs');
+    if (blocs) { const th = blocs.querySelector('thead'); const h = blocs.clientHeight - (th ? th.offsetHeight : 0) - 4; if (h > 100) page = poser(h); }
+    const ok = ajusterCockpit(page);
+    const echelle = () => { const w = $('#ck-apercu').clientWidth - 28; const sc = Math.min(1, w / Cockpit.W_PAGE); const e = $('#ck-apercu .ck-echelle'); e.style.transform = `scale(${sc})`; e.style.height = (Cockpit.H_PAGE * sc) + 'px'; };
+    echelle(); window.onresize = echelle;
+    $('#ck-info').innerHTML = ok ? `${md.type === 'siege' ? '' : md.lignes.length + ' lignes · '}A3 paysage, 1 page.` : '<b style="color:var(--ko)">Attention : ce cockpit dépasse une page A3, même resserré. Choisis un périmètre plus restreint.</b>';
+    return ok;
+  }
+  async function pdfCockpit() {
+    const page = $('#ck-apercu .cockpit'); if (!page) return;
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    const e = $('#ck-apercu .ck-echelle'); const t = e.style.transform; e.style.transform = 'none';
+    const canvas = await html2canvas(page, { scale: 2, backgroundColor: '#ffffff', logging: false });
+    e.style.transform = t;
+    const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' });
+    doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 420, 297);
+    const nom = `Cockpit - ${$('#ck-perim').selectedOptions[0].textContent} - ${$('#ck-theme').selectedOptions[0].textContent} - ${CK.cle}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
+    telecharger(doc.output('blob'), nom);
+  }
+  function brancherCockpits() {
+    $('#ck-photo').onchange = afficherCockpit;
+    $('#ck-perim').onchange = () => { remplirThemes(); afficherCockpit(); };
+    $('#ck-theme').onchange = afficherCockpit; $('#ck-tri').onchange = afficherCockpit;
+    $('#ck-pdf').onclick = pdfCockpit;
+    $('#ck-print').onclick = () => { document.body.classList.add('impression-cockpit'); window.print(); setTimeout(() => document.body.classList.remove('impression-cockpit'), 500); };
+  }
+  async function brancherTaux() {
+    const t = await tauxChange();
+    $('#taux-champs').innerHTML = Object.keys(Cockpit.TAUX_DEFAUT).filter(d => d !== 'Euro').map(d => `<label class="muted">${esc(Cockpit.DEVISE_SYM[d] || d)} <input data-dev="${esc(d)}" type="number" step="0.0001" value="${t[d]}" style="width:90px"></label>`).join('');
+    $('#btn-taux').onclick = async () => { const o = {}; document.querySelectorAll('#taux-champs input').forEach(i => o[i.dataset.dev] = +i.value); await Store.ecrireJSON('config/taux-change.json', o); $('#taux-info').textContent = 'Enregistré'; };
+  }
   function brancherReglages() {
     $('#inp-ref').onchange = async e => { const f = e.target.files[0]; if (!f) return; S.ref = lireRefXlsx(await f.arrayBuffer()); await Store.ecrireJSON('config/referentiel.json', S.ref); await Store.ecrire('config/referentiel.xlsx', f); majInfosReglages(); listerMagasins(); };
     $('#btn-export-ref').onclick = () => exporterXlsx('Magasins', S.ref, REF_COLS, 'referentiel.xlsx');
@@ -276,6 +343,6 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
   function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 
-  window.App = { S, dossierPret, ajouterFichiers, calculer, enregistrer, chargerPhoto, afficherFiche, pdfMagasin, lireRefXlsx, lireObjXlsx };
+  window.App = { afficherCockpit, CK, S, dossierPret, ajouterFichiers, calculer, enregistrer, chargerPhoto, afficherFiche, pdfMagasin, lireRefXlsx, lireObjXlsx };
   init();
 })();

@@ -13,6 +13,7 @@
   <nav>
     <button data-vue="import" class="actif">Import du mois</button>
     <button data-vue="fiches">Fiches magasins</button>
+    <button data-vue="cockpits">Cockpits</button>
     <button data-vue="reglages">Réglages</button>
   </nav>
   <div class="dossier" id="etat-dossier">Aucun dossier</div>
@@ -101,6 +102,23 @@
     </div>
   </section>
 
+  <!-- COCKPITS -->
+  <section class="vue" id="vue-cockpits">
+    <div class="carte">
+      <div class="ligne-outils">
+        <select id="ck-photo"></select>
+        <select id="ck-perim" style="min-width:280px"></select>
+        <select id="ck-theme"></select>
+        <select id="ck-tri"><option value="code">Tri : code</option><option value="nom">Tri : nom</option><option value="__theme">Tri : indicateur principal</option></select>
+        <span style="flex:1"></span>
+        <button id="ck-print">Imprimer (A3 paysage)</button>
+        <button class="primaire" id="ck-pdf">PDF</button>
+      </div>
+      <p class="aide" id="ck-info"></p>
+    </div>
+    <div class="apercu ck-apercu" id="ck-apercu"><p class="muted" style="padding:20px">Choisis un mois enregistré, un périmètre puis un thème.</p></div>
+  </section>
+
   <!-- RÉGLAGES -->
   <section class="vue" id="vue-reglages">
     <div class="grille2">
@@ -126,6 +144,12 @@
         <input id="w-url" placeholder="https://zimbra-relay.….workers.dev" style="width:100%;margin-bottom:6px">
         <input id="w-cle" type="password" placeholder="Clé X-Store-Token" style="width:100%;margin-bottom:6px">
         <button id="btn-w-save">Enregistrer</button> <button id="btn-w-test">Tester</button> <span class="muted" id="w-info"></span>
+      </div>
+      <div class="carte">
+        <h2>Taux de change (cockpits multi-devises)</h2>
+        <p class="aide">Valeur d'une unité en euros, utilisée seulement pour les totaux qui mélangent plusieurs devises (vue Siège, International).</p>
+        <div class="ligne-outils" id="taux-champs"></div>
+        <button id="btn-taux" style="margin-top:8px">Enregistrer les taux</button> <span class="muted" id="taux-info"></span>
       </div>
       <div class="carte">
         <h2>Score santé – connexion</h2>
@@ -156,6 +180,7 @@
 <script src="js/engine/equipe.js"></script>
 <script src="js/pipeline.js"></script>
 <script src="js/fiche.js"></script>
+<script src="js/cockpit.js"></script>
 <script src="js/store.js"></script>
 <script src="js/app.js"></script>
 </body>
