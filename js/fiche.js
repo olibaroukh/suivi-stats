@@ -115,10 +115,11 @@
     });
     const lignes = toutes.filter(l => l.famille !== 'audio'), lignesAudio = toutes.filter(l => l.famille === 'audio');
     const autres = liste.filter(p => !actif(p)).map(p => `${p.prenom || ''} ${(p.nom || '').charAt(0)}. (${p.poste})`);
-    const effOpt = liste.filter(p => p.famille !== 'audio').length, effAud = liste.filter(p => p.famille === 'audio').length;
+    const part = p => p.part != null ? p.part : 1;
+    const effOpt = liste.filter(p => p.famille !== 'audio').reduce((a, p) => a + part(p), 0), effAud = liste.filter(p => p.famille === 'audio').reduce((a, p) => a + part(p), 0);
     return {
       lignes, lignesAudio, autres, connu: liste.length > 0, effOpt, effAud,
-      effTheo: n.U != null ? Math.max(3.5, n.U / (m * 50)) : null,
+      effTheo: n.P != null ? Math.max(3.5, n.P * 12 / m / 250000) : null,
       caParOpticien: (n.P != null && effOpt + effAud) ? n.P / (effOpt + effAud) / 1000 / m : null,
     };
   }
@@ -231,7 +232,7 @@
       const k = (v, ob, f, inv) => `<td class="${v == null || ob == null ? '' : (inv ? v <= ob : v >= ob) ? 'ok' : 'ko'}">${v == null ? '–' : f(v)}</td>`;
       const e0 = v => v == null ? '–' : nb(Math.round(v)), k1 = v => v == null ? '–' : nb(v / 1000, 0) + 'k';
       const ent = `<div class="eff">
-        <span>${esc(t('Effectif Optique'))} <b>${eq.effOpt}</b></span><span>${esc(t('Effectif audio'))} <b>${eq.effAud}</b></span>
+        <span>${esc(t('Effectif Optique'))} <b>${nb(eq.effOpt, eq.effOpt % 1 ? 1 : 0)}</b></span><span>${esc(t('Effectif audio'))} <b>${nb(eq.effAud, eq.effAud % 1 ? 1 : 0)}</b></span>
         <span>${esc(t('Effectif Théorique'))} <b>${eq.effTheo == null ? '–' : nb(eq.effTheo, 1)}</b></span>
         <span>${esc(t('CA (k€) / Mois /Opticiens').replace('k€', 'k' + dev))} <b>${eq.caParOpticien == null ? '–' : nb(eq.caParOpticien, 1)}</b></span></div>`;
       if (!eq.lignes.length && !eq.lignesAudio.length) return ent + `<div class="nd">${eq.connu ? 'Aucune vente individuelle sur la période' : 'Export RH ou stats par vendeur non chargés'}</div>`;

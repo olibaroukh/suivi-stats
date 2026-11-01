@@ -78,10 +78,10 @@
     rentaSal: { lib: 'Renta salariale', f: (n) => pct(n.CM), fmt: 'pct1', seuil: 0.28, inverse: true },
     note: { lib: 'Note Google', f: (n) => n.BL ? n.BK : null, fmt: 'note', seuil: 4.5 },
     avis: { lib: 'Avis Google', f: (n) => n.BL, fmt: 'nb' },
-    effOpt: { lib: 'Effectif optique', f: (n) => n.XA, fmt: 'nb' },
-    effAud: { lib: 'Effectif audio', f: (n) => n.XC, fmt: 'nb' },
+    effOpt: { lib: 'Effectif optique', f: (n) => n.XA, fmt: 'nb1' },
+    effAud: { lib: 'Effectif audio', f: (n) => n.XC, fmt: 'nb1' },
     effTheo: { lib: 'Effectif théorique', f: (n) => n.XB, fmt: 'nb1' },
-    ecart: { lib: 'Écart optique / théorique', f: (n) => (n.XA != null && n.XB != null) ? n.XA - n.XB : null, fmt: 'ecart', seuil: 0.5, inverse: true },
+    ecart: { lib: 'Écart effectif / théorique', f: (n) => (n.XA != null && n.XB != null) ? n.XA + (n.XC || 0) - n.XB : null, fmt: 'ecart', seuil: 0.5, inverse: true },
     caPers: { lib: 'CA / mois / pers.', f: (n, p, m) => (n.P != null && (n.XA || n.XC)) ? n.P / ((n.XA || 0) + (n.XC || 0)) / m : null, fmt: 'k1' },
   };
 
@@ -136,10 +136,10 @@
     const devises = [...new Set(mags.map(r => r.devise || 'Euro'))];
     const multi = devises.length > 1;
     const conv = multi ? it => taux[it.devise] || 1 : null;
-    // Effectifs (export RH, en têtes) et effectif théorique = max(3,5 ; ventes optique / (mois × 50))
+    // Effectifs (export RH ; une personne sur plusieurs magasins compte 1/n dans chacun) et effectif théorique = max(3,5 ; CA prévisionnel / 250 000)
     const avecEff = d => { if (!photo.equipes) return d; const N = { ...(d.N || {}) }; const eq = photo.equipes[String(d.code)];
-      if (eq) { N.XA = eq.filter(p => p.famille !== 'audio').length; N.XC = eq.filter(p => p.famille === 'audio').length; }
-      N.XB = N.U != null ? Math.max(3.5, N.U / (m * 50)) : null; return { ...d, N }; };
+      if (eq) { const part = p => p.part != null ? p.part : 1; N.XA = eq.filter(p => p.famille !== 'audio').reduce((a, p) => a + part(p), 0); N.XC = eq.filter(p => p.famille === 'audio').reduce((a, p) => a + part(p), 0); }
+      N.XB = N.P != null ? Math.max(3.5, N.P * 12 / m / 250000) : null; return { ...d, N }; };
     const donnees = r => avecEff({ ...photo.magasins[String(r.code)], code: String(r.code) });
     const item = r => ({ ...donnees(r), devise: r.devise || 'Euro', r });
     const valeurs = (d) => { const o = {}; th.cols.forEach(k => { o[k] = COL[k].f(d.N || {}, d.N1 || {}, m); }); return o; };

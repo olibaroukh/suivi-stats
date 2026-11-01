@@ -76,7 +76,7 @@
     for (const p of personnes) {
       const mags = [...new Set(p.codes.map(c => refIdx[c] ? c : (refIdx[c.replace(/A$/, '')] ? c.replace(/A$/, '') : null)).filter(Boolean))];
       for (const c of mags) {
-        (out[c] = out[c] || []).push({ matricule: p.matricule, prenom: p.prenom, nom: p.nom, poste: p.poste, famille: famille(p.poste), entree: p.entree, multi: mags.length > 1, s: stats[p.matricule] || null });
+        (out[c] = out[c] || []).push({ matricule: p.matricule, prenom: p.prenom, nom: p.nom, poste: p.poste, famille: famille(p.poste), entree: p.entree, multi: mags.length > 1, part: 1 / mags.length, s: stats[p.matricule] || null });
       }
     }
     const rang = { manager: 0, optique: 1, audio: 2 };
