@@ -142,18 +142,23 @@
   }
   function langues(m) { const forcer = $('#fi-langue').value; if (forcer) return [forcer]; const l = Fiche.LANGUES[m.langue] || 'fr'; return l === 'fr' ? ['fr'] : [l, 'fr']; }
   function afficherFiche(m) {
-    $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l })).join('<div style="height:14px"></div>');
+    $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l })).join('');
   }
   const nomPdf = m => `${m.code} - ${String(m.magasin).replace(/[\\/:*?"<>|]/g, '-')} - ${S.photo.annee}-${pad(S.photo.mois)}.pdf`;
   async function pdfMagasin(m) {
     const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const hote = document.createElement('div'); hote.style.cssText = 'position:fixed;left:-10000px;top:0'; document.body.appendChild(hote);
     const ls = langues(m);
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    let n = 0;
     for (let i = 0; i < ls.length; i++) {
       hote.innerHTML = Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: ls[i] });
-      const canvas = await html2canvas(hote.firstElementChild, { scale: 2, backgroundColor: '#ffffff', logging: false });
-      if (i) doc.addPage();
-      doc.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 210, 297);
+      await Promise.all([...hote.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
+      for (const page of hote.querySelectorAll('.fiche')) {
+        const canvas = await html2canvas(page, { scale: 2, backgroundColor: '#ffffff', logging: false });
+        if (n++) doc.addPage();
+        doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
+      }
     }
     hote.remove();
     return doc.output('blob');

@@ -78,7 +78,7 @@
                avoirs: nz(n.S), recup: pct(n.BQ), indus: nz(n.BV) },
       marges: { verres: div(n.CB, n.CA), montures: div(n.CF, n.CE), contacto: div(n.CD, n.CC), audio: div(n.CH, n.CG), globale: nz(n.CI) },
       confidence: [['Rappel Devis Optique', n.DI, n.DJ], ['Rappel Optique N+1', n.DK, n.DL], ['Rappel Audio N+4', n.DM, n.DN], ['Global', n.DO, n.DP]],
-      reporting: { ca: nz(n.CP), lignes: [['Marge brute', 'CS'], ['Loyers chargés', 'CU'], ['Publicité', 'CW'], ['Personnel', 'CY'], ['Résultat d’exploitation', 'CQ']].map(([l, k]) => [l, nz(n[k]) != null ? n[k] / 100 : null, OBJ_REPORTING[k], k]) },
+      reporting: { ca: nz(n.CP), lignes: [['Marge brute', 'CS'], ['Loyers chargés', 'CU'], ['Publicité', 'CW'], ['Personnel', 'CY'], ['Résultat expl.', 'CQ']].map(([l, k]) => [l, nz(n[k]) != null ? n[k] / 100 : null, OBJ_REPORTING[k], k]) },
       rentaSal: pct(n.CM),
     };
   }
@@ -92,11 +92,49 @@
     return t;
   }
 
+  // Challenges « Manager Leader » et « Magasin d'excellence » : statut calculé quand la donnée existe, sinon « à renseigner »
+  function challenges(photo, mag, c) {
+    const n = (photo.magasins[String(mag.code)] || {}).N || {}, p = (photo.magasins[String(mag.code)] || {}).N1 || {};
+    const v = (ok, val) => ({ s: ok == null ? 'na' : ok ? 'ok' : 'ko', val });
+    const re = n.CQ != null ? n.CQ / 100 : null, pc = x => x == null ? null : Math.round(x * 1000) / 10 + ' %';
+    const visites = [n.DX || n.DW, n.DV, n.DZ].filter(x => x > 0).length;
+    const perf = [[n.AF, c.o.tc], [n.AC, c.o.sop], [n.V, c.o.panier, 1], [n.AN, c.o.mdc], [n.BE, c.o.depistage]].filter(([x, o]) => x != null && o != null);
+    const perfOk = perf.filter(([x, o, abs]) => (abs ? x : x / 100) >= o).length;
+    const caAnnuel = n.P != null ? n.P * 12 / photo.mois : null;
+    const ml = [
+      ['LA PRISE DE DECISION', 'RE ≥ 20 %', v(re == null ? null : re >= 0.2, pc(re))],
+      ['CONSTRUIRE EQUIPE GAGNANTE', 'Entretiens / Niveau de l’équipe ≥ 8 / Effectif', v(null)],
+      ['FORMATION', '3 jours de formation par collaborateur', v(null)],
+      ['L’INTELLIGENCE ORGANISATIONNELLE', 'Retour terrain AR + Siège', v(null)],
+      ['GESTIONNAIRE', 'Planning / Retours / Taux d’indus', v(null, n.BV != null ? 'indus ' + pc(n.BV) : null)],
+      ['LA COMPÉTENCE ÉMOTIONNELLE', 'CA fait 3 fois les 5 dernières années', v(null)],
+      ['LA NÉGOCIATION GAGNANTE', 'Taux de concrétisation ≥ 95 %', v(n.AF == null ? null : n.AF >= 95, n.AF != null ? n.AF.toFixed(1) + ' %' : null)],
+      ['DÉVELOPPER SA CRÉATIVITÉ', 'Évolution du CA', v(n.P == null || !p.P ? null : n.P > p.P, c.ca.evol != null ? (c.ca.evol > 0 ? '+' : '') + pc(c.ca.evol) : null)],
+      ['NOTORIÉTÉ', 'Nombre d’avis Google ≥ 300', v(n.BL == null ? null : n.BL >= 300, n.BL != null ? String(n.BL) : null)],
+      ['COMMUNIQUER EFFICACEMENT', 'Ophta / ORL / CE', v(n.DZ == null ? null : visites === 3, n.DZ != null ? visites + ' / 3' : null)],
+    ];
+    const me = [
+      ['COMMERCE', 'CA ≥ 2 M€', v(caAnnuel == null ? null : caAnnuel >= 2e6, caAnnuel != null ? Math.round(caAnnuel / 1000).toLocaleString('fr-FR') + ' k€ (proj.)' : null)],
+      ['LEADERSHIP', '7/10 à l’évaluation Manager Leader', v(null)],
+      ['NOTORIÉTÉ', 'Note Google ≥ 4,5', v(n.BK == null || !n.BL ? null : n.BK >= 4.5, n.BL ? String(n.BK).replace('.', ',') : null)],
+      ['RESSOURCES HUMAINES', 'Niveau de l’équipe ≥ 8 / Équilibre H/F / 3 jours de formation', v(null)],
+      ['GESTION', 'Taux d’indus ≤ 1 %', v(n.BV == null ? null : n.BV <= 0.01, pc(n.BV))],
+      ['FIDÉLISATION', '60 %', v(null)],
+      ['KAIZEN', 'Audit 5S à jour', v(null)],
+      ['RENTABILITÉ', 'RE ≥ 20 %', v(re == null ? null : re >= 0.2, pc(re))],
+      ['PERFORMANCE', 'TC / SOP / PM / MdC / Test audio', v(perf.length < 5 ? null : perfOk === 5, perf.length ? perfOk + ' / ' + perf.length : null)],
+      ['VALEUR OC', 'Dress code / Vocabulaire / Savoir-être', v(null)],
+    ];
+    const score = l => ({ ok: l.filter(x => x[2].s === 'ok').length, connus: l.filter(x => x[2].s !== 'na').length });
+    return { ml, me, sml: score(ml), sme: score(me) };
+  }
+
   function rendre(photo, mag, objectifs, trad, opts = {}) {
     const lang = opts.langue || LANGUES[mag.langue] || 'fr';
     const t = traducteur(trad, lang);
     const dev = DEVISES[mag.devise] || '€';
     const c = calculer(photo, mag, objectifs);
+    const ch = challenges(photo, mag, c);
     const loc = lang === 'he' ? 'he-IL' : lang === 'en' ? 'en-GB' : lang === 'es' ? 'es-ES' : 'fr-FR';
     const nb = (v, d = 0) => v == null ? '–' : Number(v).toLocaleString(loc, { maximumFractionDigits: d, minimumFractionDigits: d });
     const eur = v => v == null ? '–' : nb(Math.round(v)) + ' ' + dev;
@@ -105,114 +143,113 @@
     const cls = v => v == null ? '' : v >= 0 ? 'ok' : 'ko';
     const fmt = (v, u) => u === 'pct' || u === 'evol' ? pc(v) : u === 'eur' ? eur(v) : u === 'jours' ? nb(v, 1) : nb(v);
     const repris = Object.entries(photo.sources || {}).filter(([, s]) => s.statut === 'repris').map(([k]) => k);
-    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[x]));
+    const logo = opts.logo || 'assets/logo-optical-center.png';
+    const titreMois = `${t('Statistiques A Fin')} ${t.mois(c.mois)} ${photo.annee}`;
+    const nd = `<div class="nd">${esc(lang === 'fr' ? 'Non disponible pour ce magasin' : '–')}</div>`;
 
+    const evo = (d, dp, f) => d == null && dp == null ? '' : `<span class="evo ${cls(d != null ? d : dp)}">${d == null ? '' : sg(d, f)}${dp == null ? '' : ` (${sg(dp, pc)})`} <i>N-1</i></span>`;
     const kpiRows = list => list.map(([lib, ob, re, u, perte]) => {
-      const atteint = (ob == null || re == null) ? null : (re >= ob);
+      const etat = (ob == null || re == null) ? (u === 'evol' ? (re == null ? '' : re >= 0 ? 'ok' : 'ko') : '') : (re >= ob ? 'ok' : 'ko');
+      const ratio = (ob && re != null && u !== 'evol') ? Math.max(0, Math.min(1, re / ob)) : null;
       return `<tr><th>${esc(t(lib))}</th><td class="obj">${ob == null ? '' : fmt(ob, u === 'evol' ? 'pct' : u)}</td>`
-        + `<td class="val ${atteint == null ? (u === 'evol' ? cls(re) : '') : atteint ? 'ok' : 'ko'}">${u === 'evol' ? sg(re, pc) : fmt(re, u)}</td>`
-        + `<td class="perte">${perte ? eur(perte) : ''}</td></tr>`;
+        + `<td class="val ${etat}">${u === 'evol' ? sg(re, pc) : fmt(re, u)}</td>`
+        + `<td class="jauge">${ratio == null ? '' : `<div class="j"><div class="${etat}" style="width:${(ratio * 100).toFixed(0)}%"></div></div>`}</td>`
+        + `<td class="perte">${perte ? '−' + eur(perte) : ''}</td></tr>`;
     }).join('');
-    const evol = (d, dp, f) => `<div class="evol ${cls(d)}">${d == null ? '' : sg(d, f)}${dp == null ? '' : ` <span>${sg(dp, pc)}</span>`}</div>`;
-
-    const vide = arr => arr.every(v => v == null);
-    const nd = '<div class="nd">Non disponible pour ce magasin</div>';
-    return `
-<div class="fiche" dir="${lang === 'he' ? 'rtl' : 'ltr'}" lang="${lang}">
-  <header class="f-head">
+    const tableKpi = list => `<table class="kpi"><thead><tr><th></th><th>${esc(t('Objectifs'))}</th><th>${esc(t('Statistiques'))}</th><th></th><th>${esc(t('Perte CA'))}</th></tr></thead><tbody>${kpiRows(list)}</tbody></table>`;
+    const entete = petit => `
+  <header class="f-head${petit ? ' petit' : ''}">
+    <img class="f-logo" src="${logo}" alt="">
     <div class="f-titre">
-      <div class="f-sur">${esc(t('Statistiques A Fin'))} ${esc(t.mois(c.mois))} ${photo.annee}</div>
+      <div class="f-label">${esc(titreMois)}</div>
       <h1>${esc(mag.magasin)}</h1>
-      <div class="f-meta">${esc(t('Manager'))} : <b>${esc(mag.manager || '–')}</b> · ${esc(t('Date d’Ouverture'))} : ${esc(mag.ouverture || '–')} · Code ${esc(mag.code)}${mag.type === 'Franchise' ? ' · ' + esc(mag.groupe) : ''}</div>
+      <div class="f-meta">${esc(t('Manager'))} <b>${esc(mag.manager || '–')}</b><span>·</span>${esc(t('Date d’Ouverture'))} ${esc(mag.ouverture || '–')}<span>·</span>Code ${esc(mag.code)}${mag.type === 'Franchise' ? `<span>·</span>${esc(mag.groupe)}` : ''}</div>
     </div>
-    <div class="f-logo">OPTICAL CENTER</div>
-  </header>
+    <div class="f-tag">${esc(mag.pays === 'FRANCE' ? (mag.ar || mag.pays) : mag.pays)}<small>${esc(mag.type || '')}</small></div>
+  </header>`;
+    const section = (titre, corps, extra = '', sous = '') => `<section class="f-sec ${extra}"><h2><span>${esc(titre)}${sous ? ` <small>${esc(sous)}</small>` : ''}</span></h2>${corps}</section>`;
+    const tuile = (lib, val, cl = '', sous = '') => `<div class="tuile ${cl}"><div class="v">${val}</div><div class="l">${esc(lib)}</div>${sous ? `<div class="s">${sous}</div>` : ''}</div>`;
+    const etatPct = (v, ob, inverse) => v == null || ob == null ? '' : (inverse ? v <= ob : v >= ob) ? 'ok' : 'ko';
+    const repartition = () => {
+      const parts = [['OPTIQUE', c.optique], ['CONTACTO', c.contacto], ['AUDIO', c.audio]];
+      const tot = parts.reduce((a, [, x]) => a + (x.ca || 0), 0) || 1;
+      return `<div class="barre-ca">${parts.map(([l, x], i) => `<div class="seg s${i}" style="width:${Math.max(4, 100 * (x.ca || 0) / tot)}%"></div>`).join('')}</div>
+      <div class="legende-ca">${parts.map(([l, x], i) => `<div><i class="s${i}"></i><b>${esc(t(l))}</b> ${eur(x.ca)} <span class="muted">${pc(x.part, 0)}</span> ${evo(x.evol, null, pc)}</div>`).join('')}</div>`;
+    };
+    const challenge = (titre, gain, lignes, sc) => `
+      <div class="chal">
+        <div class="chal-h"><div><div class="chal-t">« ${esc(titre)} »</div><div class="chal-g">${esc(gain)}</div></div><div class="chal-sc">${sc.ok}<small>/10</small></div></div>
+        <ol>${lignes.map(([l, crit, st]) => `<li class="${st.s}"><span class="ic">${st.s === 'ok' ? '✓' : st.s === 'ko' ? '✕' : '•'}</span><div><b>${esc(l)}</b><small>${esc(crit)}</small></div><em>${st.val == null ? (st.s === 'na' ? 'à renseigner' : '') : esc(st.val)}</em></li>`).join('')}</ol>
+      </div>`;
 
-  <section class="f-row r1">
-    <div class="bloc ca">
-      <h2>${esc(t('CA'))}</h2>
-      <div class="ligne"><span>${esc(t('OBJECTIF:'))}</span><b>${eur(c.ca.obj)}</b></div>
-      <div class="ligne"><span>${esc(t('CA GÉNÉRÉ:'))}</span><b>${eur(c.ca.ca)}</b></div>
-      <div class="gros ${c.ca.posit == null ? '' : c.ca.posit >= 1 ? 'ok' : 'ko'}">${pc(c.ca.posit)}</div>
-      <div class="evol ${cls(c.ca.evol)} centre">${c.ca.evol == null ? '' : 'N-1 ' + sg(c.ca.evol, pc)}</div>
-      <div class="ligne"><span>${esc(t('CA MANQUANT'))}</span><b class="${c.ca.manquant ? 'ko' : 'ok'}">${eur(c.ca.manquant)}</b></div>
-      <div class="ligne"><span>${esc(t('Restant par mois'))}</span><b>${eur(c.ca.restant)}</b></div>
-      <div class="ligne"><span>${esc(t('Potentiel CA'))}</span><b>${eur(c.ca.potentiel)}</b></div>
-      <div class="ligne"><span>${esc(t('Positionnement potentiel'))}</span><b>${pc(c.ca.positPot)}</b></div>
-    </div>
-    <div class="bloc optique">
-      <div class="entete">
-        <div class="part"><div class="pct">${pc(c.optique.part, 0)}</div><h2>${esc(t('OPTIQUE'))}</h2><div class="mt">${eur(c.optique.ca)}</div>${evol(c.optique.evol == null ? null : c.optique.evol, null, pc)}</div>
-        <div class="kv"><span>${esc(t('Panier Moyen'))}</span><b>${eur(c.optique.panier)}</b>${evol(c.optique.panierEvol, c.optique.panierEvolPct, eur)}</div>
-        <div class="kv"><span>${esc(t('Nb de Ventes'))}</span><b>${nb(c.optique.ventes)}</b>${evol(c.optique.ventesEvol, c.optique.ventesEvolPct, v => nb(v))}</div>
-        <div class="part petit"><div class="pct">${pc(c.contacto.part, 0)}</div><h2>${esc(t('CONTACTO'))}</h2><div class="mt">${eur(c.contacto.ca)}</div>${evol(c.contacto.evol, null, pc)}</div>
-      </div>
-      <table class="kpi"><thead><tr><th></th><th>${esc(t('Objectifs'))}</th><th>${esc(t('Statistiques'))}</th><th>${esc(t('Perte CA'))}</th></tr></thead><tbody>${kpiRows(c.optique.kpis)}</tbody></table>
-    </div>
-  </section>
-
-  <section class="f-row r2">
-    <div class="bloc audio">
-      <div class="entete">
-        <div class="part"><div class="pct">${pc(c.audio.part, 0)}</div><h2>${esc(t('AUDIO'))}</h2><div class="mt">${eur(c.audio.ca)}</div>${evol(c.audio.evol, null, pc)}</div>
-        <div class="kv"><span>${esc(t('Panier Moyen'))}</span><b>${eur(c.audio.panier)}</b>${evol(c.audio.panierEvol, c.audio.panierEvolPct, eur)}</div>
-        <div class="kv"><span>${esc(t('Nb de Ventes'))}</span><b>${nb(c.audio.ventes)}</b>${evol(c.audio.ventesEvol, c.audio.ventesEvolPct, v => nb(v))}</div>
-      </div>
-      <table class="kpi"><thead><tr><th></th><th>${esc(t('Objectifs'))}</th><th>${esc(t('Statistiques'))}</th><th>${esc(t('Perte CA'))}</th></tr></thead><tbody>${kpiRows(c.audio.kpis)}</tbody></table>
-    </div>
-  </section>
-
-  <section class="f-row r3">
-    <div class="bloc google">
-      <h3>${esc(t('GOOGLE'))}</h3>
-      <table><tr><th></th><th>${esc(t('Nombre d’avis'))}</th><th>${esc(t('Note'))}</th><th>${esc(t('Avis Manquants'))}</th></tr>
-        <tr><th>${esc(t('OPTIQUE'))}</th><td>${nb(c.google.opt.nb)}</td><td class="${c.google.opt.note == null ? '' : c.google.opt.note >= 4.5 ? 'ok' : 'ko'}">${nb(c.google.opt.note, 1)}</td><td>${nb(c.google.opt.manquants, 0)}</td></tr>
-        <tr><th>${esc(t('AUDIO'))}</th><td>${nb(c.google.aud.nb)}</td><td class="${c.google.aud.note == null ? '' : c.google.aud.note >= 4.5 ? 'ok' : 'ko'}">${nb(c.google.aud.note, 1)}</td><td>${nb(c.google.aud.manquants, 0)}</td></tr></table>
-    </div>
-    <div class="bloc visites">
-      <h3>${esc(t('VISITES EXTERNES'))}</h3>
-      <table><tr><th>ORL / GEN</th><th>OPHTA / ORTHO</th><th>CE</th></tr><tr><td>${nb(c.visites.orlGen)}</td><td>${nb(c.visites.ophtaOrtho)}</td><td>${nb(c.visites.ce)}</td></tr></table>
-    </div>
-    <div class="bloc mrq"><h3>${esc(t('Mr Qualité'))}</h3><div class="gros-s">${c.mrq == null ? '–' : nb(c.mrq)}</div></div>
-  </section>
-
-  <section class="f-row r4">
-    <div class="bloc renta">
-      <h3>${esc(t('RENTABILITÉ'))}</h3>
-      <table><tr><th>${esc(t('%MdC'))}</th><th>${esc(t('% Lukkas'))}</th><th>${esc(t('% Ouiezen Premium'))}</th><th>${esc(t('% Recommande Verres'))}</th><th>${esc(t('Seuil de Performance'))}</th><th>${esc(t('Total des Avoirs'))}</th><th>${esc(t('Tx de Récupération'))}</th><th>${esc(t('Taux d’Indus'))}</th></tr>
-      <tr><td class="${c.renta.mdc == null || !c.o.mdc ? '' : c.renta.mdc >= c.o.mdc ? 'ok' : 'ko'}">${pc(c.renta.mdc)}</td><td>${pc(c.renta.lukkas)}</td><td>${pc(c.renta.ouiezen)}</td><td>${pc(c.renta.recommande)}</td>
-          <td class="${c.renta.seuil == null ? '' : c.renta.seuil >= 1 ? 'ok' : 'ko'}">${pc(c.renta.seuil)}</td><td>${eur(c.renta.avoirs)}</td><td>${pc(c.renta.recup)}</td><td class="${c.renta.indus == null ? '' : c.renta.indus <= 0.01 ? 'ok' : 'ko'}">${pc(c.renta.indus, 2)}</td></tr></table>
-    </div>
-  </section>
-
-  <section class="f-row r5">
-    <div class="bloc marges">
-      <h3>${esc(t('Marges'))}</h3>
-      ${vide(Object.values(c.marges)) ? nd : `<table><tr><th>${esc(t('Verres'))}</th><th>${esc(t('Montures'))}</th><th>${esc(t('Contacto'))}</th><th>${esc(t('Audio'))}</th><th>${esc(t('Globale'))}</th></tr>
-      <tr><td>${pc(c.marges.verres)}</td><td>${pc(c.marges.montures)}</td><td>${pc(c.marges.contacto)}</td><td>${pc(c.marges.audio)}</td><td><b>${pc(c.marges.globale)}</b></td></tr></table>`}
-    </div>
-    <div class="bloc confidence">
-      <h3>Confidence</h3>
-      <table><tr>${c.confidence.map(([l]) => `<th>${esc(l)}</th>`).join('')}</tr>
-      <tr>${c.confidence.map(([, ct, tot]) => `<td>${tot ? pc(ct / tot, 0) : '–'}<small>${tot ? nb(ct) + ' / ' + nb(tot) : ''}</small></td>`).join('')}</tr></table>
-    </div>
-  </section>
-
-  <section class="f-row r6">
-    <div class="bloc reporting">
-      <h3>REPORTING <small>${esc((photo.sources.rentabilites && photo.sources.rentabilites.detail || '').split(' – ')[0])}</small></h3>
-      ${c.reporting.ca == null ? nd : `<table><tr><th>${esc(t('CA'))} HT</th>${c.reporting.lignes.map(([l]) => `<th>${esc(l)}</th>`).join('')}</tr>
-      <tr><td>${eur(c.reporting.ca)}</td>${c.reporting.lignes.map(([, v, ob, k]) => `<td class="${v == null ? '' : (k === 'CS' || k === 'CQ' ? v >= ob : v <= ob) ? 'ok' : 'ko'}">${pc(v)}<small>obj. ${pc(ob, 0)}</small></td>`).join('')}</tr></table>`}
-    </div>
-    <div class="bloc rentasal"><h3>${esc(t('Renta Salariale'))}</h3><div class="gros-s ${c.rentaSal == null ? '' : c.rentaSal <= (mag.pays === 'FRANCE' ? 0.28 : 0.35) ? 'ok' : 'ko'}">${pc(c.rentaSal)}</div></div>
-  </section>
-
-  <footer class="f-pied">
-    <span>Généré le ${new Date(photo.genereLe).toLocaleDateString('fr-FR')} · Objectifs : ${c.o._source}${repris.length ? ' · Valeurs reprises du mois précédent : ' + repris.map(k => esc((root.Pipeline && root.Pipeline.LIBELLE_SOURCE[k]) || k)).join(', ') : ''}</span>
-  </footer>
+    const page1 = `
+<div class="fiche" dir="${lang === 'he' ? 'rtl' : 'ltr'}" lang="${lang}">
+  ${entete(false)}
+  <div class="chiffres">
+    ${tuile(t('CA GÉNÉRÉ:').replace(/:$/, ''), eur(c.ca.ca), '', evo(c.ca.evol, null, pc))}
+    ${tuile(t('OBJECTIF:').replace(/:$/, ''), eur(c.ca.obj))}
+    ${tuile('Positionnement', pc(c.ca.posit), 'fort ' + etatPct(c.ca.posit, 1), 'projection fin d’année')}
+    ${tuile(t('CA MANQUANT'), eur(c.ca.manquant), c.ca.manquant ? 'rouge' : '', `${esc(t('Restant par mois'))} ${eur(c.ca.restant)}`)}
+    ${tuile(t('Potentiel CA'), eur(c.ca.potentiel), '', `${esc(t('Positionnement potentiel'))} ${pc(c.ca.positPot)}`)}
+  </div>
+  ${section('Répartition du CA', repartition())}
+  ${section(t('OPTIQUE'), `
+    <div class="duo">
+      <div class="gros-kpi"><div class="l">${esc(t('Panier Moyen'))}</div><div class="v">${eur(c.optique.panier)}</div>${evo(c.optique.panierEvol, c.optique.panierEvolPct, eur)}</div>
+      <div class="gros-kpi"><div class="l">${esc(t('Nb de Ventes'))}</div><div class="v">${nb(c.optique.ventes)}</div>${evo(c.optique.ventesEvol, c.optique.ventesEvolPct, x => nb(x))}</div>
+    </div>${tableKpi(c.optique.kpis)}`)}
+  ${section(t('AUDIO'), `
+    <div class="duo">
+      <div class="gros-kpi"><div class="l">${esc(t('Panier Moyen'))}</div><div class="v">${eur(c.audio.panier)}</div>${evo(c.audio.panierEvol, c.audio.panierEvolPct, eur)}</div>
+      <div class="gros-kpi"><div class="l">${esc(t('Nb de Ventes'))}</div><div class="v">${nb(c.audio.ventes)}</div>${evo(c.audio.ventesEvol, c.audio.ventesEvolPct, x => nb(x))}</div>
+    </div>${tableKpi(c.audio.kpis)}`)}
+  <footer class="f-pied"><span>${esc(titreMois)} · ${esc(mag.magasin)}</span><span>1 / 2</span></footer>
 </div>`;
+
+    const page2 = `
+<div class="fiche" dir="${lang === 'he' ? 'rtl' : 'ltr'}" lang="${lang}">
+  ${entete(true)}
+  <div class="grille3">
+    ${section(t('GOOGLE'), `<div class="mini">
+      <div><div class="l">${esc(t('OPTIQUE'))}</div><div class="v ${c.google.opt.note == null ? '' : c.google.opt.note >= 4.5 ? 'ok' : 'ko'}">${c.google.opt.note == null ? '–' : '★ ' + nb(c.google.opt.note, 1)}</div><div class="s">${nb(c.google.opt.nb)} ${esc(t('Nombre d’avis').toLowerCase())}${c.google.opt.manquants ? ` · ${nb(c.google.opt.manquants)} ${esc(t('Avis Manquants').toLowerCase())}` : ''}</div></div>
+      <div><div class="l">${esc(t('AUDIO'))}</div><div class="v ${c.google.aud.note == null ? '' : c.google.aud.note >= 4.5 ? 'ok' : 'ko'}">${c.google.aud.note == null ? '–' : '★ ' + nb(c.google.aud.note, 1)}</div><div class="s">${nb(c.google.aud.nb)} ${esc(t('Nombre d’avis').toLowerCase())}${c.google.aud.manquants ? ` · ${nb(c.google.aud.manquants)} ${esc(t('Avis Manquants').toLowerCase())}` : ''}</div></div></div>`)}
+    ${section('Visites externes', `<div class="mini trois">
+      <div><div class="v">${nb(c.visites.orlGen)}</div><div class="l">ORL / Généraliste</div></div>
+      <div><div class="v">${nb(c.visites.ophtaOrtho)}</div><div class="l">Ophta / Orthoptiste</div></div>
+      <div><div class="v">${nb(c.visites.ce)}</div><div class="l">CE</div></div></div>`)}
+    ${section(t('Mr Qualité'), `<div class="mini un"><div><div class="v">${c.mrq == null ? '–' : nb(c.mrq)}</div><div class="l">${esc(t('Passage 1'))}</div>${c.mrq == null ? '<div class="s">à renseigner</div>' : ''}</div></div>`)}
+  </div>
+  ${section(t('RENTABILITÉ'), `<div class="tuiles8">
+    ${tuile(t('%MdC'), pc(c.renta.mdc), etatPct(c.renta.mdc, c.o.mdc))}
+    ${tuile(t('% Lukkas'), pc(c.renta.lukkas))}
+    ${tuile(t('% Ouiezen Premium'), pc(c.renta.ouiezen), etatPct(c.renta.ouiezen, c.o.ouiezen))}
+    ${tuile(t('% Recommande Verres'), pc(c.renta.recommande))}
+    ${tuile(t('Seuil de Performance'), pc(c.renta.seuil), etatPct(c.renta.seuil, 1))}
+    ${tuile(t('Total des Avoirs'), eur(c.renta.avoirs))}
+    ${tuile(t('Tx de Récupération'), pc(c.renta.recup))}
+    ${tuile(t('Taux d’Indus'), pc(c.renta.indus, 2), etatPct(c.renta.indus, 0.01, true))}
+  </div>`)}
+  <div class="grille2">
+    ${section(t('Marges'), Object.values(c.marges).every(x => x == null) ? nd : `<div class="mini cinq">
+      ${[['Verres', c.marges.verres], ['Montures', c.marges.montures], ['Contacto', c.marges.contacto], ['Audio', c.marges.audio], ['Globale', c.marges.globale]].map(([l, x], i) => `<div class="${i === 4 ? 'fort' : ''}"><div class="v">${pc(x, 0)}</div><div class="l">${esc(t(l))}</div></div>`).join('')}</div>`, '', (photo.sources.marges && photo.sources.marges.detail || '').split(' – ')[0])}
+    ${section('Confidence', `<div class="barres">${c.confidence.map(([l, ct, tot]) => `<div class="b"><span>${esc(l)}</span><div class="j"><div style="width:${tot ? Math.min(100, 100 * ct / tot).toFixed(0) : 0}%"></div></div><b>${tot ? pc(ct / tot, 0) : '–'}</b></div>`).join('')}</div>`)}
+  </div>
+  <div class="grille2 large-g">
+    ${section('Reporting trimestriel', c.reporting.ca == null ? nd : `<div class="mini six">
+      <div><div class="v">${c.reporting.ca == null ? '–' : nb(c.reporting.ca / 1000) + ' k' + dev}</div><div class="l">CA HT</div></div>
+      ${c.reporting.lignes.map(([l, x, ob, k]) => `<div><div class="v ${x == null ? '' : (k === 'CS' || k === 'CQ' ? x >= ob : x <= ob) ? 'ok' : 'ko'}">${pc(x)}</div><div class="l">${esc(l)}</div><div class="s">obj. ${pc(ob, 0)}</div></div>`).join('')}</div>`, '', (photo.sources.rentabilites && photo.sources.rentabilites.detail || '').split(' – ')[0])}
+    ${section(t('Renta Salariale'), `<div class="mini un"><div><div class="v ${c.rentaSal == null ? '' : c.rentaSal <= (mag.pays === 'FRANCE' ? 0.28 : 0.35) ? 'ok' : 'ko'}">${pc(c.rentaSal)}</div><div class="l">cumul de l’année</div></div></div>`)}
+  </div>
+  ${section('Challenges', `<div class="grille2 chals">
+    ${challenge('LE MANAGER LEADER', 'Une semaine de CP pour le manager (sous réserve d’avoir été en poste les 12 mois de l’année)', ch.ml, ch.sml)}
+    ${challenge('LE MAGASIN D’EXCELLENCE', '3 jours de CP pour toute l’équipe (effectif au 31 décembre, proratisé au temps de présence)', ch.me, ch.sme)}
+  </div>`)}
+  <footer class="f-pied"><span>Généré le ${new Date(photo.genereLe).toLocaleDateString('fr-FR')} · Objectifs : ${c.o._source}${repris.length ? ' · Reprises du mois précédent : ' + repris.map(k => esc((root.Pipeline && root.Pipeline.LIBELLE_SOURCE[k]) || k)).join(', ') : ''}</span><span>2 / 2</span></footer>
+</div>`;
+    return page1 + page2;
   }
 
-  const api = { calculer, rendre, objectifsPour, LANGUES, DEVISES };
+  const api = { calculer, challenges, rendre, objectifsPour, LANGUES, DEVISES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Fiche = api;
 })(typeof self !== 'undefined' ? self : this);
