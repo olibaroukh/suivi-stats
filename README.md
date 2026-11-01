@@ -28,7 +28,8 @@ Suivi Stats/
 
 - `js/engine/` : lecture des sources (Cosium, Excel, copier-coller) et tableau central.
 - `js/pipeline.js` : chaîne de calcul mensuelle et rapport de contrôle.
-- `js/fiche.js` : indicateurs et rendu de la fiche magasin (A4).
+- `js/engine/equipe.js` : données par personne (export RH + stats Cosium par vendeur, rattachées par matricule).
+- `js/fiche.js` : indicateurs et rendu de la fiche magasin (2 pages A4).
 - `js/store.js` : accès au dossier local.
 - `data/` : correspondances des colonnes Cosium, traductions, règles métier.
 - `lib/` : librairies intégrées (SheetJS, JSZip, jsPDF, html2canvas) pour un fonctionnement hors ligne.

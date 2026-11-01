@@ -141,8 +141,17 @@
     $('#pdf-info').textContent = `${l.length} magasin(s) dans la sélection`;
   }
   function langues(m) { const forcer = $('#fi-langue').value; if (forcer) return [forcer]; const l = Fiche.LANGUES[m.langue] || 'fr'; return l === 'fr' ? ['fr'] : [l, 'fr']; }
+  // Si une page déborde (grosse équipe, police locale plus haute), on resserre le tableau équipe
+  function ajuster(hote) {
+    hote.querySelectorAll('.fiche').forEach(f => {
+      const tb = f.querySelector('table.equipe'); if (!tb) return;
+      if (f.scrollHeight > f.clientHeight + 1) tb.classList.add('dense');
+      if (f.scrollHeight > f.clientHeight + 1) tb.classList.add('tres-dense');
+    });
+  }
   function afficherFiche(m) {
     $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l })).join('');
+    ajuster($('#apercu'));
   }
   const nomPdf = m => `${m.code} - ${String(m.magasin).replace(/[\\/:*?"<>|]/g, '-')} - ${S.photo.annee}-${pad(S.photo.mois)}.pdf`;
   async function pdfMagasin(m) {
@@ -153,6 +162,7 @@
     let n = 0;
     for (let i = 0; i < ls.length; i++) {
       hote.innerHTML = Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: ls[i] });
+      ajuster(hote);
       await Promise.all([...hote.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
       for (const page of hote.querySelectorAll('.fiche')) {
         const canvas = await html2canvas(page, { scale: 2, backgroundColor: '#ffffff', logging: false });

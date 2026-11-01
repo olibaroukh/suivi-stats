@@ -57,13 +57,13 @@ main{max-width:1180px;margin:0 auto;padding:20px}
 /* ---------------- Fiche magasin (A4, charte Optical Center) ---------------- */
 .fiche{--r:#E22F2A;--n:#231F20;--rose:#FBEFEE;--rose2:#F6DCDA;--g:#8C8C8C;--trait:#ECE7E6;--ok:#1E8A52;--ko:#E22F2A;
   width:794px;height:1123px;overflow:hidden;background:#fff;margin:0 auto 18px;padding:34px 40px 30px;font-family:"Montserrat",Arial,sans-serif;
-  font-size:10px;font-weight:400;color:var(--n);position:relative;display:flex;flex-direction:column;gap:20px;box-shadow:0 2px 14px rgba(0,0,0,.08)}
+  font-size:10px;font-weight:400;color:var(--n);position:relative;display:flex;flex-direction:column;gap:13px;box-shadow:0 2px 14px rgba(0,0,0,.08)}
 .fiche[lang=he]{font-family:"Montserrat","Arial Hebrew","Noto Sans Hebrew",Arial,sans-serif}
 .fiche b{font-weight:700}
 .fiche .ok{color:var(--ok)}.fiche .ko{color:var(--ko)}
 .fiche .muted{color:var(--g)}
 /* En-tête */
-.fiche .f-head{display:flex;align-items:center;gap:20px;padding-bottom:16px;border-bottom:1px solid var(--trait)}
+.fiche .f-head{display:flex;align-items:center;gap:20px;padding-bottom:12px;border-bottom:1px solid var(--trait)}
 .fiche .f-logo{height:62px;width:auto}
 .fiche .f-head.petit .f-logo{height:40px}
 .fiche .f-titre{flex:1;min-width:0}
@@ -76,7 +76,7 @@ main{max-width:1180px;margin:0 auto;padding:20px}
 .fiche .f-tag{text-align:right;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase}
 .fiche .f-tag small{display:block;font-weight:500;color:var(--g);letter-spacing:.6px;font-size:9px;margin-top:2px}
 /* Sections : libellé rouge capitales + filet */
-.fiche .f-sec h2{display:flex;align-items:center;gap:10px;margin:0 0 10px;font-size:9px;font-weight:700;color:var(--r);letter-spacing:2.2px;text-transform:uppercase}
+.fiche .f-sec h2{display:flex;align-items:center;gap:10px;margin:0 0 7px;font-size:9px;font-weight:700;color:var(--r);letter-spacing:2.2px;text-transform:uppercase}
 .fiche .f-sec h2::after{content:"";flex:1;height:1px;background:var(--trait)}
 .fiche .f-sec h2 small{color:var(--g);font-weight:500;letter-spacing:.4px;text-transform:none;font-size:8.5px}
 /* Chiffres clés */
@@ -101,13 +101,13 @@ main{max-width:1180px;margin:0 auto;padding:20px}
 .fiche .legende-ca i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:-1px}
 .fiche .legende-ca b{font-weight:700;letter-spacing:.8px;margin-right:4px;font-size:8.5px}
 /* Optique / audio */
-.fiche .duo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
-.fiche .gros-kpi{display:flex;align-items:baseline;gap:10px;background:var(--rose);border-radius:10px;padding:10px 14px}
+.fiche .duo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.fiche .gros-kpi{display:flex;align-items:baseline;gap:10px;background:var(--rose);border-radius:10px;padding:6px 14px}
 .fiche .gros-kpi .l{font-size:8px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#6d6566;width:78px}
-.fiche .gros-kpi .v{font-weight:800;font-size:22px;letter-spacing:-.4px}
+.fiche .gros-kpi .v{font-weight:800;font-size:18px;letter-spacing:-.4px}
 .fiche .gros-kpi .evo{margin-left:auto}
 .fiche table{width:100%;border-collapse:collapse}
-.fiche table.kpi th,.fiche table.kpi td{padding:5.5px 6px;font-size:9.5px;text-align:right;white-space:nowrap}
+.fiche table.kpi th,.fiche table.kpi td{padding:3px 6px;font-size:9.5px;text-align:right;white-space:nowrap}
 .fiche table.kpi thead th{font-size:7.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--g);padding-bottom:5px}
 .fiche table.kpi tbody th{text-align:left;font-weight:500;width:34%}
 .fiche table.kpi tbody tr{border-top:1px solid var(--trait)}
@@ -161,3 +161,29 @@ main{max-width:1180px;margin:0 auto;padding:20px}
 .fiche[dir=rtl] .gros-kpi .evo{margin-left:0;margin-right:auto}
 @media print{@page{size:A4;margin:0}body *{visibility:hidden}.fiche,.fiche *{visibility:visible}.apercu{position:absolute;left:0;top:0;padding:0;background:none}.fiche{box-shadow:none;margin:0;page-break-after:always}}
 .fiche[lang=he] .f-label,.fiche[lang=he] .f-sec h2,.fiche[lang=he] .tuile .l,.fiche[lang=he] .gros-kpi .l,.fiche[lang=he] .mini .l,.fiche[lang=he] table.kpi thead th{letter-spacing:0}
+/* Équipe (page 1) */
+.fiche .eff{display:flex;gap:18px;font-size:8.5px;color:#6d6566;margin-bottom:5px}
+.fiche .eff b{color:var(--n);font-weight:800;font-size:10px;margin-left:3px}
+.fiche table.equipe{table-layout:fixed}
+.fiche table.equipe th,.fiche table.equipe td{padding:2.6px 2px;font-size:8.3px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fiche table.equipe thead th{font-size:6.6px;font-weight:600;letter-spacing:0;text-transform:uppercase;color:var(--g);white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:break-word;line-height:1.15;vertical-align:bottom;padding-bottom:4px}
+.fiche table.equipe thead tr.grp th{color:var(--r);font-weight:700;font-size:7px;letter-spacing:1.4px;border-bottom:1px solid var(--rose2);padding-bottom:3px}
+.fiche table.equipe thead tr:first-child th:first-child,.fiche table.equipe thead tr:last-child th:first-child{width:118px}
+.fiche table.equipe tbody th{text-align:left;font-weight:400;padding-left:6px}
+.fiche table.equipe tbody th b{display:block;font-weight:700;font-size:8.5px;overflow:hidden;text-overflow:ellipsis}
+.fiche table.equipe tbody th small{display:block;font-size:6.8px;color:var(--g);overflow:hidden;text-overflow:ellipsis}
+.fiche table.equipe tbody tr{border-top:1px solid var(--trait)}
+.fiche table.equipe tbody tr:nth-child(odd){background:#FDF8F7}
+.fiche table.equipe tbody tr.manager th b::after{content:" ★";color:var(--r);font-size:7px}
+.fiche table.equipe td.fort{font-weight:800}
+.fiche table.equipe td.ok{color:var(--ok);font-weight:700}.fiche table.equipe td.ko{color:var(--r);font-weight:700}
+.fiche table.equipe td:nth-child(10){border-left:1px solid var(--rose2)}
+.fiche table.equipe.dense th,.fiche table.equipe.dense td{padding-top:1.6px;padding-bottom:1.6px}
+.fiche table.equipe.tres-dense th,.fiche table.equipe.tres-dense td{padding-top:.8px;padding-bottom:.8px;font-size:7.8px}
+.fiche table.equipe.tres-dense tbody th small{display:none}
+.fiche .autres{font-size:7px;color:var(--g);margin-top:4px;line-height:1.35}
+.fiche[dir=rtl] table.equipe tbody th{text-align:right;padding-right:6px}
+.fiche table.equipe{line-height:1.2}
+.fiche table.equipe tbody th b,.fiche table.equipe tbody th small{line-height:1.2}
+.fiche[lang=he] table.equipe thead tr.grp th{letter-spacing:0}
+.fiche .chiffres .tuile .l{line-height:1.25}

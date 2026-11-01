@@ -92,6 +92,34 @@
     return t;
   }
 
+  // Bloc équipe : une ligne par personne (export RH + stats Cosium par vendeur)
+  function equipe(photo, mag, o) {
+    const n = (photo.magasins[String(mag.code)] || {}).N || {}, m = photo.mois;
+    const liste = (photo.equipes || {})[String(mag.code)] || [];
+    const fin = new Date(photo.annee, m, 0);
+    const actif = p => p.s && ((p.s.ndv || 0) > 0 || (p.s.ca || 0) > 0 || (p.s.ventesAudio || 0) > 0);
+    const lignes = liste.filter(actif).map(p => {
+      const s = p.s, f = x => x == null ? null : x / 100;
+      return {
+        nom: (p.prenom || '') + ' ' + (p.nom || '').charAt(0) + '.', poste: p.poste, famille: p.famille, multi: p.multi,
+        anc: p.entree ? Math.max(0, (fin - new Date(p.entree)) / (365.25 * 864e5)) : null,
+        obj: s.obj || null, ca: s.ca,
+        posit: s.obj ? s.ca / (s.obj * m / 12) : null,
+        restant: (s.obj && m < 12) ? Math.ceil((s.obj - (s.ca || 0)) / (12 - m)) : null,
+        depistage: f(s.depistage), ndv: s.ndv, tc: f(s.tc),
+        seuil: (o.tc && o.panier && s.tc != null && s.panier != null) ? (s.tc / 100 * s.panier) / (o.tc * o.panier) : null,
+        sop: f(s.sop), pcPct: f(s.pcPct), pcEur: s.pcEur, pm1: s.pm1 || null, panier: s.panier, transition: f(s.transition), mdc: f(s.mdc),
+      };
+    });
+    const autres = liste.filter(p => !actif(p)).map(p => `${p.prenom || ''} ${(p.nom || '').charAt(0)}. (${p.poste})`);
+    const effOpt = liste.filter(p => p.famille !== 'audio').length, effAud = liste.filter(p => p.famille === 'audio').length;
+    return {
+      lignes, autres, connu: liste.length > 0, effOpt, effAud,
+      effTheo: n.U != null ? Math.max(3.5, n.U / (m * 50)) : null,
+      caParOpticien: (n.P != null && effOpt + effAud) ? n.P / (effOpt + effAud) / 1000 / m : null,
+    };
+  }
+
   // Challenges « Manager Leader » et « Magasin d'excellence » : statut calculé quand la donnée existe, sinon « à renseigner »
   function challenges(photo, mag, c) {
     const n = (photo.magasins[String(mag.code)] || {}).N || {}, p = (photo.magasins[String(mag.code)] || {}).N1 || {};
@@ -135,6 +163,7 @@
     const dev = DEVISES[mag.devise] || '€';
     const c = calculer(photo, mag, objectifs);
     const ch = challenges(photo, mag, c);
+    const eq = equipe(photo, mag, c.o);
     const loc = lang === 'he' ? 'he-IL' : lang === 'en' ? 'en-GB' : lang === 'es' ? 'es-ES' : 'fr-FR';
     const nb = (v, d = 0) => v == null ? '–' : Number(v).toLocaleString(loc, { maximumFractionDigits: d, minimumFractionDigits: d });
     const eur = v => v == null ? '–' : nb(Math.round(v)) + ' ' + dev;
@@ -183,6 +212,24 @@
         <ol>${lignes.map(([l, crit, st]) => `<li class="${st.s}"><span class="ic">${st.s === 'ok' ? '✓' : st.s === 'ko' ? '✕' : '•'}</span><div><b>${esc(l)}</b><small>${esc(crit)}</small></div><em>${st.val == null ? (st.s === 'na' ? 'à renseigner' : '') : esc(st.val)}</em></li>`).join('')}</ol>
       </div>`;
 
+    const blocEquipe = () => {
+      const k = (v, ob, f, inv) => `<td class="${v == null || ob == null ? '' : (inv ? v <= ob : v >= ob) ? 'ok' : 'ko'}">${v == null ? '–' : f(v)}</td>`;
+      const e0 = v => v == null ? '–' : nb(Math.round(v)), k1 = v => v == null ? '–' : nb(v / 1000, 0) + 'k';
+      const ent = `<div class="eff">
+        <span>${esc(t('Effectif Optique'))} <b>${eq.effOpt}</b></span><span>${esc(t('Effectif audio'))} <b>${eq.effAud}</b></span>
+        <span>${esc(t('Effectif Théorique'))} <b>${eq.effTheo == null ? '–' : nb(eq.effTheo, 1)}</b></span>
+        <span>${esc(t('CA (k€) / Mois /Opticiens').replace('k€', 'k' + dev))} <b>${eq.caParOpticien == null ? '–' : nb(eq.caParOpticien, 1)}</b></span></div>`;
+      if (!eq.lignes.length) return ent + `<div class="nd">${eq.connu ? 'Aucune vente individuelle sur la période' : 'Export RH ou stats par vendeur non chargés'}</div>`;
+      const dense = eq.lignes.length > 9 ? (eq.lignes.length > 13 ? ' tres-dense' : ' dense') : '';
+      return ent + `<table class="equipe${dense}"><thead>
+        <tr class="grp"><th></th><th colspan="8">${esc(t('Pilotage Ca 2026').replace('2026', photo.annee))}</th><th colspan="7">${esc(t('Analyse Du Panier Moyen Optique'))}</th></tr>
+        <tr><th></th>${(lang === 'fr' ? ['Obj. ' + photo.annee, 'Cumul CA', 'Posit.', 'Reste / mois', 'NdV', 'TC', 'Seuil perf.', 'Dépist.', '% SOP', '% PC', '€ PC', 'PM 1re paire', 'Panier', 'Transit.', '% MdC']
+          : [t('Objectif 2026').replace('2026', photo.annee), t('Cumul Ca'), 'Posit.', t('Ca / Mois Restant'), t('NdV'), t('Tx De C'), t('Seuil de Performance'), t('Dépistage'), t('% SOP'), '% PC', '€ PC', t('Pmoyen 1er Paire'), t('Panier Moyen'), t('Transition'), t('%MdC')]).map(x => `<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>
+        ${eq.lignes.map(l => `<tr class="${l.famille}"><th><b>${esc(l.nom)}</b><small>${esc(l.poste)}${l.anc != null ? ' · ' + nb(l.anc, 0) + ' an' + (l.anc >= 1.5 ? 's' : '') : ''}${l.multi ? ' · multi-sites' : ''}</small></th>
+          <td class="muted">${k1(l.obj)}</td><td class="fort">${k1(l.ca)}</td>${k(l.posit, 1, x => pc(x, 0))}<td>${l.restant == null ? '–' : l.restant <= 0 ? '<span class="ok">✓</span>' : e0(l.restant)}</td><td>${e0(l.ndv)}</td>${k(l.tc, c.o.tc, x => pc(x, 1))}${k(l.seuil, 1, x => pc(x, 0))}${k(l.depistage, c.o.depistage, x => pc(x, 0))}
+          ${k(l.sop, c.o.sop, x => pc(x, 0))}${k(l.pcPct, c.o.pcPct, x => pc(x, 0))}${k(l.pcEur, c.o.pcEur, e0)}${k(l.pm1, c.o.pm1, e0)}${k(l.panier, c.o.panier, e0)}${k(l.transition, c.o.transition, x => pc(x, 0))}${k(l.mdc, c.o.mdc, x => pc(x, 0))}</tr>`).join('')}
+        </tbody></table>${eq.autres.length ? `<div class="autres">Sans vente sur la période : ${eq.autres.map(esc).join(' · ')}</div>` : ''}`;
+    };
     const page1 = `
 <div class="fiche" dir="${lang === 'he' ? 'rtl' : 'ltr'}" lang="${lang}">
   ${entete(false)}
@@ -193,6 +240,7 @@
     ${tuile(t('CA MANQUANT'), eur(c.ca.manquant), c.ca.manquant ? 'rouge' : '', `${esc(t('Restant par mois'))} ${eur(c.ca.restant)}`)}
     ${tuile(t('Potentiel CA'), eur(c.ca.potentiel), '', `${esc(t('Positionnement potentiel'))} ${pc(c.ca.positPot)}`)}
   </div>
+  ${section('Équipe', blocEquipe(), 'sec-equipe')}
   ${section('Répartition du CA', repartition())}
   ${section(t('OPTIQUE'), `
     <div class="duo">
@@ -250,6 +298,6 @@
     return page1 + page2;
   }
 
-  const api = { calculer, challenges, rendre, objectifsPour, LANGUES, DEVISES };
+  const api = { calculer, challenges, equipe, rendre, objectifsPour, LANGUES, DEVISES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Fiche = api;
 })(typeof self !== 'undefined' ? self : this);

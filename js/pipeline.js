@@ -1,5 +1,5 @@
 /* Chaîne de calcul mensuelle : fichiers reçus + copier-coller → photo du mois (tableau central N et N-1) + rapport de contrôle.
- * Dépendances (globales) : XLSX, JSZip, Cosium, Hub, Sources, Lyleoo, OCM, Site. */
+ * Dépendances (globales) : XLSX, JSZip, Cosium, Hub, Sources, Lyleoo, OCM, Site, Equipe. */
 (function (root) {
   'use strict';
 
@@ -23,7 +23,7 @@
   const LIBELLE_SOURCE = {
     cosium_n: 'Cosium – année en cours', cosium_n1: 'Cosium – année précédente (N-1)', marges: 'Marges produits', renta_sal: 'Renta salariale',
     restes_dus: 'Restes dus (taux d’indus)', confidence: 'Confidence', visites_presc: 'Visites prescripteurs', visites_ce: 'Visites CE',
-    avoirs: 'Avoirs', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', site: 'Site internet', rh: 'Export RH',
+    avoirs: 'Avoirs', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', site: 'Site internet', rh: 'Export RH', stat_indiv: 'Cosium – stats par vendeur',
   };
   // Colonnes N-1 utiles à la fiche (évolutions)
   const COLS_N1 = ['P','Q','R','U','V','AF','AW','AY','AX'];
@@ -221,7 +221,23 @@
     const actifsSansCA = ref.filter(r => r.actif === 'Oui' && mag[r.code] && srvN.includes(r.serveur) && !mag[r.code].N.P).map(r => r.code + ' ' + r.magasin);
     if (actifsSansCA.length) journal.push(`${actifsSansCA.length} magasin(s) actif(s) sans CA ce mois-ci : ` + actifsSansCA.slice(0, 15).join(', ') + (actifsSansCA.length > 15 ? '…' : ''));
 
-    const photo = { version: 1, annee, mois, genereLe: new Date().toISOString(), sources, magasins: mag, groupe, vendeurs: vendeurs.map(v => ({ srv: v.srv, report: v.pr.report, rows: v.pr.rows })) };
+    // 8. Équipes : export RH (repris du mois précédent s'il n'est pas fourni) + stats Cosium par vendeur
+    const Eq = root.Equipe || (typeof require !== 'undefined' ? require('./engine/equipe.js') : null);
+    let personnes = null;
+    if (un('rh')) { const r = Eq.rh(XLSX, un('rh').wb); personnes = r.personnes; sources.rh = { statut: 'recu', detail: `${r.personnes.length} personnes (${r.exclus} lignes écartées : postes exclus ou sans site)` }; }
+    else if (photoPrecedente && photoPrecedente.rh) { personnes = photoPrecedente.rh; sources.rh = { statut: 'repris', detail: 'export RH du mois précédent' }; }
+    let stats = null;
+    if (vendeurs.length) { stats = Eq.indexVendeurs(vendeurs.map(v => ({ report: v.pr.report, rows: v.pr.rows }))); sources.stat_indiv = { statut: 'recu', detail: `${Object.keys(stats).length} matricules` }; }
+    else if (photoPrecedente && photoPrecedente.statsVendeurs) { stats = photoPrecedente.statsVendeurs; sources.stat_indiv = { statut: 'repris', detail: 'stats du mois précédent' }; }
+    else sources.stat_indiv = { statut: 'absent' };
+    const equipes = personnes ? Eq.parMagasin(personnes, stats || {}, ref) : {};
+    if (personnes && stats) {
+      const sansStats = personnes.filter(p => !stats[p.matricule] && /opticien|manager|audio/i.test(p.poste)).length;
+      if (sansStats) journal.push(`${sansStats} personne(s) de l'export RH sans stats Cosium (matricule absent des exports par vendeur)`);
+    }
+    if (!sources.rh) sources.rh = { statut: 'absent' };
+
+    const photo = { version: 2, annee, mois, genereLe: new Date().toISOString(), sources, magasins: mag, groupe, rh: personnes, statsVendeurs: stats, equipes };
     return { photo, etatAnnee: etat, rapport: { journal, alertes, ignores, listesConfidence: listesTrouvees, sources } };
   }
 
