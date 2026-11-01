@@ -86,6 +86,23 @@
       return { magasins: out, apercu: !!d.apercu, statut: d.statut, version: d.version, dims: d.dims };
     } catch (e) { return { erreur: String(e) }; }
   }
+  // Dernier bilan de passage de chaque magasin avant la fin du mois traité (actions à suivre)
+  async function bilansWorker(annee, mois) {
+    const { url, cle } = paramsWorker(); if (!url || !cle) return null;
+    const ses = sessionSante(); if (!ses) return { erreur: 'session' };
+    const fin = Pipeline.finMois(annee, mois), d = new Date(annee, mois - 7, 1), debut = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+    try {
+      const r = await fetch(url.replace(/\/$/, '') + `/bilans?light=1&from=${debut}&to=${fin}&limit=1000`, { headers: { 'X-Store-Token': cle, 'X-AR-Session': ses.token } });
+      const j = await r.json(); if (!j.ok) return { erreur: j.error || ('HTTP ' + r.status) };
+      const out = {};
+      for (const b of j.results || []) {
+        const c = String(b.magasin_code); if (out[c]) continue; // trié du plus récent au plus ancien
+        let data = {}; try { data = JSON.parse(b.data_json || '{}'); } catch (e) {}
+        out[c] = { date: b.date, ar: b.ar || null, passage: b.passage || null, actions: (data.actions || []).map(a => ({ texte: a.text || '', commentaire: a.comment || '', qui: a.who || '', echeance: a.date || '' })) };
+      }
+      return { magasins: out, fin };
+    } catch (e) { return { erreur: String(e) }; }
+  }
   async function calculer() {
     if (!S.ref.length) { alert('Importe d’abord le référentiel magasins (onglet Réglages).'); vue('reglages'); return; }
     const annee = +$('#imp-annee').value, mois = +$('#imp-mois').value;
@@ -103,7 +120,11 @@
         res.photo.sante = sa; const n = Object.values(sa.magasins).filter(x => x.score != null).length;
         res.rapport.sources.sante = { statut: 'recu', detail: `${n} magasins notés – ${sa.apercu ? 'aperçu indicatif (mois pas encore calculé dans le dashboard)' : 'mois ' + (sa.statut === 'valide' ? 'validé' : 'calculé') + ', version ' + sa.version}` };
         if (sa.apercu) res.rapport.alertes.push('Score santé : le mois n’est pas encore calculé dans le dashboard, les scores affichés sont indicatifs.');
+        const bp = await bilansWorker(annee, mois);
+        if (bp && !bp.erreur) { res.photo.bilans = bp; res.rapport.sources.bilans = { statut: 'recu', detail: `${Object.keys(bp.magasins).length} magasins (dernier passage avant le ${bp.fin.split('-').reverse().join('/')})` }; }
+        else res.rapport.sources.bilans = { statut: 'absent', detail: bp ? bp.erreur : 'worker non configuré' };
       } else {
+        res.rapport.sources.bilans = { statut: 'absent', detail: !sa ? 'worker non configuré' : sa.erreur === 'session' ? 'connexion Zimbra requise (Réglages)' : sa.erreur };
         res.rapport.sources.sante = { statut: 'absent', detail: !sa ? 'worker non configuré' : sa.erreur === 'session' ? 'connexion Zimbra requise (Réglages)' : sa.erreur };
         if (sa && sa.erreur === 'session') res.rapport.alertes.push('Score santé non récupéré : connecte-toi dans Réglages (session Zimbra expirée), puis recalcule.');
       }
@@ -174,9 +195,9 @@
   // Si une page déborde (grosse équipe, police locale plus haute), on resserre le tableau équipe
   function ajuster(hote) {
     hote.querySelectorAll('.fiche').forEach(f => {
-      const tb = f.querySelector('table.equipe'); if (!tb) return;
-      if (f.scrollHeight > f.clientHeight + 1) tb.classList.add('dense');
-      if (f.scrollHeight > f.clientHeight + 1) tb.classList.add('tres-dense');
+      const tb = f.querySelector('table.equipe');
+      if (tb && f.scrollHeight > f.clientHeight + 1) tb.classList.add('dense');
+      if (tb && f.scrollHeight > f.clientHeight + 1) tb.classList.add('tres-dense');
       if (f.scrollHeight > f.clientHeight + 1) f.classList.add('serre');
       if (f.scrollHeight > f.clientHeight + 1) f.classList.add('tres-serre');
     });
@@ -337,8 +358,10 @@
       if (!sa) { $('#s-maj-info').textContent = 'Clé du worker manquante : saisis-la dans le cadre « Avis Google – Worker » et clique sur Enregistrer.'; return; }
       if (sa.erreur) { $('#s-maj-info').textContent = sa.erreur === 'session' ? 'Connecte-toi d’abord (ci-dessus).' : 'Erreur : ' + sa.erreur; return; }
       ph.sante = sa; ph.sources = ph.sources || {}; ph.sources.sante = { statut: 'recu', detail: `${Object.values(sa.magasins).filter(x => x.score != null).length} magasins notés${sa.apercu ? ' – aperçu indicatif' : ''}` };
+      const bp = await bilansWorker(a, m);
+      if (bp && !bp.erreur) { ph.bilans = bp; ph.sources.bilans = { statut: 'recu', detail: `${Object.keys(bp.magasins).length} magasins` }; }
       await Store.ecrireJSON(`donnees/${k}/photo.json`, ph); CK.cle = null; if (S.photo && S.photo.annee === a && S.photo.mois === m) S.photo = ph;
-      $('#s-maj-info').textContent = `Score santé ajouté à ${MOIS[m - 1]} ${a} : ${ph.sources.sante.detail}.`;
+      $('#s-maj-info').textContent = `${MOIS[m - 1]} ${a} mis à jour : score santé ${ph.sources.sante.detail}${ph.bilans ? ' · bilans de passage : ' + ph.sources.bilans.detail : ''}.`;
     };
     $('#inp-reprise').onchange = async e => {
       const f = e.target.files[0]; if (!f) return; const rep = JSON.parse(await f.text()); const a = rep.annee;

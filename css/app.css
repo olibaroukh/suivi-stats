@@ -346,3 +346,12 @@ main{max-width:1240px;margin:0 auto;padding:24px 28px 10px}
 .fiche .f-pied .slogan,.cockpit .ck-pied .slogan{font-size:9px;color:var(--n);letter-spacing:.4px;white-space:nowrap}
 .cockpit .ck-pied .slogan{font-size:10px}
 .fiche .f-pied,.cockpit .ck-pied{align-items:center}
+/* Actions du dernier bilan de passage (fiche page 2) */
+.fiche table.bilan th,.fiche table.bilan td{padding:3px 6px;font-size:8.8px;text-align:left;vertical-align:top;border-top:1px solid var(--trait)}
+.fiche table.bilan thead th{font-size:7.2px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--g);border-top:none}
+.fiche table.bilan td:first-child{width:70%}
+.fiche table.bilan td b{font-weight:600}
+.fiche table.bilan td small{display:block;color:var(--g);font-size:7.8px;margin-top:1px}
+.fiche table.bilan td.ko{color:var(--r);font-weight:700}
+.fiche.serre .chal li{padding:2px 0}.fiche.serre .mini>div{padding:6px 9px}.fiche.serre .tuiles8 .tuile{padding:6px 10px}
+.fiche.tres-serre .chal-g{display:none}.fiche.tres-serre table.bilan td{padding:1.5px 6px}.fiche.tres-serre .sante-dims{gap:3px 12px}

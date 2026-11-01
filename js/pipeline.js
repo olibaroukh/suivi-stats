@@ -23,7 +23,7 @@
   const LIBELLE_SOURCE = {
     cosium_n: 'Cosium – année en cours', cosium_n1: 'Cosium – année précédente (N-1)', marges: 'Marges produits', renta_sal: 'Renta salariale',
     restes_dus: 'Restes dus (taux d’indus)', confidence: 'Confidence', visites_presc: 'Visites prescripteurs', visites_ce: 'Visites CE',
-    avoirs: 'Avoirs', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', site: 'Site internet', rh: 'Export RH', stat_indiv: 'Cosium – stats par vendeur', sante: 'Score santé (dashboard)',
+    avoirs: 'Avoirs', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', site: 'Site internet', rh: 'Export RH', stat_indiv: 'Cosium – stats par vendeur', sante: 'Score santé (dashboard)', bilans: 'Bilans de passage (actions)',
   };
   // Colonnes N-1 utiles à la fiche (évolutions)
   const COLS_N1 = ['P','Q','R','U','V','AF','AW','AY','AX'];
@@ -209,7 +209,7 @@
       }
       if (!sources.cosium_n1 || sources.cosium_n1.statut === 'absent') { for (const c in mag) if (photoPrecedente.magasins[c]) mag[c].N1 = photoPrecedente.magasins[c].N1 || {}; }
     }
-    for (const s in LIBELLE_SOURCE) if (!sources[s] && s !== 'sante') sources[s] = { statut: 'absent' };
+    for (const s in LIBELLE_SOURCE) if (!sources[s] && s !== 'sante' && s !== 'bilans') sources[s] = { statut: 'absent' };
 
     // 7. Contrôles
     const horsRefCA = [];

@@ -173,6 +173,15 @@
     const santeCl = v => v == null ? '' : v >= 75 ? 'vert' : v >= 50 ? 'orange' : 'rouge';
     const SANTE_LIB = { actions: 'Actions', effectif: 'Effectif', absenteisme: 'Absentéisme', positionnement: 'Positionnement', pedlv: 'Pedlv', avis: 'Avis', equipe: 'Équipe', kaizen: 'Kaizen', entretiens: 'Entretiens', lancements: 'Lancements' };
     const badgeSante = () => !santeOk ? '' : `<div class="sante-badge ${santeCl(sa.score)}"><div class="v">${sa.score}<small>/100</small></div><div class="l">Score santé${photo.sante.apercu ? ' *' : ''}</div>${sa.precedent != null ? `<div class="e">${sa.score > sa.precedent ? '▲' : sa.score < sa.precedent ? '▼' : '='} ${sa.score - sa.precedent > 0 ? '+' : ''}${sa.score - sa.precedent} pts</div>` : ''}</div>`;
+    const bil = photo.bilans && photo.bilans.magasins && photo.bilans.magasins[String(mag.code)];
+    const blocBilan = () => {
+      if (!bil || !bil.actions || !bil.actions.length) return '';
+      const finM = (photo.bilans.fin || '');
+      const dfr = d => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '';
+      return section('Actions du dernier bilan de passage', `<table class="bilan"><thead><tr><th>Action</th><th>Responsable</th><th>Échéance</th></tr></thead><tbody>
+        ${bil.actions.map((a, i) => `<tr><td><b>${i + 1}. ${esc(a.texte)}</b>${a.commentaire ? `<small>${esc(a.commentaire)}</small>` : ''}</td><td>${esc(a.qui || '–')}</td><td class="${a.echeance && finM && String(a.echeance).slice(0, 10) < finM ? 'ko' : ''}">${esc(dfr(a.echeance) || '–')}</td></tr>`).join('')}
+      </tbody></table>`, '', `passage du ${dfr(bil.date)}${bil.ar ? ' · ' + bil.ar : ''}`);
+    };
     const blocSante = () => !santeOk ? '' : section('Score santé', `<div class="sante-l">
       ${badgeSante()}
       <div class="sante-dims">${(photo.sante.dims || Object.keys(SANTE_LIB)).map(d => { const v = sa.sous[d], off = v == null || sa.exclusions[d] || sa.neutralisations[d];
@@ -314,6 +323,7 @@
     ${section(t('Renta Salariale'), `<div class="mini un"><div><div class="v ${c.rentaSal == null ? '' : c.rentaSal <= (mag.pays === 'FRANCE' ? 0.28 : 0.35) ? 'ok' : 'ko'}">${pc(c.rentaSal)}</div><div class="l">cumul de l’année</div></div></div>`)}
   </div>
   ${blocSante()}
+  ${blocBilan()}
   ${section('Challenges', `<div class="grille2 chals">
     ${challenge('LE MANAGER LEADER', 'Une semaine de CP pour le manager (sous réserve d’avoir été en poste les 12 mois de l’année)', ch.ml, ch.sml)}
     ${challenge('LE MAGASIN D’EXCELLENCE', '3 jours de CP pour toute l’équipe (effectif au 31 décembre, proratisé au temps de présence)', ch.me, ch.sme)}
