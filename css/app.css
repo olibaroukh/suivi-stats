@@ -212,3 +212,15 @@ main{max-width:1180px;margin:0 auto;padding:20px}
 .fiche .f-head .sante-badge .v{font-size:19px}
 .fiche .f-meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8.8px}
 .fiche .f-meta span{margin:0 5px}
+.fiche table.equipe tbody.bloc-audio tr.grp th{color:var(--r);font-weight:700;font-size:7px;letter-spacing:1.4px;border-bottom:1px solid var(--rose2);padding:7px 2px 3px;background:#fff}
+.fiche table.equipe tbody.bloc-audio tr.tete th{font-size:6.6px;font-weight:600;text-transform:uppercase;color:var(--g);white-space:normal;line-height:1.15;vertical-align:bottom;padding-bottom:4px;background:#fff;text-align:center;overflow:visible}
+.fiche table.equipe tbody.bloc-audio tr.grp,.fiche table.equipe tbody.bloc-audio tr.tete{border-top:none}
+.fiche table.equipe tbody.bloc-audio tr.audio:nth-child(odd){background:#fff}.fiche table.equipe tbody.bloc-audio tr.audio:nth-child(even){background:#FDF8F7}
+.fiche[lang=he] table.equipe tbody.bloc-audio tr.grp th{letter-spacing:0}
+.fiche.serre{gap:8px}
+.fiche.serre table.kpi th,.fiche.serre table.kpi td{padding-top:1.8px;padding-bottom:1.8px}
+.fiche.serre .gros-kpi{padding:3px 12px}.fiche.serre .gros-kpi .v{font-size:15px}
+.fiche.serre .tuile{padding:8px 10px}
+.fiche.tres-serre .legende-ca{margin-top:4px}.fiche.tres-serre .f-sec h2{margin-bottom:4px}
+.fiche.tres-serre table.kpi td,.fiche.tres-serre table.kpi th{font-size:8.6px;padding-top:1px;padding-bottom:1px}
+.fiche table.equipe tbody.bloc-audio tr.grp th{text-transform:uppercase;text-align:center}

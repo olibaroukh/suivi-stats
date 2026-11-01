@@ -98,7 +98,7 @@
     const liste = (photo.equipes || {})[String(mag.code)] || [];
     const fin = new Date(photo.annee, m, 0);
     const actif = p => p.s && ((p.s.ndv || 0) > 0 || (p.s.ca || 0) > 0 || (p.s.ventesAudio || 0) > 0);
-    const lignes = liste.filter(actif).map(p => {
+    const toutes = liste.filter(actif).map(p => {
       const s = p.s, f = x => x == null ? null : x / 100;
       return {
         nom: (p.prenom || '') + ' ' + (p.nom || '').charAt(0) + '.', poste: p.poste, famille: p.famille, multi: p.multi,
@@ -109,12 +109,15 @@
         depistage: f(s.depistage), ndv: s.ndv, tc: f(s.tc),
         seuil: (o.tc && o.panier && s.tc != null && s.panier != null) ? (s.tc / 100 * s.panier) / (o.tc * o.panier) : null,
         sop: f(s.sop), pcPct: f(s.pcPct), pcEur: s.pcEur, pm1: s.pm1 || null, panier: s.panier, transition: f(s.transition), mdc: f(s.mdc),
+        audio: s.audio ? { ventes: s.audio.ventes, protheses: s.audio.protheses, panier: s.audio.panier, pmProthese: s.audio.pmProthese || null, tc: f(s.audio.tc), reussite: f(s.audio.reussite),
+          garantie: f(s.audio.garantie), ventesAdd: f(s.audio.ventesAdd), stereo: f(s.audio.stereo), duree: s.audio.duree || null, ouiezen: f(s.audio.ouiezen) } : null,
       };
     });
+    const lignes = toutes.filter(l => l.famille !== 'audio'), lignesAudio = toutes.filter(l => l.famille === 'audio');
     const autres = liste.filter(p => !actif(p)).map(p => `${p.prenom || ''} ${(p.nom || '').charAt(0)}. (${p.poste})`);
     const effOpt = liste.filter(p => p.famille !== 'audio').length, effAud = liste.filter(p => p.famille === 'audio').length;
     return {
-      lignes, autres, connu: liste.length > 0, effOpt, effAud,
+      lignes, lignesAudio, autres, connu: liste.length > 0, effOpt, effAud,
       effTheo: n.U != null ? Math.max(3.5, n.U / (m * 50)) : null,
       caParOpticien: (n.P != null && effOpt + effAud) ? n.P / (effOpt + effAud) / 1000 / m : null,
     };
@@ -231,8 +234,9 @@
         <span>${esc(t('Effectif Optique'))} <b>${eq.effOpt}</b></span><span>${esc(t('Effectif audio'))} <b>${eq.effAud}</b></span>
         <span>${esc(t('Effectif Théorique'))} <b>${eq.effTheo == null ? '–' : nb(eq.effTheo, 1)}</b></span>
         <span>${esc(t('CA (k€) / Mois /Opticiens').replace('k€', 'k' + dev))} <b>${eq.caParOpticien == null ? '–' : nb(eq.caParOpticien, 1)}</b></span></div>`;
-      if (!eq.lignes.length) return ent + `<div class="nd">${eq.connu ? 'Aucune vente individuelle sur la période' : 'Export RH ou stats par vendeur non chargés'}</div>`;
-      const dense = eq.lignes.length > 9 ? (eq.lignes.length > 13 ? ' tres-dense' : ' dense') : '';
+      if (!eq.lignes.length && !eq.lignesAudio.length) return ent + `<div class="nd">${eq.connu ? 'Aucune vente individuelle sur la période' : 'Export RH ou stats par vendeur non chargés'}</div>`;
+      const nl = eq.lignes.length + eq.lignesAudio.length + (eq.lignesAudio.length ? 2 : 0);
+      const dense = nl > 9 ? (nl > 13 ? ' tres-dense' : ' dense') : '';
       return ent + `<table class="equipe${dense}"><thead>
         <tr class="grp"><th></th><th colspan="8">${esc(t('Pilotage Ca 2026').replace('2026', photo.annee))}</th><th colspan="7">${esc(t('Analyse Du Panier Moyen Optique'))}</th></tr>
         <tr><th></th>${(lang === 'fr' ? ['Obj. ' + photo.annee, 'Cumul CA', 'Posit.', 'Reste / mois', 'NdV', 'TC', 'Seuil perf.', 'Dépist.', '% SOP', '% PC', '€ PC', 'PM 1re paire', 'Panier', 'Transit.', '% MdC']
@@ -240,7 +244,14 @@
         ${eq.lignes.map(l => `<tr class="${l.famille}"><th><b>${esc(l.nom)}</b><small>${esc(posteCourt(l.poste))}${l.anc != null ? ' · ' + nb(l.anc, 0) + ' an' + (l.anc >= 1.5 ? 's' : '') : ''}${l.multi ? ' · multi-sites' : ''}</small></th>
           <td class="muted">${k1(l.obj)}</td><td class="fort">${k1(l.ca)}</td>${k(l.posit, 1, x => pc(x, 0))}<td>${l.restant == null ? '–' : l.restant <= 0 ? '<span class="ok">✓</span>' : e0(l.restant)}</td><td>${e0(l.ndv)}</td>${k(l.tc, c.o.tc, x => pc(x, 1))}${k(l.seuil, 1, x => pc(x, 0))}${k(l.depistage, c.o.depistage, x => pc(x, 0))}
           ${k(l.sop, c.o.sop, x => pc(x, 0))}${k(l.pcPct, c.o.pcPct, x => pc(x, 0))}${k(l.pcEur, c.o.pcEur, e0)}${k(l.pm1, c.o.pm1, e0)}${k(l.panier, c.o.panier, e0)}${k(l.transition, c.o.transition, x => pc(x, 0))}${k(l.mdc, c.o.mdc, x => pc(x, 0))}</tr>`).join('')}
-        </tbody></table>${eq.autres.length ? `<div class="autres">Sans vente sur la période : ${eq.autres.map(x => esc(x.replace('Optométriste/Contactologue', 'Opto/Contacto').replace('Opticien/vendeur', 'Opticien'))).join(' · ')}</div>` : ''}`;
+        </tbody>${eq.lignesAudio.length ? `<tbody class="bloc-audio">
+        <tr class="grp"><th></th><th colspan="4">${esc(t('Pilotage Ca 2026').replace('2026', photo.annee))}</th><th colspan="11">${esc(t('AUDIO'))}</th></tr>
+        <tr class="tete"><th></th>${(lang === 'fr' ? ['Obj. ' + photo.annee, 'Cumul CA', 'Posit.', 'Reste / mois', 'Ventes', 'Prothèses', 'Panier', 'PM prothèse', 'TC audio', 'Réussite essai', '% Garantie', '% Ventes add.', '% Stéréo', 'Durée essai', '% Ouiezen']
+          : [t('Objectif 2026').replace('2026', photo.annee), t('Cumul Ca'), 'Posit.', t('Ca / Mois Restant'), t('Nb de Ventes'), 'Prothèses', t('Panier Moyen'), t('P moyen Prothèse'), t('% TC audio'), 'Réussite essai', t('% Garantie'), t('% Ventes  Add'), t('% Stéréo'), t('Durée moyen d’essai'), t('% Ouiezen Premium')]).map(x => `<th>${esc(x)}</th>`).join('')}</tr>
+        ${eq.lignesAudio.map(l => { const a = l.audio || {}; return `<tr class="audio"><th><b>${esc(l.nom)}</b><small>${esc(posteCourt(l.poste))}${l.anc != null ? ' · ' + nb(l.anc, 0) + ' an' + (l.anc >= 1.5 ? 's' : '') : ''}${l.multi ? ' · multi-sites' : ''}</small></th>
+          <td class="muted">${k1(l.obj)}</td><td class="fort">${k1(l.ca)}</td>${k(l.posit, 1, x => pc(x, 0))}<td>${l.restant == null ? '–' : l.restant <= 0 ? '<span class="ok">✓</span>' : e0(l.restant)}</td>
+          <td>${e0(a.ventes)}</td><td>${e0(a.protheses)}</td><td>${e0(a.panier)}</td>${k(a.pmProthese, c.o.pmProthese, e0)}${k(a.tc, c.o.tcAudio, x => pc(x, 0))}<td>${a.reussite == null ? '–' : pc(a.reussite, 0)}</td>${k(a.garantie, c.o.garantieAudio, x => pc(x, 0))}${k(a.ventesAdd, c.o.ventesAdd, x => pc(x, 0))}<td>${a.stereo == null ? '–' : pc(a.stereo, 0)}</td>${k(a.duree, c.o.dureeEssai, x => nb(x, 0) + ' j')}${k(a.ouiezen, c.o.ouiezen, x => pc(x, 0))}</tr>`; }).join('')}
+        </tbody>` : ''}</table>${eq.autres.length ? `<div class="autres">Sans vente sur la période : ${eq.autres.map(x => esc(x.replace('Optométriste/Contactologue', 'Opto/Contacto').replace('Opticien/vendeur', 'Opticien'))).join(' · ')}</div>` : ''}`;
     };
     const page1 = `
 <div class="fiche" dir="${lang === 'he' ? 'rtl' : 'ltr'}" lang="${lang}">

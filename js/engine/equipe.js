@@ -30,8 +30,8 @@
   // Stats Cosium par vendeur, agrégées par matricule sur tous les serveurs
   function indexVendeurs(vendeurs) {
     const idx = {};
-    const get = m => idx[m] = idx[m] || { opt: [], aud: [], pos: [], pm: [], ver: [] };
-    const cible = { v_stat_optique: 'opt', v_stat_audio: 'aud', v_positionnement: 'pos', v_pm_1ere_paire: 'pm', v_carac_verres: 'ver' };
+    const get = m => idx[m] = idx[m] || { opt: [], aud: [], pos: [], pm: [], ver: [], caa: [] };
+    const cible = { v_stat_optique: 'opt', v_stat_audio: 'aud', v_positionnement: 'pos', v_pm_1ere_paire: 'pm', v_carac_verres: 'ver', v_ca_audio: 'caa' };
     for (const v of vendeurs) { const k = cible[v.report]; if (!k) continue; v.rows.forEach(r => { const m = mat(r.matricule); if (m) get(m)[k].push(r); }); }
     const somme = (l, c) => l.reduce((a, r) => a + (+r[c] || 0), 0);
     const pond = (l, c, w) => { const t = somme(l, w); return t ? l.reduce((a, r) => a + (+r[c] || 0) * (+r[w] || 0), 0) / t : (l.length ? +l[0][c] || 0 : null); };
@@ -53,6 +53,15 @@
         transition: x.ver.length ? pond(x.ver, 'TRANS+PHOTO %', 'TOTAL Qt') : null,
         depistage: x.aud.length ? pond(x.aud, '% Test auditif', 'Nb Ventes') : null,
         ventesAudio: x.aud.length ? somme(x.aud, 'Nb Ventes') : null,
+        audio: x.aud.length ? {
+          ventes: somme(x.aud, 'Nb Ventes'), protheses: somme(x.aud, 'Nb prothèses vendues'),
+          panier: pond(x.aud, 'Panier Moyen vente', 'Nb Ventes'), pmProthese: pond(x.aud, 'Prix moy App Auditif', 'Nb prothèses vendues'),
+          tc: pond(x.aud, 'Tx de concrétisation audio', 'Nb Ventes'), reussite: pond(x.aud, 'Tx de réussite essai', 'Nb Ventes'),
+          garantie: pond(x.aud, '% Assur Audio Prev 4 ans', 'Nb Ventes'), ouiezen: pond(x.aud, '% Ouiezen Premium', 'Nb Ventes'),
+          stereo: pond(x.aud, '% Vente Stéréo', 'Nb Ventes'), duree: pond(x.aud, "Durée période d'essai moy", 'Nb Ventes'),
+          perfectClean: somme(x.aud, 'Nb de Perfect Clean'),
+          ca: x.caa.length ? somme(x.caa, 'CA Généré Audio') : null, ventesAdd: x.caa.length ? pond(x.caa, '% Vente Additionnelle', 'CA Généré Audio') : null,
+        } : null,
       };
     }
     return out;

@@ -169,6 +169,8 @@
       const tb = f.querySelector('table.equipe'); if (!tb) return;
       if (f.scrollHeight > f.clientHeight + 1) tb.classList.add('dense');
       if (f.scrollHeight > f.clientHeight + 1) tb.classList.add('tres-dense');
+      if (f.scrollHeight > f.clientHeight + 1) f.classList.add('serre');
+      if (f.scrollHeight > f.clientHeight + 1) f.classList.add('tres-serre');
     });
   }
   function afficherFiche(m) {

@@ -30,7 +30,7 @@
     { id: 'marque_monture', level: 'magasin', used: false, re: /^Statistiques_Vente_Par_marque_Monture/i },
     { id: 'marque_solaire', level: 'magasin', used: false, re: /^Statistiques_Vente_Par_marque_Solaire/i },
     { id: 'v_lyris',        level: 'vendeur', used: false, re: /^Statistiques_Lyris_par_Vendeur/i },
-    { id: 'v_ca_audio',     level: 'vendeur', used: false, re: /^Synthese_des_CA_Audio_par_Vendeur/i },
+    { id: 'v_ca_audio',     level: 'vendeur', used: true , re: /^Synthese_des_CA_Audio_par_Vendeur/i },
   ];
 
   // Préfixe du nom de ZIP / objet du mail → serveur (complété au fil des lots reçus)
