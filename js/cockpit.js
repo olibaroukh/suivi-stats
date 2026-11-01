@@ -81,6 +81,12 @@
   };
 
   const THEMES = {
+    complet: { lib: 'CA · Optique · Audio · Rentabilité', tri: 'ca',
+      sections: [
+        { lib: 'Chiffre d’affaires · Optique · Audio', groupes: [['Chiffre d’affaires', ['obj', 'ca', 'posit', 'evolCa']], ['Optique', ['ndv', 'evolNdv', 'panier', 'tc', 'sop', 'mdc', 'pcPct', 'pm1']], ['Audio', ['caAudio', 'evolAudio', 'protheses', 'pmProt', 'tcA', 'vadd', 'depist']]] },
+        { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'avoirs', 'indus']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Salaires', ['rentaSal']], ['Google', ['note', 'avis']]] },
+      ],
+      top: [['posit', 'Positionnement'], ['ndv', 'Nombre de ventes'], ['protheses', 'Nombre de prothèses'], ['re', 'Résultat d’exploitation']] },
     ca: { lib: 'Chiffre d’affaires', cols: ['obj', 'ca', 'prev', 'evolCa', 'posit', 'caOpt', 'caAud', 'caCon', 'ndv', 'evolNdv'], tri: 'ca',
       top: [['posit', 'Positionnement'], ['ca', 'CA généré'], ['evolCa', 'Évolution du CA']] },
     optique: { lib: 'Optique', cols: ['ndv', 'evolNdv', 'panier', 'evolPanier', 'tc', 'sop', 'mdc', 'pcPct', 'pcEur', 'pm1'], tri: 'ndv',
@@ -103,7 +109,7 @@
       { id: 'france', lib: 'France – succursales', groupeLib: 'France', filtre: succFr, sousTotal: r => r.ar, themes: ['ca', 'optique', 'audio', 'restes', 'renta'] },
     ];
     [...new Set(act.filter(succFr).map(r => r.ar))].filter(Boolean).sort().forEach(a =>
-      out.push({ id: 'ar:' + a, lib: 'AR – ' + a, groupeLib: 'France', filtre: r => succFr(r) && r.ar === a, themes: ['ca', 'optique', 'audio', 'restes', 'renta'] }));
+      out.push({ id: 'ar:' + a, lib: 'AR – ' + a, groupeLib: 'France', filtre: r => succFr(r) && r.ar === a, themes: ['complet', 'ca', 'optique', 'audio', 'restes', 'renta'] }));
     out.push({ id: 'ocm', lib: 'OCM (camions succursales)', groupeLib: 'France', filtre: r => fr(r) && norm(r.ar) === 'OCM', themes: ['ca', 'optique', 'audio', 'restes'] });
     out.push({ id: 'franchises', lib: 'Franchises France – par franchisé', groupeLib: 'Franchises', filtre: r => fr(r) && r.type === 'Franchise', regrouper: r => r.groupe, themes: ['ca', 'optique', 'audio'] });
     const grp = {}; act.filter(r => fr(r) && r.type === 'Franchise').forEach(r => { grp[r.groupe] = (grp[r.groupe] || 0) + 1; });
@@ -118,8 +124,9 @@
   // ---------- Modèle d'une page ----------
   function construire(photo, ref, perim, themeId, opts = {}) {
     const m = photo.mois, taux = Object.assign({}, TAUX_DEFAUT, opts.taux || {});
-    if (perim.special === 'siege') return construireSiege(photo, ref, taux);
+    if (perim.special === 'siege') return construireSiege(photo, ref, taux, Object.assign({}, SIEGE_DEFAUT, opts.siege || {}));
     const th = THEMES[themeId];
+    if (th.sections && !th.cols) th.cols = [...new Set(th.sections.flatMap(se => se.groupes.flatMap(g => g[1])))];
     const mags = ref.filter(r => r.actif === 'Oui' && perim.filtre(r) && photo.magasins[String(r.code)]);
     const devises = [...new Set(mags.map(r => r.devise || 'Euro'))];
     const multi = devises.length > 1;
@@ -149,7 +156,7 @@
     const prevs = mags.map(r => COL.prev.f(photo.magasins[String(r.code)].N || {}, {}, m) * (multi ? (taux[r.devise] || 1) : 1));
     const compteurs = [['Magasins', mags.length], ['Magasins à 100 %', posit.filter(x => x != null && x >= 1).length], ['Prévisionnel ≥ 1,2 M€', prevs.filter(x => x >= 1.2e6).length]];
     if (themeId === 'restes') compteurs.push(['Taux d’indus ≤ 1 %', mags.filter(r => { const v = (photo.magasins[String(r.code)].N || {}).BV; return v != null && v <= 0.01; }).length]);
-    return { type: 'liste', perim, theme: th, themeId, photo, cols: th.cols, lignes, total, sous, top, compteurs, obj, multi, devTotal: multi ? '€' : (DEVISE_SYM[devises[0]] || '€'), sousLib: perim.id === 'france' ? 'AR' : perim.id === 'inter' ? 'Pays' : '' };
+    return { type: th.sections ? 'multi' : 'liste', perim, theme: th, themeId, photo, cols: th.cols, lignes, total, sous, top, compteurs, obj, multi, devTotal: multi ? '€' : (DEVISE_SYM[devises[0]] || '€'), sousLib: perim.id === 'france' ? 'AR' : perim.id === 'inter' ? 'Pays' : '' };
   }
   function objectifsRef(objectifs, mags) {
     const rows = (objectifs && objectifs.rows) || [];
@@ -159,7 +166,9 @@
   }
 
   // Vue Siège : synthèse par pays (CA converti en €), rentabilité succursales, évolutions
-  function construireSiege(photo, ref, taux) {
+  // Objectifs propres à la vue Siège (fixés chaque année dans Réglages ; valeurs 2026 du Numbers par défaut)
+  const SIEGE_DEFAUT = { groupe: 1.1e9, siteFrance: 6000000, siteIsrael: 1200000, siteUK: 840000, siteCanada: 500000, mobileSucc: 1200000, mobileFranchise: 450000, mdc: 0.66 };
+  function construireSiege(photo, ref, taux, objS) {
     const m = photo.mois, act = ref.filter(r => r.actif === 'Oui' && photo.magasins[String(r.code)]);
     const conv = it => taux[it.devise] || 1;
     const item = r => ({ ...photo.magasins[String(r.code)], devise: r.devise || 'Euro' });
@@ -170,7 +179,7 @@
       const prev = n.P != null ? n.P * 12 / m : null, obj = n.O != null ? n.O * 1000 : null;
       const prevMag = rs.map(r => { const x = photo.magasins[String(r.code)].N || {}; return x.P != null ? x.P * 12 / m * (taux[r.devise] || 1) : 0; });
       return { nom, ca: n.P, evol: evol(n.P, p.P), obj, posit: div(prev, obj), prev,
-        succ: rs.filter(r => r.type === 'Succursale').length, fr: rs.filter(r => r.type === 'Franchise').length, sup12: prevMag.filter(x => x >= 1.2e6).length,
+        succ: rs.filter(r => r.type === 'Succursale' && r.nature !== 'Camion').length, fr: rs.filter(r => r.type === 'Franchise' && r.nature !== 'Camion').length, sup12: prevMag.filter(x => x >= 1.2e6).length,
         evolOpt: evol(n.P != null ? n.P - (n.Q || 0) - (n.R || 0) : null, p.P != null ? p.P - (p.Q || 0) - (p.R || 0) : null), evolAud: evol(n.Q, p.Q),
         evolNdv: evol(n.U, p.U), evolNdvA: evol(n.AW, p.AW), ndv: n.U, ndvA: n.AW,
         re: pct(n.CQ), marge: pct(n.CS), loyers: pct(n.CU), pub: pct(n.CW), rentaSal: pct(n.CM), note: n.BL ? n.BK : null, avis: n.BL };
@@ -181,7 +190,27 @@
     const succTot = ligne('SUCCURSALES', act.filter(r => r.type === 'Succursale'));
     const segments = [['Succursales France', r => r.pays === 'FRANCE' && r.type === 'Succursale'], ['Franchises France', r => r.pays === 'FRANCE' && r.type === 'Franchise'], ['International', r => r.pays !== 'FRANCE']]
       .map(([n, f]) => ligne(n, act.filter(f)));
-    return { type: 'siege', photo, pays, total, succ, succTot, segments, taux };
+    // Site internet (cumul depuis janvier, devise locale par site, total en €)
+    const st = (photo.groupe && photo.groupe.site) || null;
+    const SITES = [['France', 'siteFrance', 'Euro'], ['Israel', 'siteIsrael', 'Shekel'], ['UK', 'siteUK', 'Livre Sterling'], ['Canada', 'siteCanada', 'Dollars Canadien']];
+    const site = st ? { lignes: SITES.map(([k, o, dev]) => { const x = st.sites[k] || {}; return { nom: k, dev, ca: x.caN ?? null, evol: x.evolution ?? null, obj: objS[o], posit: (x.caN != null && objS[o]) ? x.caN * 12 / m / objS[o] : null }; }),
+      nbLunettes: st.nbEquipements, panier: st.panierMoyen, manquants: st.manquants || [] } : null;
+    if (site) { const t = site.lignes.reduce((a, l) => ({ ca: a.ca + (l.ca || 0) * (taux[l.dev] || 1), obj: a.obj + (l.obj || 0) * (taux[l.dev] || 1) }), { ca: 0, obj: 0 }); site.total = { nom: 'TOTAL (€)', ca: t.ca, obj: t.obj, posit: t.obj ? t.ca * 12 / m / t.obj : null }; }
+    // Segments pour Confidence, MdC, visites, OC Mobile
+    const SEG = [['Succursales', r => r.type === 'Succursale' && r.pays === 'FRANCE'], ['Franchises', r => r.type === 'Franchise' && r.pays === 'FRANCE'], ['International', r => r.pays !== 'FRANCE']];
+    const aggSeg = f => agreger(act.filter(f).map(item), conv).N;
+    const confidence = SEG.map(([nom, f]) => { const n = aggSeg(f), rs = act.filter(f); return { nom, devis: div(n.DI, n.DJ), n1: div(n.DK, n.DL), audio: div(n.DM, n.DN), global: div(n.DO, n.DP), utilisent: rs.filter(r => ((photo.magasins[String(r.code)].N || {}).DP || 0) > 0).length, nb: rs.length }; });
+    const nT = agreger(act.map(item), conv).N;
+    confidence.push({ nom: 'Total', devis: div(nT.DI, nT.DJ), n1: div(nT.DK, nT.DL), audio: div(nT.DM, nT.DN), global: div(nT.DO, nT.DP), utilisent: confidence.reduce((a, c) => a + c.utilisent, 0), nb: act.length, tot: true });
+    const mdc = SEG.slice(0, 2).map(([nom, f]) => ({ nom: nom + ' France', v: pct(aggSeg(f).AN) }));
+    const visites = SEG.map(([nom, f]) => { const n = aggSeg(f); return { nom, ophta: (n.DX || 0) + (n.DW || 0), orl: (n.DV || 0) + (n.DY || 0), ce: n.DZ || 0 }; });
+    const mobile = [['Succursales', 'Succursale', objS.mobileSucc], ['Franchises', 'Franchise', objS.mobileFranchise]].map(([nom, ty, ob]) => {
+      const rs = act.filter(r => r.nature === 'Camion' && r.type === ty), n = agreger(rs.map(item), conv).N;
+      return { nom, nb: rs.length, ca: n.P, obj: ob, posit: (n.P != null && ob) ? n.P * 12 / m / ob : null, ndv: n.U, prot: n.AX };
+    });
+    { const a = mobile[0], b = mobile[1], ob = (a.obj || 0) + (b.obj || 0), ca = (a.ca || 0) + (b.ca || 0); mobile.push({ nom: 'Total', nb: a.nb + b.nb, ca, obj: ob, posit: ob ? ca * 12 / m / ob : null, ndv: (a.ndv || 0) + (b.ndv || 0), prot: (a.prot || 0) + (b.prot || 0), tot: true }); }
+    const groupe = { obj: objS.groupe, ca: total.ca, posit: objS.groupe && total.prev != null ? total.prev / objS.groupe : null };
+    return { type: 'siege', photo, pays, total, succ, succTot, segments, taux, site, confidence, mdc, mdcObj: objS.mdc, visites, mobile, groupe };
   }
 
   // ---------- Rendu A3 paysage ----------
@@ -238,6 +267,25 @@
     const tops = md.top.map(t => `<div class="ck-top"><div class="l">Top 3 · ${esc(t.lib)}</div>${t.liste.map((x, i) => `<div class="r"><span>${['🥇', '🥈', '🥉'][i]}</span><b>${esc(x[0])}</b><em>${f(x[1], t.fmt, md.devTotal)}</em></div>`).join('') || '<div class="r muted">–</div>'}</div>`).join('');
     const compteurs = md.compteurs.map(([l, v]) => `<div class="ck-cpt"><div class="v">${nb(v)}</div><div class="l">${esc(l)}</div></div>`).join('');
 
+    if (md.type === 'multi') {
+      const nS = md.theme.sections.length;
+      const hL = Math.max(10, Math.min(24, ((opts.hListe || 640) - nS * 62) / (nS * (n + 1))));
+      const fsM = Math.max(7.2, Math.min(11.5, hL * 0.62));
+      const secs = md.theme.sections.map(se => {
+        const cols = se.groupes.flatMap(g => g[1]);
+        const cellsC = (l, dev) => cols.map((k, i) => `<td class="${cl(k, l.v[k], md.obj)}${COL[k].fort ? ' fort' : ''}${se.groupes.some(g => g[1][0] === k) && i ? ' sep' : ''}">${f(l.v[k], COL[k].fmt, dev)}</td>`).join('');
+        return `<section class="ck-sec"><h2><span>${esc(se.lib)}</span></h2><table class="ck-liste ck-multi" style="--h:${hL.toFixed(1)}px;--fs:${fsM.toFixed(1)}px"><thead>
+          <tr class="grp"><th class="rg"></th><th class="nm"></th>${se.groupes.map(g => `<th colspan="${g[1].length}" class="sep">${esc(g[0])}</th>`).join('')}</tr>
+          <tr><th class="rg">#</th><th class="nm">Magasin</th>${cols.map((k, i) => `<th class="${se.groupes.some(g => g[1][0] === k) && i ? 'sep' : ''}">${esc(COL[k].lib)}</th>`).join('')}</tr></thead>
+          <tbody>${md.lignes.map(l => `<tr><td class="rg">${esc(l.rang)}</td><td class="nm"><b>${esc(l.nom)}</b><small>${esc(l.code)}</small></td>${cellsC(l, l.dev || md.devTotal)}</tr>`).join('')}
+          <tr class="tot"><td class="rg"></td><td class="nm"><b>TOTAL</b><small>${n} mag.</small></td>${cellsC(md.total, md.devTotal)}</tr></tbody></table></section>`;
+      }).join('');
+      return `<div class="cockpit multi" data-blocs="1">
+      ${entete(md.perim.lib, md.theme.lib)}
+      <div class="ck-haut"><div class="ck-cpts">${compteurs}</div><div class="ck-tops quatre">${tops}</div></div>
+      <div class="ck-corps ck-blocs">${secs}</div>
+      ${pied}</div>`;
+    }
     return `<div class="cockpit" data-blocs="${blocs}">
       ${entete(md.perim.lib, md.theme.lib)}
       <div class="ck-haut"><div class="ck-cpts">${compteurs}</div><div class="ck-tops">${tops}</div></div>
@@ -247,30 +295,52 @@
   }
 
   function rendreSiege(md, { esc, f, nb, entete, pied }) {
-    const L = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b></td><td class="fort">${f(l.ca, 'k')}</td><td class="${l.evol == null ? '' : l.evol >= 0 ? 'ok' : 'ko'}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'k')}</td><td class="${l.posit == null ? '' : l.posit >= 1 ? 'ok' : 'ko'}">${f(l.posit, 'pct0')}</td><td>${f(l.prev, 'k')}</td><td>${nb(l.succ)}</td><td>${nb(l.fr)}</td><td>${nb(l.sup12)}</td>
-      <td class="${l.evolOpt == null ? '' : l.evolOpt >= 0 ? 'ok' : 'ko'}">${f(l.evolOpt, 'evol')}</td><td class="${l.evolAud == null ? '' : l.evolAud >= 0 ? 'ok' : 'ko'}">${f(l.evolAud, 'evol')}</td><td>${nb(l.ndv)}</td><td class="${l.evolNdv == null ? '' : l.evolNdv >= 0 ? 'ok' : 'ko'}">${f(l.evolNdv, 'evol')}</td><td>${nb(l.ndvA)}</td><td class="${l.evolNdvA == null ? '' : l.evolNdvA >= 0 ? 'ok' : 'ko'}">${f(l.evolNdvA, 'evol')}</td></tr>`;
+    const c = (v, ok) => v == null ? '' : ok ? 'ok' : 'ko';
+    const L = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b></td><td class="fort">${f(l.ca, 'k')}</td><td class="${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'k')}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td><td>${f(l.prev, 'k')}</td><td>${nb(l.succ)}</td><td>${nb(l.fr)}</td><td>${nb(l.sup12)}</td>
+      <td class="${c(l.evolOpt, l.evolOpt >= 0)}">${f(l.evolOpt, 'evol')}</td><td class="${c(l.evolAud, l.evolAud >= 0)}">${f(l.evolAud, 'evol')}</td><td>${nb(l.ndv)}</td><td class="${c(l.evolNdv, l.evolNdv >= 0)}">${f(l.evolNdv, 'evol')}</td><td>${nb(l.ndvA)}</td><td class="${c(l.evolNdvA, l.evolNdvA >= 0)}">${f(l.evolNdvA, 'evol')}</td></tr>`;
     const head = `<thead><tr><th class="nm"></th><th>CA généré (€)</th><th>Évol. CA</th><th>Objectif</th><th>Position.</th><th>Prévisionnel</th><th>Succ.</th><th>Franch.</th><th>≥ 1,2 M€</th><th>Évol. CA optique</th><th>Évol. CA audio</th><th>Ventes optique</th><th>Évol.</th><th>Ventes audio</th><th>Évol.</th></tr></thead>`;
-    const t = md.total;
-    const R = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b><small>${l.succ} succ.</small></td><td>${f(l.ca, 'k')}</td><td class="${l.re == null ? '' : l.re >= 0.2 ? 'ok' : 'ko'}">${f(l.re, 'pct1')}</td><td class="${l.marge == null ? '' : l.marge >= 0.7 ? 'ok' : 'ko'}">${f(l.marge, 'pct1')}</td><td>${f(l.loyers, 'pct1')}</td><td>${f(l.pub, 'pct1')}</td><td class="${l.rentaSal == null ? '' : l.rentaSal <= 0.28 ? 'ok' : 'ko'}">${f(l.rentaSal, 'pct1')}</td><td>${l.note == null ? '–' : '★ ' + nb(l.note, 1)}</td><td>${nb(l.avis)}</td></tr>`;
+    const t = md.total, g = md.groupe;
+    const R = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b><small>${l.succ} succ.</small></td><td>${f(l.ca, 'k')}</td><td class="${c(l.re, l.re >= 0.2)}">${f(l.re, 'pct1')}</td><td class="${c(l.marge, l.marge >= 0.7)}">${f(l.marge, 'pct1')}</td><td>${f(l.loyers, 'pct1')}</td><td>${f(l.pub, 'pct1')}</td><td class="${c(l.rentaSal, l.rentaSal <= 0.28)}">${f(l.rentaSal, 'pct1')}</td><td>${l.note == null ? '–' : '★ ' + nb(l.note, 1)}</td><td>${nb(l.avis)}</td></tr>`;
     const tuile = (lib, v, s = '', cls = '') => `<div class="ck-cpt ${cls}"><div class="v">${v}</div><div class="l">${esc(lib)}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+    const DS = { 'Euro': '€', 'Shekel': '₪', 'Livre Sterling': '£', 'Dollars Canadien': '$CA' };
+    const site = !md.site ? '<div class="nd">Données du site internet non chargées (copier-coller du mail de fin de mois).</div>' : `<table class="ck-syn"><thead><tr><th class="nm"></th><th>CA TTC</th><th>Évol.</th><th>Objectif</th><th>Position.</th></tr></thead><tbody>
+      ${md.site.lignes.map(l => `<tr><td class="nm"><b>${esc(l.nom)}</b></td><td class="fort">${f(l.ca, 'k', DS[l.dev])}</td><td class="${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'k', DS[l.dev])}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td></tr>`).join('')}
+      <tr class="tot"><td class="nm"><b>${esc(md.site.total.nom)}</b></td><td>${f(md.site.total.ca, 'k')}</td><td></td><td>${f(md.site.total.obj, 'k')}</td><td>${f(md.site.total.posit, 'pct0')}</td></tr></tbody></table>
+      <div class="ck-mini"><span>Lunettes de vue (OC.fr) <b>${nb(md.site.nbLunettes)}</b></span><span>Panier moyen <b>${f(md.site.panier, 'eur')}</b></span>${md.site.manquants.length ? `<span class="ko">mois manquants : ${md.site.manquants.join(', ')}</span>` : ''}</div>`;
+    const mobile = `<table class="ck-syn"><thead><tr><th class="nm"></th><th>Camions</th><th>CA TTC</th><th>Objectif</th><th>Position.</th><th>Ventes optique</th><th>Prothèses</th></tr></thead><tbody>
+      ${md.mobile.map(l => `<tr class="${l.tot ? 'tot' : ''}"><td class="nm"><b>${esc(l.nom)}</b></td><td>${nb(l.nb)}</td><td class="fort">${f(l.ca, 'k')}</td><td>${f(l.obj, 'k')}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td><td>${nb(l.ndv)}</td><td>${nb(l.prot)}</td></tr>`).join('')}</tbody></table>`;
+    const conf = `<table class="ck-syn"><thead><tr><th class="nm"></th><th>Rappel devis optique</th><th>Rappel optique N+1</th><th>Rappel audio N+4</th><th>Global</th><th>Magasins utilisateurs</th></tr></thead><tbody>
+      ${md.confidence.map(l => `<tr class="${l.tot ? 'tot' : ''}"><td class="nm"><b>${esc(l.nom)}</b></td><td>${f(l.devis, 'pct0')}</td><td>${f(l.n1, 'pct0')}</td><td>${f(l.audio, 'pct0')}</td><td class="fort">${f(l.global, 'pct0')}</td><td>${nb(l.utilisent)} / ${nb(l.nb)}</td></tr>`).join('')}</tbody></table>`;
+    const mdc = `<div class="ck-mdc">${md.mdc.map(x => `<div class="ck-cpt ${c(x.v, x.v >= md.mdcObj)}"><div class="v">${f(x.v, 'pct1')}</div><div class="l">${esc(x.nom)}</div><div class="s">objectif ${f(md.mdcObj, 'pct0')}</div></div>`).join('')}</div>`;
+    const vis = `<table class="ck-syn"><thead><tr><th class="nm"></th><th>Ophta</th><th>ORL</th><th>CE</th></tr></thead><tbody>
+      ${md.visites.map(l => `<tr><td class="nm"><b>${esc(l.nom)}</b></td><td>${nb(l.ophta)}</td><td>${nb(l.orl)}</td><td>${nb(l.ce)}</td></tr>`).join('')}
+      <tr class="tot"><td class="nm"><b>Total</b></td><td>${nb(md.visites.reduce((a, l) => a + l.ophta, 0))}</td><td>${nb(md.visites.reduce((a, l) => a + l.orl, 0))}</td><td>${nb(md.visites.reduce((a, l) => a + l.ce, 0))}</td></tr></tbody></table>`;
     return `<div class="cockpit siege">
       ${entete('Réseau Optical Center', 'Vue Siège')}
       <div class="ck-cpts large">
-        ${tuile('CA généré réseau', f(t.ca, 'k'), `<span class="${t.evol >= 0 ? 'ok' : 'ko'}">${f(t.evol, 'evol')} vs N-1</span>`, 'noir')}
-        ${tuile('Objectif annuel', f(t.obj, 'k'))}
-        ${tuile('Positionnement', f(t.posit, 'pct1'), 'projection fin d’année', t.posit >= 1 ? 'ok' : 'ko')}
+        ${tuile('CA généré groupe', f(t.ca, 'k'), `<span class="${t.evol >= 0 ? 'ok' : 'ko'}">${f(t.evol, 'evol')} vs N-1</span>`, 'noir')}
+        ${tuile('Objectif groupe', f(g.obj, 'k'), `objectifs magasins : ${f(t.obj, 'k')}`)}
+        ${tuile('Positionnement groupe', f(g.posit, 'pct1'), 'prévisionnel / objectif groupe', g.posit >= 1 ? 'ok' : 'ko')}
         ${tuile('Prévisionnel', f(t.prev, 'k'))}
-        ${tuile('Magasins', nb(t.succ + t.fr), `${t.succ} succursales · ${t.fr} franchises`)}
+        ${tuile('Magasins', nb(t.succ + t.fr), `${t.succ} succursales · ${t.fr} franchises · hors camions`)}
         ${tuile('Prévisionnel ≥ 1,2 M€', nb(t.sup12), `${nb(t.sup12 / Math.max(1, t.succ + t.fr) * 100)} % du réseau`)}
       </div>
-      <section class="ck-sec"><h2><span>Chiffre d’affaires par pays</span></h2><table class="ck-syn">${head}<tbody>${md.pays.map(l => L(l)).join('')}${L(t, 'tot')}</tbody></table></section>
-      <div class="ck-2">
-        <section class="ck-sec"><h2><span>Par segment</span></h2><table class="ck-syn">${head}<tbody>${md.segments.map(l => L(l)).join('')}</tbody></table></section>
+      <section class="ck-sec"><h2><span>Chiffre d’affaires par pays et par segment</span></h2><table class="ck-syn">${head}<tbody>${md.pays.map(l => L(l)).join('')}${L(t, 'tot')}${md.segments.map(l => L(l, 'seg')).join('')}</tbody></table></section>
+      <div class="ck-g2">
+        <section class="ck-sec"><h2><span>Rentabilité succursales par pays</span><small>reporting trimestriel · renta salariale cumul</small></h2><table class="ck-syn"><thead><tr><th class="nm"></th><th>CA généré</th><th>RE</th><th>Marge produits</th><th>Loyers chargés</th><th>Publicité</th><th>Renta salariale</th><th>Note Google</th><th>Avis</th></tr></thead><tbody>${md.succ.map(l => R(l)).join('')}${R(md.succTot, 'tot')}</tbody></table></section>
+        <div class="ck-col">
+          <section class="ck-sec"><h2><span>Site internet</span></h2>${site}</section>
+          <section class="ck-sec"><h2><span>OC Mobile</span></h2>${mobile}</section>
+        </div>
       </div>
-      <section class="ck-sec"><h2><span>Rentabilité succursales</span><small>reporting trimestriel · renta salariale cumul</small></h2><table class="ck-syn"><thead><tr><th class="nm"></th><th>CA généré</th><th>RE</th><th>Marge produits</th><th>Loyers chargés</th><th>Publicité</th><th>Renta salariale</th><th>Note Google</th><th>Avis</th></tr></thead><tbody>${md.succ.map(l => R(l)).join('')}${R(md.succTot, 'tot')}</tbody></table></section>
+      <div class="ck-g3">
+        <section class="ck-sec"><h2><span>Confidence</span></h2>${conf}</section>
+        <section class="ck-sec"><h2><span>Taux de MdC</span></h2>${mdc}</section>
+        <section class="ck-sec"><h2><span>Visites externes</span></h2>${vis}</section>
+      </div>
       ${pied}</div>`;
   }
 
-  const api = { perimetres, construire, rendre, THEMES, COL, TAUX_DEFAUT, DEVISE_SYM, agreger, W_PAGE, H_PAGE };
+  const api = { SIEGE_DEFAUT, perimetres, construire, rendre, THEMES, COL, TAUX_DEFAUT, DEVISE_SYM, agreger, W_PAGE, H_PAGE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Cockpit = api;
 })(typeof self !== 'undefined' ? self : this);

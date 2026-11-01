@@ -31,7 +31,7 @@
     $('#etat-dossier').textContent = '📁 ' + (Store.nomDossier() || 'mémoire (non enregistré)');
     S.ref = (await Store.lireJSON('config/referentiel.json')) || [];
     S.objectifs = (await Store.lireJSON(`config/objectifs-${$('#imp-annee').value}.json`)) || (await Store.lireJSON('config/objectifs.json')) || {};
-    majInfosReglages(); await listerPhotos(); remplirPerimetres(); brancherTaux();
+    majInfosReglages(); await listerPhotos(); remplirPerimetres(); brancherTaux(); brancherObjSiege();
   }
   function vue(v) { if (v === 'cockpits' && !$('#ck-apercu .cockpit')) setTimeout(afficherCockpit, 0); document.querySelectorAll('.vue').forEach(x => x.classList.toggle('actif', x.id === 'vue-' + v)); document.querySelectorAll('.app-head nav button').forEach(b => b.classList.toggle('actif', b.dataset.vue === v)); }
 
@@ -247,13 +247,15 @@
     const p = CK.perims.find(x => x.id === $('#ck-perim').value); if (!p || !CK.photo) return;
     const th = $('#ck-theme').value; let tri = $('#ck-tri').value;
     if (tri === '__theme') tri = th !== 'siege' ? Cockpit.THEMES[th].tri : 'code';
-    const md = Cockpit.construire(CK.photo, S.ref, p, th, { tri, objectifs: S.objectifs, taux: await tauxChange() });
+    const siege = (await Store.lireJSON(`config/objectifs-siege-${CK.cle.slice(0, 4)}.json`)) || {};
+    const md = Cockpit.construire(CK.photo, S.ref, p, th, { tri, objectifs: S.objectifs, taux: await tauxChange(), siege });
     const triLib = $('#ck-tri').selectedOptions[0].textContent.replace('Tri : ', '');
     const poser = h => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h })}</div>`; return $('#ck-apercu .cockpit'); };
     let page = poser(640);
     // Hauteur réellement disponible pour la liste, puis second rendu calé dessus
     const blocs = page.querySelector('.ck-blocs');
-    if (blocs) { const th = blocs.querySelector('thead'); const h = blocs.clientHeight - (th ? th.offsetHeight : 0) - 4; if (h > 100) page = poser(h); }
+    if (blocs && md.type === 'multi') { const h = blocs.clientHeight; if (h > 100) page = poser(h); }
+    else if (blocs) { const th = blocs.querySelector('thead'); const h = blocs.clientHeight - (th ? th.offsetHeight : 0) - 4; if (h > 100) page = poser(h); }
     const ok = ajusterCockpit(page);
     const echelle = () => { const w = $('#ck-apercu').clientWidth - 28; const sc = Math.min(1, w / Cockpit.W_PAGE); const e = $('#ck-apercu .ck-echelle'); e.style.transform = `scale(${sc})`; e.style.height = (Cockpit.H_PAGE * sc) + 'px'; };
     echelle(); window.onresize = echelle;
@@ -277,6 +279,12 @@
     $('#ck-theme').onchange = afficherCockpit; $('#ck-tri').onchange = afficherCockpit;
     $('#ck-pdf').onclick = pdfCockpit;
     $('#ck-print').onclick = () => { document.body.classList.add('impression-cockpit'); window.print(); setTimeout(() => document.body.classList.remove('impression-cockpit'), 500); };
+  }
+  async function brancherObjSiege() {
+    const a = $('#imp-annee').value, LIB = { groupe: 'Groupe (€)', siteFrance: 'Site France (€)', siteIsrael: 'Site Israël (₪)', siteUK: 'Site UK (£)', siteCanada: 'Site Canada ($CA)', mobileSucc: 'OC Mobile succ. (€)', mobileFranchise: 'OC Mobile franch. (€)', mdc: 'Taux de MdC (ex. 0,66)' };
+    const o = Object.assign({}, Cockpit.SIEGE_DEFAUT, (await Store.lireJSON(`config/objectifs-siege-${a}.json`)) || {});
+    $('#siege-champs').innerHTML = Object.keys(LIB).map(k => `<label class="muted">${LIB[k]} <input data-k="${k}" type="number" step="any" value="${o[k]}" style="width:120px"></label>`).join('');
+    $('#btn-siege').onclick = async () => { const x = {}; document.querySelectorAll('#siege-champs input').forEach(i => x[i.dataset.k] = +i.value); await Store.ecrireJSON(`config/objectifs-siege-${$('#imp-annee').value}.json`, x); $('#siege-info').textContent = 'Enregistré pour ' + $('#imp-annee').value; CK.cle = null; };
   }
   async function brancherTaux() {
     const t = await tauxChange();
