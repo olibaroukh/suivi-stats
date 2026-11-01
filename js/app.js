@@ -66,6 +66,19 @@
     try { const r = await fetch(url.replace(/\/$/, '') + '/google-ratings', { headers: { 'X-Store-Token': cle } }); const d = await r.json(); return d.ok ? { ratings: d.ratings } : null; }
     catch (e) { return { erreur: String(e) }; }
   }
+  // Score santé mensuel (worker) : session AR partagée avec le dashboard bilan-passage (même origine)
+  const sessionSante = () => { try { const x = JSON.parse(localStorage.getItem('bilan_ar_session') || 'null'); return x && x.exp > Date.now() ? x : null; } catch (e) { return null; } };
+  async function santeWorker(annee, mois) {
+    const url = localStorage.getItem('workerUrl'), cle = localStorage.getItem('workerCle');
+    if (!url || !cle) return null;
+    const ses = sessionSante(); if (!ses) return { erreur: 'session' };
+    try {
+      const r = await fetch(url.replace(/\/$/, '') + '/sante-mensuel?mois=' + annee + '-' + pad(mois), { headers: { 'X-Store-Token': cle, 'X-AR-Session': ses.token } });
+      const d = await r.json(); if (!d.ok) return { erreur: d.error || ('HTTP ' + r.status) };
+      const out = {}; (d.magasins || []).forEach(m => { out[String(m.code)] = { score: m.score, precedent: m.scorePrecedent, couverture: m.couverture, sous: m.sous || {}, exclusions: m.exclusions || {}, neutralisations: m.neutralisations || {} }; });
+      return { magasins: out, apercu: !!d.apercu, statut: d.statut, version: d.version, dims: d.dims };
+    } catch (e) { return { erreur: String(e) }; }
+  }
   async function calculer() {
     if (!S.ref.length) { alert('Importe d’abord le référentiel magasins (onglet Réglages).'); vue('reglages'); return; }
     const annee = +$('#imp-annee').value, mois = +$('#imp-mois').value;
@@ -78,6 +91,15 @@
       const res = await Pipeline.construire({ fichiers: S.fichiers, pastes: { lyleoo: $('#paste-lyleoo').value, ocm: $('#paste-ocm').value, site: $('#paste-site').value },
         annee, mois, ref: S.ref, spec: S.spec, etatAnnee, photoPrecedente: precedent, workerRatings: wr, listesConfidence: listes });
       if (alerteW) res.rapport.alertes.unshift(alerteW);
+      const sa = await santeWorker(annee, mois);
+      if (sa && !sa.erreur) {
+        res.photo.sante = sa; const n = Object.values(sa.magasins).filter(x => x.score != null).length;
+        res.rapport.sources.sante = { statut: 'recu', detail: `${n} magasins notés – ${sa.apercu ? 'aperçu indicatif (mois pas encore calculé dans le dashboard)' : 'mois ' + (sa.statut === 'valide' ? 'validé' : 'calculé') + ', version ' + sa.version}` };
+        if (sa.apercu) res.rapport.alertes.push('Score santé : le mois n’est pas encore calculé dans le dashboard, les scores affichés sont indicatifs.');
+      } else {
+        res.rapport.sources.sante = { statut: 'absent', detail: !sa ? 'worker non configuré' : sa.erreur === 'session' ? 'connexion Zimbra requise (Réglages)' : sa.erreur };
+        if (sa && sa.erreur === 'session') res.rapport.alertes.push('Score santé non récupéré : connecte-toi dans Réglages (session Zimbra expirée), puis recalcule.');
+      }
       res.etatAnnee.listesConfidence = listes;
       S.resultat = res; afficherRapport(res.rapport);
       $('#btn-enregistrer').disabled = false;
@@ -199,6 +221,20 @@
     $('#btn-export-obj').onclick = () => exporterXlsx('Objectifs ' + $('#imp-annee').value, (S.objectifs.rows || []), OBJ_COLS, `objectifs_${$('#imp-annee').value}.xlsx`);
     $('#btn-w-save').onclick = () => { localStorage.setItem('workerUrl', $('#w-url').value.trim()); localStorage.setItem('workerCle', $('#w-cle').value.trim()); $('#w-info').textContent = 'Enregistré'; };
     $('#btn-w-test').onclick = async () => { $('#btn-w-save').click(); const r = await workerRatings(); $('#w-info').textContent = !r ? 'Clé manquante' : r.erreur ? 'Erreur : ' + r.erreur : `OK – ${Object.keys(r.ratings).length} magasins`; };
+    const majSante = () => { const x = sessionSante(); $('#s-info').textContent = x ? `Connecté (${x.ar === 'ALL' ? 'accès réseau complet' : x.ar}) jusqu’à ${new Date(x.exp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'Non connecté'; };
+    majSante();
+    $('#btn-s-login').onclick = async () => {
+      const url = localStorage.getItem('workerUrl'), cle = localStorage.getItem('workerCle');
+      if (!url || !cle) { $('#s-info').textContent = 'Renseigne d’abord le worker ci-contre.'; return; }
+      $('#s-info').textContent = 'Connexion…';
+      try {
+        const r = await fetch(url.replace(/\/$/, '') + '/ar-login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Store-Token': cle }, body: JSON.stringify({ zimbraUser: $('#s-user').value.trim(), zimbraPass: $('#s-pass').value }) });
+        const d = await r.json(); $('#s-pass').value = '';
+        if (!r.ok || d.error) throw new Error(d.error || 'HTTP ' + r.status);
+        localStorage.setItem('bilan_ar_session', JSON.stringify({ token: d.sessionToken, ar: d.ar, exp: Date.now() + d.expiresInMs }));
+        majSante();
+      } catch (e) { $('#s-info').textContent = 'Erreur : ' + e.message; }
+    };
     $('#inp-reprise').onchange = async e => {
       const f = e.target.files[0]; if (!f) return; const rep = JSON.parse(await f.text()); const a = rep.annee;
       const etat = (await Store.lireJSON(`donnees/${a}/etat.json`)) || {};
