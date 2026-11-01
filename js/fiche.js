@@ -299,7 +299,7 @@
       <div><div class="v">${nb(c.visites.orlGen)}</div><div class="l">ORL / Généraliste</div></div>
       <div><div class="v">${nb(c.visites.ophtaOrtho)}</div><div class="l">Ophta / Orthoptiste</div></div>
       <div><div class="v">${nb(c.visites.ce)}</div><div class="l">CE</div></div></div>`)}
-    ${section(t('Mr Qualité'), `<div class="mini un"><div><div class="v">${c.mrq == null ? '–' : nb(c.mrq)}</div><div class="l">${esc(t('Passage 1'))}</div>${c.mrq == null ? '<div class="s">à renseigner</div>' : ''}</div></div>`)}
+    ${section(t('Mr Qualité'), `<div class="mini un"><div><div class="v">${c.mrq == null ? '–' : nb(c.mrq) + '<small style="font-size:9px;font-weight:600;opacity:.6">/100</small>'}</div><div class="l">Score global</div>${c.mrq == null ? '<div class="s">non disponible</div>' : ''}</div></div>`)}
   </div>
   ${section(t('RENTABILITÉ'), `<div class="tuiles8">
     ${tuile(t('%MdC'), pc(c.renta.mdc), etatPct(c.renta.mdc, c.o.mdc))}

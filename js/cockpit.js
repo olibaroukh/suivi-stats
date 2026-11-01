@@ -11,7 +11,7 @@
   // ---------- Agrégation : montants additionnés, ratios pondérés par leur base ----------
   const POIDS = { V: 'U', W: 'U', AC: 'U', AD: 'U', AE: 'U', AF: 'U', AN: 'U', AP: 'U', AR: 'U',
     AY: 'AW', BB: 'AW', BH: 'AW', AZ: 'AX', BA: 'AX', BD: 'AX', BC: 'Q', BE: 'U',
-    BV: 'BU', BQ: 'BU', CQ: 'CP', CS: 'CP', CU: 'CP', CW: 'CP', CY: 'CP', CM: 'P', BK: 'BL', BN: 'BO' };
+    BV: 'BU', BQ: 'BU', CQ: 'CP', CS: 'CP', CU: 'CP', CW: 'CP', CY: 'CP', CM: 'P', BK: 'BL', BN: 'BO', CK: '_1' };
   const MONTANTS = new Set(['O', 'P', 'Q', 'R', 'S', 'BR', 'BS', 'BT', 'BU', 'CP', 'EH']); // convertis en € si multi-devises
   function agreger(items, conv) {
     const out = { N: {}, N1: {} };
@@ -23,7 +23,7 @@
         for (const it of items) {
           const d = it[per] || {}; let v = d[k]; if (v == null || isNaN(v)) continue;
           const t = conv ? conv(it) : 1;
-          if (w) { const p = (d[w] || 0) * (MONTANTS.has(w) ? t : 1); s += v * p; sw += p; vu = true; }
+          if (w) { const p = w === '_1' ? 1 : (d[w] || 0) * (MONTANTS.has(w) ? t : 1); s += v * p; sw += p; vu = true; }
           else { s += v * (MONTANTS.has(k) ? t : 1); vu = true; }
         }
         out[per][k] = !vu ? null : w ? (sw ? s / sw : null) : s;
@@ -78,6 +78,7 @@
     rentaSal: { lib: 'Renta salariale', f: (n) => pct(n.CM), fmt: 'pct1', seuil: 0.28, inverse: true },
     note: { lib: 'Note Google', f: (n) => n.BL ? n.BK : null, fmt: 'note', seuil: 4.5 },
     avis: { lib: 'Avis Google', f: (n) => n.BL, fmt: 'nb' },
+    mrq: { lib: 'Mr Qualité', f: (n) => n.CK, fmt: 'nb' },
     effOpt: { lib: 'Effectif optique', f: (n) => n.XA, fmt: 'nb1' },
     effAud: { lib: 'Effectif audio', f: (n) => n.XC, fmt: 'nb1' },
     effTheo: { lib: 'Effectif théorique', f: (n) => n.XB, fmt: 'nb1' },
@@ -89,7 +90,7 @@
     complet: { lib: 'CA · Optique · Audio · Rentabilité', tri: 'ca',
       sections: [
         { lib: 'Chiffre d’affaires · Optique · Audio', groupes: [['Chiffre d’affaires', ['obj', 'ca', 'posit', 'evolCa']], ['Optique', ['ndv', 'evolNdv', 'panier', 'tc', 'sop', 'mdc', 'pcPct', 'pm1']], ['Audio', ['caAudio', 'evolAudio', 'protheses', 'pmProt', 'tcA', 'vadd', 'depist']]] },
-        { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'indus']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Google', ['note', 'avis']], ['Rentabilité salariale & effectifs', ['rentaSal', 'effOpt', 'effAud', 'effTheo', 'ecart', 'caPers']]] },
+        { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'indus']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Google & qualité', ['note', 'avis', 'mrq']], ['Rentabilité salariale & effectifs', ['rentaSal', 'effOpt', 'effAud', 'effTheo', 'ecart', 'caPers']]] },
       ],
       top: [['posit', 'Positionnement'], ['ndv', 'Nombre de ventes'], ['protheses', 'Nombre de prothèses'], ['re', 'Résultat d’exploitation']] },
     ca: { lib: 'Chiffre d’affaires', cols: ['obj', 'ca', 'prev', 'evolCa', 'posit', 'caOpt', 'caAud', 'caCon', 'ndv', 'evolNdv'], tri: 'ca',
@@ -100,7 +101,7 @@
       top: [['protheses', 'Nombre de prothèses'], ['caAudio', 'CA audio'], ['depist', 'Dépistage']] },
     restes: { lib: 'Restes dus', cols: ['rdus', 'avoirs', 'gel', 'indus'], tri: 'indus',
       top: [['indus', 'Taux d’indus le plus bas', true]] },
-    renta: { lib: 'Rentabilité & gestion', cols: ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel', 'rentaSal', 'indus', 'note', 'avis'], tri: 're',
+    renta: { lib: 'Rentabilité & gestion', cols: ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel', 'rentaSal', 'indus', 'note', 'mrq'], tri: 're',
       top: [['re', 'Résultat d’exploitation'], ['note', 'Note Google'], ['indus', 'Taux d’indus le plus bas', true]] },
   };
 

@@ -19,11 +19,12 @@
     avoirs: ['S'],
     rentabilites: ['CP','CQ','CR','CS','CT','CU','CV','CW','CX','CY','CZ'],
     avis_google: ['BJ','BK','BL','BM','BN','BO'],
+    mr_qualite: ['CK'],
   };
   const LIBELLE_SOURCE = {
     cosium_n: 'Cosium – année en cours', cosium_n1: 'Cosium – année précédente (N-1)', marges: 'Marges produits', renta_sal: 'Renta salariale',
     restes_dus: 'Restes dus (taux d’indus)', confidence: 'Confidence', visites_presc: 'Visites prescripteurs', visites_ce: 'Visites CE',
-    avoirs: 'Avoirs', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', site: 'Site internet', rh: 'Export RH', stat_indiv: 'Cosium – stats par vendeur', sante: 'Score santé (dashboard)', bilans: 'Bilans de passage (actions)',
+    avoirs: 'Avoirs', mr_qualite: 'Mr Qualité (score global)', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', site: 'Site internet', rh: 'Export RH', stat_indiv: 'Cosium – stats par vendeur', sante: 'Score santé (dashboard)', bilans: 'Bilans de passage (actions)',
   };
   // Colonnes N-1 utiles à la fiche (évolutions)
   const COLS_N1 = ['P','Q','R','U','V','AF','AW','AY','AX'];
@@ -67,6 +68,7 @@
     if (h.includes('Liste') && h.includes('Code Magasin')) return 'confidence';
     if (h.includes('code_site') && h.includes('visite_effectuee')) return h.includes('specialite') ? 'visites_presc' : 'visites_ce';
     if (h.includes('Matricule') && h.includes('Poste')) return 'rh';
+    if (h.some(v => /^score global$/i.test(v))) return 'mr_qualite';
     return null;
   }
 
@@ -140,6 +142,7 @@
     if (un('restes_dus')) poser('restes_dus', Sources.restesDus(XLSX, un('restes_dus').wb).out, un('restes_dus').nom);
     if (autres.rentabilites) { const o = {}; let per = ''; autres.rentabilites.forEach(x => { const r = Sources.rentabilites(XLSX, x.wb); Object.assign(o, r.out); per = r.periode; }); poser('rentabilites', o, per); }
     if (un('visites_presc')) { for (const c in mag) Object.assign(mag[c].N, { DV: 0, DW: 0, DX: 0, DY: 0 }); poser('visites_presc', Sources.visites(XLSX, un('visites_presc').wb).out); }
+    if (un('mr_qualite')) poser('mr_qualite', Sources.mrQualite(XLSX, un('mr_qualite').wb).out, un('mr_qualite').nom);
     if (un('visites_ce')) { for (const c in mag) mag[c].N.DZ = 0; poser('visites_ce', Sources.visites(XLSX, un('visites_ce').wb).out); }
     if (autres.avoirs) poser('avoirs', Sources.avoirs(autres.avoirs.texte, finMois(annee, mois)).out, autres.avoirs.nom);
 

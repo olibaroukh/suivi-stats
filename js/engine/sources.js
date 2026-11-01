@@ -128,6 +128,18 @@
 
   // Fichier « AVIS SUR GOOGLE » (onglets OPTICIEN / AUDITION : External ID, GMB rating, GMB total review), reçu de façon irrégulière.
   // Date du fichier lue dans son nom (JJMMAAAA). Règle : optique = Worker si disponible, sinon fichier le plus récent ; audio = fichier le plus récent.
+  // Mr Qualité (export TCD visites mystères) : une ligne par magasin, seule la colonne « Score global » (sur 100) est retenue
+  function mrQualite(XLSX, wb) {
+    const R = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: null, raw: true });
+    const h = (R[0] || []).map(v => String(v || '').trim());
+    const ci = h.findIndex(v => /^score global$/i.test(v));
+    const out = {}; if (ci < 0) return { out };
+    for (const r of R.slice(1)) {
+      const c = code(r[0]); const v = typeof r[ci] === 'number' ? r[ci] : num(r[ci]);
+      if (c && v != null) out[c] = { CK: v };
+    }
+    return { out };
+  }
   function avisGoogle(XLSX, wb, nomFichier) {
     const m = String(nomFichier || '').match(/(\d{2})(\d{2})(\d{4})/);
     const date = m ? `${m[3]}-${m[2]}-${m[1]}` : null;
@@ -155,6 +167,6 @@
     return { avis: res, sources: src };
   }
 
-  const api = { marges, rentaSal, restesDus, confidence, visites, avoirs, rentabilites, avisGoogle, fusionAvis, LISTES };
+  const api = { marges, rentaSal, restesDus, confidence, visites, avoirs, rentabilites, mrQualite, avisGoogle, fusionAvis, LISTES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Sources = api;
 })(typeof self !== 'undefined' ? self : this);
