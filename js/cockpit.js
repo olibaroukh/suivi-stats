@@ -78,13 +78,18 @@
     rentaSal: { lib: 'Renta salariale', f: (n) => pct(n.CM), fmt: 'pct1', seuil: 0.28, inverse: true },
     note: { lib: 'Note Google', f: (n) => n.BL ? n.BK : null, fmt: 'note', seuil: 4.5 },
     avis: { lib: 'Avis Google', f: (n) => n.BL, fmt: 'nb' },
+    effOpt: { lib: 'Effectif optique', f: (n) => n.XA, fmt: 'nb' },
+    effAud: { lib: 'Effectif audio', f: (n) => n.XC, fmt: 'nb' },
+    effTheo: { lib: 'Effectif théorique', f: (n) => n.XB, fmt: 'nb1' },
+    ecart: { lib: 'Écart optique / théorique', f: (n) => (n.XA != null && n.XB != null) ? n.XA - n.XB : null, fmt: 'ecart', seuil: 0.5, inverse: true },
+    caPers: { lib: 'CA / mois / pers.', f: (n, p, m) => (n.P != null && (n.XA || n.XC)) ? n.P / ((n.XA || 0) + (n.XC || 0)) / m : null, fmt: 'k1' },
   };
 
   const THEMES = {
     complet: { lib: 'CA · Optique · Audio · Rentabilité', tri: 'ca',
       sections: [
         { lib: 'Chiffre d’affaires · Optique · Audio', groupes: [['Chiffre d’affaires', ['obj', 'ca', 'posit', 'evolCa']], ['Optique', ['ndv', 'evolNdv', 'panier', 'tc', 'sop', 'mdc', 'pcPct', 'pm1']], ['Audio', ['caAudio', 'evolAudio', 'protheses', 'pmProt', 'tcA', 'vadd', 'depist']]] },
-        { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'avoirs', 'indus']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Salaires', ['rentaSal']], ['Google', ['note', 'avis']]] },
+        { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'indus']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Google', ['note', 'avis']], ['Rentabilité salariale & effectifs', ['rentaSal', 'effOpt', 'effAud', 'effTheo', 'ecart', 'caPers']]] },
       ],
       top: [['posit', 'Positionnement'], ['ndv', 'Nombre de ventes'], ['protheses', 'Nombre de prothèses'], ['re', 'Résultat d’exploitation']] },
     ca: { lib: 'Chiffre d’affaires', cols: ['obj', 'ca', 'prev', 'evolCa', 'posit', 'caOpt', 'caAud', 'caCon', 'ndv', 'evolNdv'], tri: 'ca',
@@ -131,13 +136,18 @@
     const devises = [...new Set(mags.map(r => r.devise || 'Euro'))];
     const multi = devises.length > 1;
     const conv = multi ? it => taux[it.devise] || 1 : null;
-    const item = r => ({ ...photo.magasins[String(r.code)], devise: r.devise || 'Euro', r });
+    // Effectifs (export RH, en têtes) et effectif théorique = max(3,5 ; ventes optique / (mois × 50))
+    const avecEff = d => { if (!photo.equipes) return d; const N = { ...(d.N || {}) }; const eq = photo.equipes[String(d.code)];
+      if (eq) { N.XA = eq.filter(p => p.famille !== 'audio').length; N.XC = eq.filter(p => p.famille === 'audio').length; }
+      N.XB = N.U != null ? Math.max(3.5, N.U / (m * 50)) : null; return { ...d, N }; };
+    const donnees = r => avecEff({ ...photo.magasins[String(r.code)], code: String(r.code) });
+    const item = r => ({ ...donnees(r), devise: r.devise || 'Euro', r });
     const valeurs = (d) => { const o = {}; th.cols.forEach(k => { o[k] = COL[k].f(d.N || {}, d.N1 || {}, m); }); return o; };
     let lignes;
     if (perim.regrouper) {
       const g = {}; mags.forEach(r => { const k = perim.regrouper(r) || '—'; (g[k] = g[k] || []).push(item(r)); });
       lignes = Object.entries(g).map(([k, its]) => ({ code: its.length + ' mag.', nom: k, v: valeurs(agreger(its, conv)) }));
-    } else lignes = mags.map(r => ({ code: String(r.code), nom: r.magasin, v: valeurs(photo.magasins[String(r.code)]), dev: DEVISE_SYM[r.devise] || '€' }));
+    } else lignes = mags.map(r => ({ code: String(r.code), nom: r.magasin, v: valeurs(donnees(r)), dev: DEVISE_SYM[r.devise] || '€' }));
     // Objectifs (pays de référence du périmètre) pour colorer les cellules
     const obj = objectifsRef(opts.objectifs, mags);
     const total = { nom: 'TOTAL', v: valeurs(agreger(mags.map(item), conv)) };
@@ -230,6 +240,10 @@
         case 'pct2': return nb(v * 100, 2) + ' %';
         case 'evol': return (v > 0 ? '+' : '') + nb(v * 100, 1) + ' %';
         case 'note': return nb(v, 1);
+        case 'nb1': return nb(v, 1);
+        case 'ecart': return (v > 0 ? '+' : '') + nb(v, 1);
+        case 'k1': return nb(v / 1000, 1) + '\u202fk' + dev;
+        case 'kn': return nb(v / 1000);
         default: return nb(v);
       }
     };
@@ -296,19 +310,19 @@
 
   function rendreSiege(md, { esc, f, nb, entete, pied }) {
     const c = (v, ok) => v == null ? '' : ok ? 'ok' : 'ko';
-    const L = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b></td><td class="fort">${f(l.ca, 'k')}</td><td class="${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'k')}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td><td>${f(l.prev, 'k')}</td><td>${nb(l.succ)}</td><td>${nb(l.fr)}</td><td>${nb(l.sup12)}</td>
+    const L = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b></td><td class="fort">${f(l.ca, 'kn')}</td><td class="${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'kn')}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td><td>${f(l.prev, 'kn')}</td><td>${nb(l.succ)}</td><td>${nb(l.fr)}</td><td>${nb(l.sup12)}</td>
       <td class="${c(l.evolOpt, l.evolOpt >= 0)}">${f(l.evolOpt, 'evol')}</td><td class="${c(l.evolAud, l.evolAud >= 0)}">${f(l.evolAud, 'evol')}</td><td>${nb(l.ndv)}</td><td class="${c(l.evolNdv, l.evolNdv >= 0)}">${f(l.evolNdv, 'evol')}</td><td>${nb(l.ndvA)}</td><td class="${c(l.evolNdvA, l.evolNdvA >= 0)}">${f(l.evolNdvA, 'evol')}</td></tr>`;
-    const head = `<thead><tr><th class="nm"></th><th>CA généré (€)</th><th>Évol. CA</th><th>Objectif</th><th>Position.</th><th>Prévisionnel</th><th>Succ.</th><th>Franch.</th><th>≥ 1,2 M€</th><th>Évol. CA optique</th><th>Évol. CA audio</th><th>Ventes optique</th><th>Évol.</th><th>Ventes audio</th><th>Évol.</th></tr></thead>`;
+    const head = `<thead><tr><th class="nm"></th><th>CA généré (k€)</th><th>Évol. CA</th><th>Objectif (k€)</th><th>Position.</th><th>Prévisionnel (k€)</th><th>Succ.</th><th>Franch.</th><th>≥ 1,2 M€</th><th>Évol. CA optique</th><th>Évol. CA audio</th><th>Ventes optique</th><th>Évol.</th><th>Ventes audio</th><th>Évol.</th></tr></thead>`;
     const t = md.total, g = md.groupe;
-    const R = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b><small>${l.succ} succ.</small></td><td>${f(l.ca, 'k')}</td><td class="${c(l.re, l.re >= 0.2)}">${f(l.re, 'pct1')}</td><td class="${c(l.marge, l.marge >= 0.7)}">${f(l.marge, 'pct1')}</td><td>${f(l.loyers, 'pct1')}</td><td>${f(l.pub, 'pct1')}</td><td class="${c(l.rentaSal, l.rentaSal <= 0.28)}">${f(l.rentaSal, 'pct1')}</td><td>${l.note == null ? '–' : '★ ' + nb(l.note, 1)}</td><td>${nb(l.avis)}</td></tr>`;
+    const R = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b><small>${l.succ} succ.</small></td><td>${f(l.ca, 'kn')}</td><td class="${c(l.re, l.re >= 0.2)}">${f(l.re, 'pct1')}</td><td class="${c(l.marge, l.marge >= 0.7)}">${f(l.marge, 'pct1')}</td><td>${f(l.loyers, 'pct1')}</td><td>${f(l.pub, 'pct1')}</td><td class="${c(l.rentaSal, l.rentaSal <= 0.28)}">${f(l.rentaSal, 'pct1')}</td><td>${l.note == null ? '–' : '★ ' + nb(l.note, 1)}</td><td>${nb(l.avis)}</td></tr>`;
     const tuile = (lib, v, s = '', cls = '') => `<div class="ck-cpt ${cls}"><div class="v">${v}</div><div class="l">${esc(lib)}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
     const DS = { 'Euro': '€', 'Shekel': '₪', 'Livre Sterling': '£', 'Dollars Canadien': '$CA' };
-    const site = !md.site ? '<div class="nd">Données du site internet non chargées (copier-coller du mail de fin de mois).</div>' : `<table class="ck-syn"><thead><tr><th class="nm"></th><th>CA TTC</th><th>Évol.</th><th>Objectif</th><th>Position.</th></tr></thead><tbody>
-      ${md.site.lignes.map(l => `<tr><td class="nm"><b>${esc(l.nom)}</b></td><td class="fort">${f(l.ca, 'k', DS[l.dev])}</td><td class="${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'k', DS[l.dev])}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td></tr>`).join('')}
-      <tr class="tot"><td class="nm"><b>${esc(md.site.total.nom)}</b></td><td>${f(md.site.total.ca, 'k')}</td><td></td><td>${f(md.site.total.obj, 'k')}</td><td>${f(md.site.total.posit, 'pct0')}</td></tr></tbody></table>
+    const site = !md.site ? '<div class="nd">Données du site internet non chargées (copier-coller du mail de fin de mois).</div>' : `<table class="ck-syn"><thead><tr><th class="nm"></th><th>CA TTC (k devise)</th><th>Évol.</th><th>Objectif (k devise)</th><th>Position.</th></tr></thead><tbody>
+      ${md.site.lignes.map(l => `<tr><td class="nm"><b>${esc(l.nom)}</b><small>${DS[l.dev]}</small></td><td class="fort">${f(l.ca, 'kn')}</td><td class="${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'kn')}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td></tr>`).join('')}
+      <tr class="tot"><td class="nm"><b>${esc(md.site.total.nom)}</b></td><td>${f(md.site.total.ca, 'kn')}</td><td></td><td>${f(md.site.total.obj, 'kn')}</td><td>${f(md.site.total.posit, 'pct0')}</td></tr></tbody></table>
       <div class="ck-mini"><span>Lunettes de vue (OC.fr) <b>${nb(md.site.nbLunettes)}</b></span><span>Panier moyen <b>${f(md.site.panier, 'eur')}</b></span>${md.site.manquants.length ? `<span class="ko">mois manquants : ${md.site.manquants.join(', ')}</span>` : ''}</div>`;
-    const mobile = `<table class="ck-syn"><thead><tr><th class="nm"></th><th>Camions</th><th>CA TTC</th><th>Objectif</th><th>Position.</th><th>Ventes optique</th><th>Prothèses</th></tr></thead><tbody>
-      ${md.mobile.map(l => `<tr class="${l.tot ? 'tot' : ''}"><td class="nm"><b>${esc(l.nom)}</b></td><td>${nb(l.nb)}</td><td class="fort">${f(l.ca, 'k')}</td><td>${f(l.obj, 'k')}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td><td>${nb(l.ndv)}</td><td>${nb(l.prot)}</td></tr>`).join('')}</tbody></table>`;
+    const mobile = `<table class="ck-syn"><thead><tr><th class="nm"></th><th>Camions</th><th>CA TTC (k€)</th><th>Objectif (k€)</th><th>Position.</th><th>Ventes optique</th><th>Prothèses</th></tr></thead><tbody>
+      ${md.mobile.map(l => `<tr class="${l.tot ? 'tot' : ''}"><td class="nm"><b>${esc(l.nom)}</b></td><td>${nb(l.nb)}</td><td class="fort">${f(l.ca, 'kn')}</td><td>${f(l.obj, 'kn')}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td><td>${nb(l.ndv)}</td><td>${nb(l.prot)}</td></tr>`).join('')}</tbody></table>`;
     const conf = `<table class="ck-syn"><thead><tr><th class="nm"></th><th>Rappel devis optique</th><th>Rappel optique N+1</th><th>Rappel audio N+4</th><th>Global</th><th>Magasins utilisateurs</th></tr></thead><tbody>
       ${md.confidence.map(l => `<tr class="${l.tot ? 'tot' : ''}"><td class="nm"><b>${esc(l.nom)}</b></td><td>${f(l.devis, 'pct0')}</td><td>${f(l.n1, 'pct0')}</td><td>${f(l.audio, 'pct0')}</td><td class="fort">${f(l.global, 'pct0')}</td><td>${nb(l.utilisent)} / ${nb(l.nb)}</td></tr>`).join('')}</tbody></table>`;
     const mdc = `<div class="ck-mdc">${md.mdc.map(x => `<div class="ck-cpt ${c(x.v, x.v >= md.mdcObj)}"><div class="v">${f(x.v, 'pct1')}</div><div class="l">${esc(x.nom)}</div><div class="s">objectif ${f(md.mdcObj, 'pct0')}</div></div>`).join('')}</div>`;
@@ -327,7 +341,7 @@
       </div>
       <section class="ck-sec"><h2><span>Chiffre d’affaires par pays et par segment</span></h2><table class="ck-syn">${head}<tbody>${md.pays.map(l => L(l)).join('')}${L(t, 'tot')}${md.segments.map(l => L(l, 'seg')).join('')}</tbody></table></section>
       <div class="ck-g2">
-        <section class="ck-sec"><h2><span>Rentabilité succursales par pays</span><small>reporting trimestriel · renta salariale cumul</small></h2><table class="ck-syn"><thead><tr><th class="nm"></th><th>CA généré</th><th>RE</th><th>Marge produits</th><th>Loyers chargés</th><th>Publicité</th><th>Renta salariale</th><th>Note Google</th><th>Avis</th></tr></thead><tbody>${md.succ.map(l => R(l)).join('')}${R(md.succTot, 'tot')}</tbody></table></section>
+        <section class="ck-sec"><h2><span>Rentabilité succursales par pays</span><small>reporting trimestriel · renta salariale cumul</small></h2><table class="ck-syn"><thead><tr><th class="nm"></th><th>CA généré (k€)</th><th>RE</th><th>Marge produits</th><th>Loyers chargés</th><th>Publicité</th><th>Renta salariale</th><th>Note Google</th><th>Avis</th></tr></thead><tbody>${md.succ.map(l => R(l)).join('')}${R(md.succTot, 'tot')}</tbody></table></section>
         <div class="ck-col">
           <section class="ck-sec"><h2><span>Site internet</span></h2>${site}</section>
           <section class="ck-sec"><h2><span>OC Mobile</span></h2>${mobile}</section>

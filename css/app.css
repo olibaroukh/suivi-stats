@@ -313,3 +313,13 @@ main{max-width:1180px;margin:0 auto;padding:20px}
 .cockpit .ck-multi tr.tot td{background:var(--n);color:#fff;font-weight:800}
 .cockpit .ck-multi tr.tot td.ok{color:#7FE0A8}.cockpit .ck-multi tr.tot td.ko{color:#FF8A85}
 .cockpit .ck-multi th.nm{width:16%}
+/* Siège aéré */
+.cockpit.siege{gap:18px;padding-top:34px}
+.cockpit.siege .ck-syn td{font-size:12px;padding:6px 9px}
+.cockpit.siege thead th{font-size:8.8px;padding-bottom:6px}
+.cockpit.siege .ck-sec h2{margin-bottom:9px;font-size:10.5px}
+.cockpit.siege .ck-g2,.cockpit.siege .ck-g3{gap:28px}
+.cockpit.siege .ck-col{gap:16px}
+.cockpit.siege .ck-cpt{padding:12px 16px}
+.cockpit.serre.siege .ck-syn td{padding:4px 8px;font-size:11px}.cockpit.serre.siege{gap:12px}
+.cockpit.tres-serre.siege .ck-syn td{padding:2.5px 7px;font-size:10.5px}
