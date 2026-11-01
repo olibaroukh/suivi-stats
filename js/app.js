@@ -61,15 +61,22 @@
     $('#vider').onclick = e => { e.preventDefault(); S.fichiers = []; $('#liste-fichiers').innerHTML = ''; };
   }
   async function workerRatings() {
-    const url = localStorage.getItem('workerUrl'), cle = localStorage.getItem('workerCle');
+    const { url, cle } = paramsWorker();
     if (!url || !cle) return null;
     try { const r = await fetch(url.replace(/\/$/, '') + '/google-ratings', { headers: { 'X-Store-Token': cle } }); const d = await r.json(); return d.ok ? { ratings: d.ratings } : null; }
     catch (e) { return { erreur: String(e) }; }
   }
   // Score santé mensuel (worker) : session AR partagée avec le dashboard bilan-passage (même origine)
   const sessionSante = () => { try { const x = JSON.parse(localStorage.getItem('bilan_ar_session') || 'null'); return x && x.exp > Date.now() ? x : null; } catch (e) { return null; } };
+  // Paramètres du worker : ceux enregistrés, sinon ceux saisis dans Réglages (et on les enregistre au passage)
+  function paramsWorker() {
+    let url = localStorage.getItem('workerUrl'), cle = localStorage.getItem('workerCle');
+    if (!url && $('#w-url').value.trim()) { url = $('#w-url').value.trim(); localStorage.setItem('workerUrl', url); }
+    if (!cle && $('#w-cle').value.trim()) { cle = $('#w-cle').value.trim(); localStorage.setItem('workerCle', cle); }
+    return { url, cle };
+  }
   async function santeWorker(annee, mois) {
-    const url = localStorage.getItem('workerUrl'), cle = localStorage.getItem('workerCle');
+    const { url, cle } = paramsWorker();
     if (!url || !cle) return null;
     const ses = sessionSante(); if (!ses) return { erreur: 'session' };
     try {
@@ -311,8 +318,8 @@
     const majSante = () => { const x = sessionSante(); $('#s-info').textContent = x ? `Connecté (${x.ar === 'ALL' ? 'accès réseau complet' : x.ar}) jusqu’à ${new Date(x.exp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'Non connecté'; };
     majSante();
     $('#btn-s-login').onclick = async () => {
-      const url = localStorage.getItem('workerUrl'), cle = localStorage.getItem('workerCle');
-      if (!url || !cle) { $('#s-info').textContent = 'Renseigne d’abord le worker ci-contre.'; return; }
+      const { url, cle } = paramsWorker();
+      if (!url || !cle) { $('#s-info').textContent = 'Renseigne d’abord la clé du worker dans le cadre « Avis Google – Worker » puis clique sur Enregistrer.'; return; }
       $('#s-info').textContent = 'Connexion…';
       try {
         const r = await fetch(url.replace(/\/$/, '') + '/ar-login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Store-Token': cle }, body: JSON.stringify({ zimbraUser: $('#s-user').value.trim(), zimbraPass: $('#s-pass').value }) });
@@ -327,7 +334,7 @@
       const ph = await Store.lireJSON(`donnees/${k}/photo.json`); if (!ph) { $('#s-maj-info').textContent = `Aucun mois enregistré pour ${MOIS[m - 1]} ${a}.`; return; }
       $('#s-maj-info').textContent = 'Récupération…';
       const sa = await santeWorker(a, m);
-      if (!sa) { $('#s-maj-info').textContent = 'Worker non configuré.'; return; }
+      if (!sa) { $('#s-maj-info').textContent = 'Clé du worker manquante : saisis-la dans le cadre « Avis Google – Worker » et clique sur Enregistrer.'; return; }
       if (sa.erreur) { $('#s-maj-info').textContent = sa.erreur === 'session' ? 'Connecte-toi d’abord (ci-dessus).' : 'Erreur : ' + sa.erreur; return; }
       ph.sante = sa; ph.sources = ph.sources || {}; ph.sources.sante = { statut: 'recu', detail: `${Object.values(sa.magasins).filter(x => x.score != null).length} magasins notés${sa.apercu ? ' – aperçu indicatif' : ''}` };
       await Store.ecrireJSON(`donnees/${k}/photo.json`, ph); CK.cle = null; if (S.photo && S.photo.annee === a && S.photo.mois === m) S.photo = ph;
