@@ -36,3 +36,7 @@ Suivi Stats/
 - `js/store.js` : accès au dossier local.
 - `data/` : correspondances des colonnes Cosium, traductions, règles métier.
 - `lib/` : librairies intégrées (SheetJS, JSZip, jsPDF, html2canvas) pour un fonctionnement hors ligne.
+
+## Publier une mise à jour
+
+Chaque modification incrémente `version.json` (format `AAAA.MM.JJ-n`). L'appli charge ses fichiers avec `?v=<version>` et vérifie `version.json` toutes les 3 minutes et au retour sur l'onglet : si la version a changé, un bandeau « Mettre à jour » apparaît (aucun rafraîchissement manuel nécessaire, y compris sur téléphone).

@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Suivi statistique</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 <header class="app-head">
@@ -257,21 +256,30 @@
 </main>
 <footer class="app-pied"><span id="pied-stockage">Données stockées sur Cloudflare, accès par connexion personnelle.</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span></footer>
 
-<script src="lib/xlsx.full.min.js"></script>
-<script src="lib/jszip.min.js"></script>
-<script src="lib/jspdf.umd.min.js"></script>
-<script src="lib/html2canvas.min.js"></script>
-<script src="js/engine/cosium.js"></script>
-<script src="js/engine/hub.js"></script>
-<script src="js/engine/sources.js"></script>
-<script src="js/engine/lyleoo.js"></script>
-<script src="js/engine/ocm.js"></script>
-<script src="js/engine/site.js"></script>
-<script src="js/engine/equipe.js"></script>
-<script src="js/pipeline.js"></script>
-<script src="js/fiche.js"></script>
-<script src="js/cockpit.js"></script>
-<script src="js/store.js"></script>
-<script src="js/app.js"></script>
+<div id="bandeau-maj" hidden><span>Une nouvelle version de l'appli est disponible.</span><button class="primaire" id="btn-maj">Mettre à jour</button></div>
+<script>
+/* Chargement versionné : version.json (jamais en cache) fixe la version ; chaque fichier est demandé avec ?v=version,
+ * ce qui force le navigateur à prendre les nouveaux fichiers dès qu'une version est publiée.
+ * Toutes les 3 minutes et au retour sur l'onglet, l'appli revérifie version.json et propose « Mettre à jour ». */
+(function () {
+  var FICHIERS = ['lib/xlsx.full.min.js', 'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'js/engine/cosium.js', 'js/engine/hub.js', 'js/engine/sources.js', 'js/engine/lyleoo.js', 'js/engine/ocm.js', 'js/engine/site.js', 'js/engine/equipe.js', 'js/pipeline.js', 'js/fiche.js', 'js/cockpit.js', 'js/store.js', 'js/app.js'];
+  function charger(v) {
+    window.APP_VERSION = v;
+    var q = v ? '?v=' + encodeURIComponent(v) : '';
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'css/app.css' + q; document.head.appendChild(l);
+    FICHIERS.forEach(function (f) { var s = document.createElement('script'); s.src = f + q; s.async = false; document.body.appendChild(s); });
+  }
+  function lireVersion() { return fetch('version.json?_=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) { return d && d.version; }).catch(function () { return null; }); }
+  lireVersion().then(function (v) { charger(v || ''); });
+  function verifier() { if (!window.APP_VERSION) return; lireVersion().then(function (v) { if (v && v !== window.APP_VERSION) document.getElementById('bandeau-maj').hidden = false; }); }
+  setInterval(verifier, 3 * 60 * 1000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') verifier(); });
+  document.getElementById('btn-maj').onclick = function () {
+    this.textContent = 'Mise à jour…'; this.disabled = true;
+    var base = location.href.split('?')[0].split('#')[0];
+    location.href = base + '?_u=' + Date.now() + location.hash;
+  };
+})();
+</script>
 </body>
 </html>
