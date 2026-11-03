@@ -515,7 +515,7 @@
       const telecharger = async p => { const x = await Store.api(`/zimbra/piece?id=${encodeURIComponent(p.id)}&part=${encodeURIComponent(p.part)}`); if (!x.ok) throw new Error('téléchargement de ' + p.nom); return new File([await x.blob()], p.nom, { lastModified: p.date }); };
       const gardes = [], bilan = [];
       // Cosium
-      const cos = pieces.filter(p => p.type === 'cosium'), parCle = {};
+      const cos = pieces.filter(p => p.type === 'cosium'), parCle = {}, rejets = [];
       for (let i = 0; i < cos.length; i++) {
         const p = cos[i]; info(`Cosium : ${i + 1} / ${cos.length} – ${p.nom}`);
         const f = await telecharger(p), srv = Cosium.serverFromZipName(p.nom);
@@ -528,11 +528,14 @@
         const nMail = srv.mail || +((p.sujet || '').match(/OPTI\d+\s*(\d)\s*\/\s*4/i) || p.nom.match(/OPTI\d+[\s_-]*(\d)\s*[\/_-]?\s*4\b/i) || [])[1] || '?';
         const cle = (srv.server || p.nom) + ' ' + nMail + '/4';
         if (ok && !parCle[cle]) parCle[cle] = f; // le plus récent valide (liste triée par date décroissante)
+        if (!ok) rejets.push(p.nom);
       }
       gardes.push(...Object.values(parCle));
       const serveurs = ['EURO', 'CANADA', 'IRLANDE', 'SUISSE', 'UK', 'MARTINIQUE', 'ISRAEL'];
       const manquants = serveurs.flatMap(s => [1, 2, 3, 4].map(n => `${s} ${n}/4`)).filter(c => !parCle[c]);
-      bilan.push(`Cosium : ${Object.keys(parCle).length} / 28` + (manquants.length ? ` (manque ${manquants.join(', ')})` : ' ✓'));
+      bilan.push(`Cosium : ${Object.keys(parCle).length} / 28` + (manquants.length ? ` (manque ${manquants.length > 8 ? manquants.length + ' envois' : manquants.join(', ')})` : ' ✓')
+        + ` – ${cos.length} ZIP Cosium trouvé(s) dans la boîte` + (rejets.length ? `, ${rejets.length} écarté(s) car d'un autre mois (ex. ${rejets.slice(0, 2).join(' ; ')})` : ''));
+      console.info('Zimbra – pièces trouvées', pieces);
       // Confidence : fichier dont la période se termine dans le mois traité
       const conf = pieces.filter(p => p.type === 'confidence' && (p.nom.match(/_(\d{4})-(\d{2})-\d{2}\.xlsx$/i) || []).slice(1).join('-') === k);
       if (conf.length) { info('Confidence…'); gardes.push(await telecharger(conf[0])); bilan.push('Confidence ✓'); } else bilan.push('Confidence : pas encore reçu');
