@@ -86,7 +86,8 @@ async function profil(env, email) {
 }
 
 // ---------- Périmètre ----------
-// perimetre = { tous, pays: [], groupes: [], ar: [], natures: [], codes: [], exclurePays: [], exclureCodes: [] }
+// perimetre = { tous, pays: [], groupes: [], ar: [], natures: [], codes: [], types: ['Succursale'|'Franchise'], exclurePays: [], exclureCodes: [] }
+// types restreint le reste (les codes ajoutés à l'unité restent toujours visibles).
 function norm(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase(); }
 function codesAutorises(perimetre, referentiel) {
   const p = perimetre || {}, ens = new Set();
@@ -94,6 +95,7 @@ function codesAutorises(perimetre, referentiel) {
   for (const m of referentiel || []) {
     const c = String(m.code);
     let ok = !!p.tous || dans(p.codes, c) || dans(p.pays, m.pays) || dans(p.groupes, m.groupe) || dans(p.ar, m.ar) || dans(p.natures, m.nature);
+    if (Array.isArray(p.types) && p.types.length && !dans(p.types, m.type) && !dans(p.codes, c)) ok = false;
     if (dans(p.exclurePays, m.pays) || dans(p.exclureCodes, c)) ok = false;
     if (ok) { ens.add(c); ens.add(c + 'A'); }
   }

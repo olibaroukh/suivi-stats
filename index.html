@@ -189,7 +189,9 @@
             <div><label>Adresse e-mail Zimbra</label><input id="ac-email" type="email" placeholder="prenom.nom@optical-center.com" style="width:100%"></div>
             <div><label>Nom affiché</label><input id="ac-nom" placeholder="Prénom Nom" style="width:100%"></div>
           </div>
-          <label style="margin-top:10px"><input type="checkbox" id="ac-tous"> Tout le réseau</label>
+          <label style="margin-top:10px">Type de magasins</label>
+          <div class="chk"><label><input type="checkbox" class="ac-type" value="Succursale" checked> Succursales</label><label><input type="checkbox" class="ac-type" value="Franchise" checked> Franchises</label></div>
+          <label style="margin-top:10px"><input type="checkbox" id="ac-tous"> Tous les pays, AR et franchisés</label>
           <div id="ac-perim">
             <label style="margin-top:10px">Pays</label><div class="chk" id="ac-pays"></div>
             <label style="margin-top:10px">Animateurs régionaux (AR)</label><div class="chk" id="ac-ar"></div>
@@ -198,7 +200,6 @@
               <div><label>Magasins ajoutés (codes séparés par des virgules)</label><input id="ac-codes" style="width:100%" placeholder="ex. 1302, 1303"></div>
               <div><label>Magasins exclus (codes)</label><input id="ac-exclure-codes" style="width:100%"></div>
             </div>
-            <label style="margin-top:10px">Pays exclus</label><div class="chk" id="ac-exclure-pays"></div>
           </div>
           <label style="margin-top:10px">Écrans visibles</label>
           <div class="chk"><label><input type="checkbox" class="ac-ecran" value="fiches" checked> Fiches magasins</label><label><input type="checkbox" class="ac-ecran" value="cockpits" checked> Cockpits</label></div>
