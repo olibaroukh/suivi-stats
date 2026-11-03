@@ -10,6 +10,7 @@ Application de suivi statistique mensuel du réseau (remplace le fichier Numbers
 Suivi Stats/
   config/referentiel.json       ← importé depuis le référentiel Excel (onglet Magasins)
   config/objectifs-2026.json    ← importé depuis le fichier d'objectifs Excel
+  config/mr-qualite.json        ← dernier fichier Mr Qualité reçu, repris tant qu'aucun nouveau n'est déposé
   donnees/2026/etat.json        ← cumuls de l'année (Lyleoo, OCM, site internet, fichiers avis Google)
   donnees/2026-10/photo.json    ← photo figée du mois (tableau central N et N-1)
   donnees/2026-10/imports/      ← copie des fichiers reçus et des copier-coller
