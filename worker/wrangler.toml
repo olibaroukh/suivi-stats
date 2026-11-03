@@ -1,0 +1,21 @@
+# Worker « suivi-stats-api » : stockage des données de Suivi Stats sur Cloudflare.
+# Déployé automatiquement par Cloudflare à chaque fusion sur main (Workers Builds,
+# dossier racine : worker). Aucune clé ni donnée ici : les secrets sont saisis
+# dans Cloudflare (Settings › Variables and Secrets).
+name = "suivi-stats-api"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+keep_vars = true   # ne jamais effacer les variables saisies dans le tableau de bord
+
+[[d1_databases]]
+binding = "DB"
+database_name = "suivi-stats-db"
+database_id = "6d809980-bef1-4fbf-8a7a-9bc21ad2b506"
+
+[[r2_buckets]]
+binding = "FICHIERS"
+bucket_name = "suivi-stats-fichiers"
+
+[observability]
+enabled = true
