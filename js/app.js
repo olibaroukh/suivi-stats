@@ -20,11 +20,57 @@
     brancherImport(); brancherFiches(); brancherReglages(); brancherCockpits();
     $('#w-url').value = localStorage.getItem('workerUrl') || 'https://zimbra-relay.oli-baroukh.workers.dev';
     $('#w-cle').value = localStorage.getItem('workerCle') || '';
+    $('#btn-dossier').onclick = async () => { await Store.choisirDossier(); await dossierPret(); };
+    $('#btn-autoriser').onclick = async () => { if (await Store.autoriser()) await dossierPret(); };
+    brancherConnexion();
+    if (Store.cloud()) return sessionPrete();
+    if (localStorage.getItem('modeLocal') === '1') return modeLocal();
+    afficherConnexion();
+  }
+  // ---------- Connexion (mode Cloudflare) ----------
+  function afficherConnexion() { document.body.classList.add('non-connecte'); $('#ecran-connexion').hidden = false; $('#lien-deconnexion').hidden = true; $('#etat-dossier').textContent = ''; setTimeout(() => $('#cx-user').focus(), 0); }
+  function brancherConnexion() {
+    const go = async () => {
+      $('#cx-info').textContent = 'Connexion…'; $('#btn-connexion').disabled = true;
+      try { await Store.connecter($('#cx-user').value.trim(), $('#cx-pass').value); $('#cx-pass').value = ''; $('#cx-info').textContent = ''; localStorage.removeItem('modeLocal'); await sessionPrete(); }
+      catch (e) { $('#cx-info').textContent = e.message; }
+      finally { $('#btn-connexion').disabled = false; }
+    };
+    $('#btn-connexion').onclick = go; $('#cx-pass').onkeydown = e => { if (e.key === 'Enter') go(); };
+    $('#lien-mode-local').onclick = e => { e.preventDefault(); localStorage.setItem('modeLocal', '1'); modeLocal(); };
+    $('#lien-deconnexion').onclick = e => { e.preventDefault(); Store.deconnecter(); localStorage.removeItem('modeLocal'); location.reload(); };
+    $('#btn-copie-cloud').onclick = async () => {
+      if (!confirm('Copier le dossier Suivi Stats vers Cloudflare ? Choisissez ensuite le dossier Dropbox › Suivi Stats.')) return;
+      try {
+        const r = await Store.copierDossierVersCloud((n, t, c) => { $('#copie-info').textContent = `${n} / ${t} – ${c}`; });
+        $('#copie-info').textContent = `Terminé : ${r.total - r.echecs.length} fichier(s) copié(s) depuis « ${r.dossier} »` + (r.echecs.length ? ` – ${r.echecs.length} échec(s) : ${r.echecs.slice(0, 5).join(', ')}` : '') + '. Rechargement…';
+        setTimeout(() => location.reload(), 1500);
+      } catch (e) { if (e.name !== 'AbortError') $('#copie-info').textContent = 'Erreur : ' + e.message; }
+    };
+  }
+  async function sessionPrete() {
+    document.body.classList.remove('non-connecte'); $('#ecran-connexion').hidden = true;
+    const p = Store.profil(), admin = Store.estAdmin();
+    $('#lien-deconnexion').hidden = false;
+    $('#pied-stockage').textContent = 'Données stockées sur Cloudflare, accès par connexion personnelle.';
+    // Lecteurs : ni import ni réglages ; écrans éventuellement limités par leur profil
+    document.querySelectorAll('.app-head nav button').forEach(b => {
+      const v = b.dataset.vue; let ok = admin || (v !== 'import' && v !== 'reglages');
+      if (!admin && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
+      b.hidden = !ok;
+    });
+    $('#carte-cloud').hidden = !admin;
+    if (!admin) { const prem = [...document.querySelectorAll('.app-head nav button')].find(b => !b.hidden); if (prem) vue(prem.dataset.vue); }
+    await dossierPret();
+    $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
+  }
+  async function modeLocal() {
+    document.body.classList.remove('non-connecte'); $('#ecran-connexion').hidden = true;
+    $('#pied-stockage').textContent = 'Ancien mode : données dans le dossier choisi sur cet ordinateur (Dropbox).';
+    $('#lien-deconnexion').hidden = false; $('#lien-deconnexion').textContent = 'Passer à la connexion Cloudflare';
     if (!Store.supporte()) { $('#etat-dossier').textContent = 'Navigateur non compatible : utiliser Chrome'; }
     const r = await Store.restaurer();
     if (r && r.permission === 'granted') await dossierPret(); else { $('#carte-dossier-requis').hidden = false; if (r) { $('#btn-autoriser').hidden = false; $('#btn-dossier').textContent = 'Choisir un autre dossier…'; } }
-    $('#btn-dossier').onclick = async () => { await Store.choisirDossier(); await dossierPret(); };
-    $('#btn-autoriser').onclick = async () => { if (await Store.autoriser()) await dossierPret(); };
   }
   async function dossierPret() {
     $('#carte-dossier-requis').hidden = true;
@@ -244,7 +290,7 @@
     const l = selection(); if (!l.length) return;
     if (!confirm(`Générer ${l.length} PDF dans le dossier sorties/${S.photo.annee}-${pad(S.photo.mois)}/fiches ?`)) return;
     const k = `${S.photo.annee}-${pad(S.photo.mois)}`; const envois = [['Code', 'Magasin', 'E-mail', 'Fichier']];
-    const zip = Store.nomDossier() ? null : new JSZip();
+    const zip = Store.ecritureDurable() ? null : new JSZip();
     $('#barre-pdf').hidden = false;
     for (let i = 0; i < l.length; i++) {
       const m = l[i]; const b = await pdfMagasin(m); const nom = nomPdf(m);

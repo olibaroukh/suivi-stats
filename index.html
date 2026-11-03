@@ -17,8 +17,21 @@
     <button data-vue="cockpits">Cockpits</button>
     <button data-vue="reglages">Réglages</button>
   </nav>
-  <div class="dossier" id="etat-dossier">Aucun dossier</div>
+  <div class="dossier"><span id="etat-dossier">Aucun dossier</span> <a href="#" id="lien-deconnexion" hidden>Déconnexion</a></div>
 </header>
+
+<section id="ecran-connexion" hidden>
+  <div class="carte connexion">
+    <img src="assets/logo-optical-center.png" alt="Optical Center" style="height:34px;margin-bottom:10px">
+    <h2>Connexion</h2>
+    <p class="aide">Connectez-vous avec votre adresse e-mail et votre mot de passe Zimbra. Vous ne verrez que les magasins de votre périmètre.</p>
+    <label>Adresse e-mail Zimbra</label><input id="cx-user" type="email" autocomplete="username" placeholder="prenom.nom@optical-center.com" style="width:100%">
+    <label>Mot de passe</label><input id="cx-pass" type="password" autocomplete="current-password" style="width:100%">
+    <button class="primaire" id="btn-connexion" style="width:100%;margin-top:12px">Se connecter</button>
+    <p class="muted" id="cx-info" style="min-height:1.2em"></p>
+    <p class="aide" style="margin-top:14px"><a href="#" id="lien-mode-local">Utiliser un dossier sur cet ordinateur (ancien mode)</a></p>
+  </div>
+</section>
 
 <main>
   <!-- IMPORT -->
@@ -166,6 +179,12 @@
         <button id="btn-s-login">Se connecter</button> <span class="muted" id="s-info"></span>
         <div style="margin-top:8px"><button id="btn-s-maj">Mettre à jour le score santé et les bilans de passage du mois traité</button> <span class="muted" id="s-maj-info"></span></div>
       </div>
+      <div class="carte" id="carte-cloud" hidden>
+        <h2>Cloudflare – reprise du dossier Dropbox</h2>
+        <p class="aide">Copie tout le contenu du dossier « Suivi Stats » (référentiel, objectifs, mois enregistrés, fichiers reçus) vers Cloudflare. Les PDF du dossier sorties ne sont pas copiés (ils se régénèrent). À faire une fois ; peut être relancé sans risque (les fichiers sont remplacés).</p>
+        <button class="primaire" id="btn-copie-cloud">Choisir le dossier Suivi Stats et copier…</button>
+        <p class="muted" id="copie-info"></p>
+      </div>
       <div class="carte">
         <h2>Reprises de l'année</h2>
         <p class="aide" id="rep-info">Cumuls déjà chargés pour l'année (Lyleoo, OCM, site internet, avis Google).</p>
@@ -174,7 +193,7 @@
     </div>
   </section>
 </main>
-<footer class="app-pied"><span>Les données restent sur ton ordinateur (dossier Dropbox).</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span></footer>
+<footer class="app-pied"><span id="pied-stockage">Données stockées sur Cloudflare, accès par connexion personnelle.</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span></footer>
 
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/jszip.min.js"></script>

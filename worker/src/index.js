@@ -183,6 +183,13 @@ async function routes(request, env) {
     return json({ ok: true, referentiel: ref.filter(m => codes.has(String(m.code))) }, 200, h);
   }
 
+  // Réglages communs non sensibles (objectifs, taux de change) : nécessaires aux fiches et cockpits
+  if (chemin === '/donnees/config') {
+    const nom = url.searchParams.get('nom') || '';
+    if (!/^(objectifs(-\d{4})?|objectifs-siege-\d{4}|taux-change)$/.test(nom)) return erreur('Réglage non disponible', 403, h);
+    return json({ ok: true, valeur: await lireJSON(env, `config/${nom}.json`) }, 200, h);
+  }
+
   if (!admin) return erreur('Réservé aux administrateurs', 403, h);
 
   // Fichiers bruts (administrateurs) : même logique que le dossier Dropbox
