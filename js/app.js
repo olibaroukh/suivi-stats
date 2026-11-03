@@ -57,11 +57,10 @@
     // Lecteurs : ni import ni réglages ; écrans éventuellement limités par leur profil
     document.querySelectorAll('.app-head nav button').forEach(b => {
       const v = b.dataset.vue; let ok = admin || (v !== 'import' && v !== 'reglages');
-      if (!admin && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
+      if (!admin && v !== 'accueil' && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
       b.hidden = !ok;
     });
     $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin;
-    if (!admin) { const prem = [...document.querySelectorAll('.app-head nav button')].find(b => !b.hidden); if (prem) vue(prem.dataset.vue); }
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
@@ -74,12 +73,14 @@
     const r = await Store.restaurer();
     if (r && r.permission === 'granted') await dossierPret(); else { $('#carte-dossier-requis').hidden = false; if (r) { $('#btn-autoriser').hidden = false; $('#btn-dossier').textContent = 'Choisir un autre dossier…'; } }
   }
+  async function apresChargement() { brancherRecherche(); await afficherAccueil(); }
   async function dossierPret() {
     $('#carte-dossier-requis').hidden = true;
     $('#etat-dossier').textContent = '📁 ' + (Store.nomDossier() || 'mémoire (non enregistré)');
     S.ref = (await Store.lireJSON('config/referentiel.json')) || [];
     S.objectifs = (await Store.lireJSON(`config/objectifs-${$('#imp-annee').value}.json`)) || (await Store.lireJSON('config/objectifs.json')) || {};
     majInfosReglages(); await listerPhotos(); remplirPerimetres(); brancherTaux(); brancherObjSiege();
+    await apresChargement();
   }
   function vue(v) { if (v === 'cockpits' && !$('#ck-apercu .cockpit')) setTimeout(afficherCockpit, 0); document.querySelectorAll('.vue').forEach(x => x.classList.toggle('actif', x.id === 'vue-' + v)); document.querySelectorAll('.app-head nav button').forEach(b => b.classList.toggle('actif', b.dataset.vue === v)); }
 
@@ -214,11 +215,12 @@
     const { photo, etatAnnee } = S.resultat; const k = `${photo.annee}-${pad(photo.mois)}`;
     $('#calc-info').textContent = 'Enregistrement…';
     await Store.ecrireJSON(`donnees/${k}/photo.json`, photo);
+    A.photos = {};
     await Store.ecrireJSON(`donnees/${photo.annee}/etat.json`, etatAnnee);
     for (const f of S.fichiers) await Store.ecrire(`donnees/${k}/imports/${f.name.replace(/^[0-9a-f]{8}-/, '')}`, f);
     for (const p of ['lyleoo', 'ocm', 'site']) { const v = $('#paste-' + p).value; if (v.trim()) await Store.ecrire(`donnees/${k}/imports/copier-coller-${p}.txt`, v); }
     $('#calc-info').textContent = `Photo de ${MOIS[photo.mois - 1]} ${photo.annee} enregistrée.`; $('#btn-enregistrer').disabled = true;
-    await listerPhotos(); $('#fi-photo').value = k; await chargerPhoto(k);
+    await listerPhotos(); $('#fi-photo').value = k; await chargerPhoto(k); afficherAccueil();
   }
 
   // ---------- Fiches ----------
@@ -231,6 +233,7 @@
   }
   async function listerPhotos() {
     const ks = (await Store.lister('donnees')).filter(n => /^\d{4}-\d{2}$/.test(n)).sort().reverse();
+    S.moisDispo = ks;
     $('#ck-photo').innerHTML = ks.length ? ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)} (cumul depuis janvier)</option>`).join('') : '<option value="">Aucun mois enregistré</option>';
     $('#fi-photo').innerHTML = ks.length ? ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join('') : '<option value="">Aucun mois enregistré</option>';
     if (ks.length) await chargerPhoto(ks[0]);
@@ -462,6 +465,93 @@
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows, { header: inv.map(x => x[0]) }), feuille.slice(0, 31)); XLSX.writeFile(wb, nom);
   }
 
+
+
+  // ---------- Accueil ----------
+  // Dates d'arrivée habituelles (jour du mois suivant) ; null = pas de date fixe
+  const ATTENDU_LE = { cosium_n: 1, cosium_n1: 1, stat_indiv: 1, confidence: 5, restes_dus: 7, avoirs: 5, site: 1, lyleoo: 5, ocm: 5 };
+  const A = { photos: {} };
+  async function photoMois(k) { if (!k) return null; if (!(k in A.photos)) A.photos[k] = await Store.lireJSON(`donnees/${k}/photo.json`); return A.photos[k]; }
+  const moisPrec = k => { let [a, m] = k.split('-').map(Number); m--; if (!m) { m = 12; a--; } return `${a}-${pad(m)}`; };
+  async function afficherAccueil() {
+    const admin = !Store.cloud() || Store.estAdmin();
+    // 1. Où en est le mois (administrateurs) : mois traité = mois précédent
+    $('#carte-mois').hidden = !admin;
+    if (admin) {
+      const now = new Date(), d = new Date(now.getFullYear(), now.getMonth() - 1, 1), k = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+      const ph = await photoMois(k), jour = now.getDate();
+      $('#am-titre').textContent = `${MOIS[d.getMonth()]} ${d.getFullYear()}`;
+      const sources = (ph && ph.sources) || {}, lib = Pipeline.LIBELLE_SOURCE;
+      let nRecu = 0, nRetard = 0;
+      $('#am-sources').innerHTML = Object.keys(lib).filter(s => s !== 'sante' && s !== 'bilans').map(s => {
+        const st = sources[s] && sources[s].statut; let cl = st || 'absent', note = '';
+        if (st === 'recu') { nRecu++; note = 'reçu'; }
+        else if (st === 'repris') note = 'repris du mois précédent';
+        else if (ATTENDU_LE[s] && jour > ATTENDU_LE[s]) { cl = 'retard'; nRetard++; note = `attendu le ${ATTENDU_LE[s]}`; }
+        else note = ATTENDU_LE[s] ? `attendu le ${ATTENDU_LE[s]}` : 'à recevoir';
+        return `<div class="${cl}"><span class="pastille"></span>${esc(lib[s])}<small>${esc(note)}</small></div>`;
+      }).join('');
+      $('#am-resume').textContent = ph ? `Mois calculé le ${new Date(ph.genereLe).toLocaleDateString('fr-FR')} · ${nRecu} source(s) reçue(s)` + (nRetard ? ` · ${nRetard} en retard` : '') : `Pas encore calculé` + (nRetard ? ` · ${nRetard} source(s) attendue(s) en retard` : '');
+      $('#am-import').onclick = () => { $('#imp-mois').value = d.getMonth() + 1; $('#imp-annee').value = d.getFullYear(); vue('import'); };
+    }
+    // 2. Ce qui bouge
+    const pays = [...new Set(S.ref.filter(r => r.actif === 'Oui').map(r => r.pays))].sort();
+    if ($('#cb-pays').options.length <= 1) $('#cb-pays').innerHTML = '<option value="">Tous les pays</option>' + pays.map(p => `<option>${esc(p)}</option>`).join('');
+    ['#cb-mode', '#cb-pays', '#cb-type'].forEach(id => $(id).onchange = ceQuiBouge);
+    await ceQuiBouge();
+  }
+  async function ceQuiBouge() {
+    const k = (S.moisDispo || [])[0];
+    if (!k) { $('#cb-info').textContent = 'Aucun mois enregistré.'; $('#cb-haut').innerHTML = $('#cb-bas').innerHTML = ''; return; }
+    const ph = await photoMois(k), mode = $('#cb-mode').value, pays = $('#cb-pays').value, type = $('#cb-type').value;
+    const prec = mode === 'mois' ? await photoMois(moisPrec(k)) : null;
+    const posit = (d, m) => { const n = (d && d.N) || {}; return n.O && n.P != null ? n.P * 12 / m / (n.O * 1000) : null; };
+    const lignes = [];
+    for (const r of S.ref) {
+      if (r.actif !== 'Oui' || (pays && r.pays !== pays) || (type && r.type !== type)) continue;
+      const d = ph.magasins[String(r.code)]; if (!d || !d.N || !d.N.P) continue;
+      let v = null, aff = '';
+      if (mode === 'n1') { const p1 = d.N1 && d.N1.P; if (p1 > 0) { v = d.N.P / p1 - 1; aff = (v > 0 ? '+' : '') + (v * 100).toFixed(1).replace('.', ',') + ' %'; } }
+      else if (prec) { const a = posit(d, ph.mois), b = posit(prec.magasins[String(r.code)], prec.mois); if (a != null && b != null) { v = a - b; aff = (v > 0 ? '+' : '') + (v * 100).toFixed(1).replace('.', ',') + ' pt'; } }
+      if (v != null && isFinite(v)) lignes.push({ r, v, aff });
+    }
+    const libMois = `${MOIS[ph.mois - 1]} ${ph.annee}`;
+    if (mode === 'mois' && !prec) { $('#cb-info').textContent = `Le mois précédent (${MOIS[+moisPrec(k).slice(5) - 1]}) n'est pas encore enregistré : la comparaison mois par mois sera disponible dès le prochain mois calculé.`; $('#cb-haut').innerHTML = $('#cb-bas').innerHTML = ''; return; }
+    $('#cb-info').textContent = mode === 'n1' ? `${libMois} : évolution du CA cumulé depuis janvier par rapport à la même période l'an dernier · ${lignes.length} magasins comparés.` : `${libMois} : variation du positionnement (CA projeté / objectif) depuis le mois précédent · ${lignes.length} magasins comparés.`;
+    lignes.sort((x, y) => y.v - x.v);
+    const rendu = l => l.map(x => `<div class="cb-ligne" data-code="${esc(x.r.code)}"><b>${esc(x.r.code)}</b> ${esc(x.r.magasin)} <small>${esc(x.r.pays === 'FRANCE' ? (x.r.ar || '') : x.r.pays)}</small><span class="v" style="color:${x.v >= 0 ? '#2E9E5B' : 'var(--accent)'}">${x.aff}</span></div>`).join('') || '<p class="muted">–</p>';
+    $('#cb-haut').innerHTML = rendu(lignes.filter(x => x.v > 0).slice(0, 10));
+    $('#cb-bas').innerHTML = rendu(lignes.filter(x => x.v < 0).reverse().slice(0, 10));
+    document.querySelectorAll('#vue-accueil .cb-ligne').forEach(l => l.onclick = () => ouvrirFiche(l.dataset.code));
+  }
+  // Ouvre la fiche d'un magasin depuis n'importe quel écran
+  async function ouvrirFiche(code) {
+    const m = S.ref.find(r => String(r.code) === String(code)); if (!m) return;
+    const bFiches = document.querySelector('.app-head nav button[data-vue="fiches"]');
+    if (bFiches && bFiches.hidden) return;
+    vue('fiches'); S.magSel = m; $('#fi-recherche').value = ''; listerMagasins(); afficherFiche(m);
+  }
+  // ---------- Recherche rapide (en-tête) ----------
+  function brancherRecherche() {
+    if (S.rechercheBranchee) return; S.rechercheBranchee = true;
+    const q = $('#rg-q'), res = $('#rg-res'); let sel = 0, l = [];
+    const montrer = () => {
+      const t = norm(q.value.trim()); if (t.length < 2) { res.hidden = true; return; }
+      l = S.ref.filter(r => r.actif === 'Oui' && norm(`${r.code} ${r.magasin} ${r.manager} ${r.ar} ${r.groupe} ${r.pays}`).includes(t)).slice(0, 12); sel = 0;
+      res.innerHTML = l.map((r, i) => `<div data-code="${esc(r.code)}" class="${i === sel ? 'sel' : ''}"><b>${esc(r.code)}</b> ${esc(r.magasin)}<small>${esc([r.manager, r.pays === 'FRANCE' ? r.ar : r.pays, r.type === 'Franchise' ? r.groupe : ''].filter(Boolean).join(' · '))}</small></div>`).join('') || '<div class="muted">Aucun magasin</div>';
+      res.hidden = false;
+      res.querySelectorAll('div[data-code]').forEach(d => d.onmousedown = e => { e.preventDefault(); choisir(d.dataset.code); });
+    };
+    const choisir = code => { res.hidden = true; q.value = ''; q.blur(); ouvrirFiche(code); };
+    q.oninput = montrer; q.onfocus = montrer; q.onblur = () => setTimeout(() => { res.hidden = true; }, 150);
+    q.onkeydown = e => {
+      if (res.hidden || !l.length) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : -1) + l.length) % l.length; res.querySelectorAll('div[data-code]').forEach((d, i) => d.classList.toggle('sel', i === sel)); }
+      if (e.key === 'Enter') { e.preventDefault(); choisir(l[sel].code); }
+      if (e.key === 'Escape') res.hidden = true;
+    };
+    document.addEventListener('keydown', e => { if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); q.focus(); } });
+  }
 
   // ---------- Accès des équipes (administrateurs, mode Cloudflare) ----------
   const AC = { liste: [] };

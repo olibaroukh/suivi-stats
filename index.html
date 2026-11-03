@@ -12,11 +12,13 @@
   <img class="logo" src="assets/logo-optical-center.png" alt="Optical Center">
   <h1><small>Optical Center</small>Suivi statistique</h1>
   <nav>
-    <button data-vue="import" class="actif">Import du mois</button>
+    <button data-vue="accueil" class="actif">Accueil</button>
+    <button data-vue="import">Import du mois</button>
     <button data-vue="fiches">Fiches magasins</button>
     <button data-vue="cockpits">Cockpits</button>
     <button data-vue="reglages">Réglages</button>
   </nav>
+  <div class="recherche-globale"><input id="rg-q" placeholder="🔍 Magasin, code, manager…" autocomplete="off"><div id="rg-res" hidden></div></div>
   <div class="dossier"><span id="etat-dossier">Aucun dossier</span> <a href="#" id="lien-deconnexion" hidden>Déconnexion</a></div>
 </header>
 
@@ -34,8 +36,30 @@
 </section>
 
 <main>
+  <!-- ACCUEIL -->
+  <section class="vue actif" id="vue-accueil">
+    <div class="carte" id="carte-mois" hidden>
+      <h2>Où en est le mois</h2>
+      <div class="ligne-outils"><b id="am-titre"></b><span class="muted" id="am-resume"></span><button class="primaire" id="am-import" style="margin-left:auto">Aller à l'import</button></div>
+      <div id="am-sources" class="sources-mois"></div>
+    </div>
+    <div class="carte">
+      <h2>Ce qui bouge</h2>
+      <p class="aide" id="cb-info"></p>
+      <div class="ligne-outils">
+        <select id="cb-mode"><option value="n1">Évolution du CA vs N-1 (cumul depuis janvier)</option><option value="mois">Positionnement vs mois précédent</option></select>
+        <select id="cb-pays"><option value="">Tous les pays</option></select>
+        <select id="cb-type"><option value="">Succursales et franchises</option><option>Succursale</option><option>Franchise</option></select>
+      </div>
+      <div class="grille2" style="margin-top:12px">
+        <div><h3 class="cb-titre hausse">En tête</h3><div id="cb-haut"></div></div>
+        <div><h3 class="cb-titre baisse">À surveiller</h3><div id="cb-bas"></div></div>
+      </div>
+    </div>
+  </section>
+
   <!-- IMPORT -->
-  <section class="vue actif" id="vue-import">
+  <section class="vue" id="vue-import">
     <div class="carte" id="carte-dossier-requis" hidden>
       <h2>Choisir le dossier de travail</h2>
       <p class="aide">Sélectionne ton dossier « Suivi Stats » dans Dropbox. L'appli y lit le référentiel et les objectifs, et y enregistre chaque mois. Aucune donnée n'est envoyée en ligne.</p>

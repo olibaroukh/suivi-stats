@@ -370,3 +370,24 @@ body.non-connecte main,body.non-connecte .app-head nav{display:none}
 .tableau-acces tr.inactif td{color:var(--muted);text-decoration:line-through}
 #ac-perim .chk{max-height:140px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px}
 #ac-perim [hidden]{display:none!important}
+
+/* Recherche globale */
+.recherche-globale{position:relative;margin-left:auto;margin-right:12px}
+.recherche-globale input{width:230px}
+#rg-res{position:absolute;right:0;top:110%;width:340px;max-height:360px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50}
+#rg-res div{padding:7px 10px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)}
+#rg-res div:hover,#rg-res div.sel{background:#FBEDEC}
+#rg-res small{display:block;color:var(--muted)}
+body.non-connecte .recherche-globale{display:none}
+/* Accueil */
+.sources-mois{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px 14px;margin-top:10px;font-size:12.5px}
+.sources-mois div{display:flex;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--line)}
+.sources-mois .pastille{width:9px;height:9px;border-radius:50%;flex:none;transform:translateY(1px)}
+.sources-mois .recu .pastille{background:#2E9E5B}.sources-mois .repris .pastille{background:#E5A425}.sources-mois .absent .pastille{background:#C9C2C1}.sources-mois .retard .pastille{background:var(--accent)}
+.sources-mois small{color:var(--muted);margin-left:auto;text-align:right}
+.cb-titre{font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:1px}
+.cb-titre.hausse{color:#2E9E5B}.cb-titre.baisse{color:var(--accent)}
+.cb-ligne{display:flex;gap:8px;padding:6px 4px;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer}
+.cb-ligne:hover{background:#FBEDEC}
+.cb-ligne .v{margin-left:auto;font-weight:700;white-space:nowrap}
+.cb-ligne small{color:var(--muted)}
