@@ -3,7 +3,7 @@
 (function (root) {
   'use strict';
 
-  const DEVISE_SYM = { 'Euro': '€', 'Shekel': '₪', 'Franc Suisse': 'CHF', 'Livre Sterling': '£', 'Dollars Canadien': '$CA', 'Dolard': '$' };
+  const DEVISE_SYM = { 'Euro': '€', 'Shekel': '₪', 'Franc Suisse': 'CHF', 'Livre Sterling': '£', 'Dollars Canadien': '$', 'Dolard': '$' };
   // Taux de conversion vers l'euro pour les totaux multi-devises (modifiables dans Réglages)
   const TAUX_DEFAUT = { 'Euro': 1, 'Shekel': 0.25, 'Franc Suisse': 1.06, 'Livre Sterling': 1.17, 'Dollars Canadien': 0.66, 'Dolard': 0.92 };
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
@@ -329,7 +329,7 @@
     const t = md.total, g = md.groupe;
     const R = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b><small>${l.succ} succ.</small></td><td>${f(l.ca, 'kn')}</td><td class="${c(l.re, l.re >= 0.2)}">${f(l.re, 'pct1')}</td><td class="${c(l.marge, l.marge >= 0.7)}">${f(l.marge, 'pct1')}</td><td>${f(l.loyers, 'pct1')}</td><td>${f(l.pub, 'pct1')}</td><td class="${c(l.rentaSal, l.rentaSal <= 0.28)}">${f(l.rentaSal, 'pct1')}</td><td>${l.note == null ? '–' : '★ ' + nb(l.note, 1)}</td><td>${nb(l.avis)}</td></tr>`;
     const tuile = (lib, v, s = '', cls = '') => `<div class="ck-cpt ${cls}"><div class="v">${v}</div><div class="l">${esc(lib)}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
-    const DS = { 'Euro': '€', 'Shekel': '₪', 'Livre Sterling': '£', 'Dollars Canadien': '$CA' };
+    const DS = { 'Euro': '€', 'Shekel': '₪', 'Livre Sterling': '£', 'Dollars Canadien': '$' };
     const site = !md.site ? '<div class="nd">Données du site internet non chargées (copier-coller du mail de fin de mois).</div>' : `<table class="ck-syn"><thead><tr><th class="nm"></th><th>CA TTC (k devise)</th><th>Évol.</th><th>Objectif (k devise)</th><th>Position.</th></tr></thead><tbody>
       ${md.site.lignes.map(l => `<tr><td class="nm"><b>${esc(l.nom)}</b><small>${DS[l.dev]}</small></td><td class="fort">${f(l.ca, 'kn')}</td><td class="${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'kn')}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td></tr>`).join('')}
       <tr class="tot"><td class="nm"><b>${esc(md.site.total.nom)}</b></td><td>${f(md.site.total.ca, 'kn')}</td><td></td><td>${f(md.site.total.obj, 'kn')}</td><td>${f(md.site.total.posit, 'pct0')}</td></tr></tbody></table>
