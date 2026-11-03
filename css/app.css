@@ -362,3 +362,10 @@ main{max-width:1240px;margin:0 auto;padding:24px 28px 10px}
 #ecran-connexion .connexion{max-width:380px;width:100%}
 body.non-connecte main,body.non-connecte .app-head nav{display:none}
 .app-head .dossier a{color:var(--accent);margin-left:8px;font-size:12px}
+
+/* Accès des équipes */
+.tableau-acces table{width:100%;border-collapse:collapse;font-size:12.5px}
+.tableau-acces th,.tableau-acces td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.tableau-acces th{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.tableau-acces tr.inactif td{color:var(--muted);text-decoration:line-through}
+#ac-perim .chk{max-height:140px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px}
