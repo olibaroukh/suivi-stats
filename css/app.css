@@ -391,3 +391,10 @@ body.non-connecte .recherche-globale{display:none}
 .cb-ligne:hover{background:#FBEDEC}
 .cb-ligne .v{margin-left:auto;font-weight:700;white-space:nowrap}
 .cb-ligne small{color:var(--muted)}
+
+/* Cockpit : sélection des magasins affichés */
+.ck-sel{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+#ck-sel-liste{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;max-height:340px;overflow:auto}
+#ck-sel-liste fieldset{border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin:0}
+#ck-sel-liste legend{font-weight:700;font-size:12px}
+#ck-sel-liste label{display:block;font-weight:400;font-size:12px;color:var(--ink)}

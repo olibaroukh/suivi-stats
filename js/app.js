@@ -17,7 +17,7 @@
     $('#imp-mois').innerHTML = MOIS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join(''); $('#imp-mois').value = prev.getMonth() + 1;
     $('#imp-annee').innerHTML = [0, 1, 2].map(k => `<option>${now.getFullYear() - k}</option>`).join(''); $('#imp-annee').value = prev.getFullYear();
     document.querySelectorAll('.app-head nav button').forEach(b => b.onclick = () => vue(b.dataset.vue));
-    brancherImport(); brancherFiches(); brancherReglages(); brancherCockpits();
+    brancherImport(); brancherFiches(); brancherReglages(); brancherCockpits(); brancherSelCockpit();
     $('#w-url').value = localStorage.getItem('workerUrl') || 'https://zimbra-relay.oli-baroukh.workers.dev';
     $('#w-cle').value = localStorage.getItem('workerCle') || '';
     $('#btn-dossier').onclick = async () => { await Store.choisirDossier(); await dossierPret(); };
@@ -376,7 +376,10 @@
     const th = $('#ck-theme').value; let tri = $('#ck-tri').value;
     if (tri === '__theme') tri = th !== 'siege' ? Cockpit.THEMES[th].tri : 'code';
     const siege = (await Store.lireJSON(`config/objectifs-siege-${CK.cle.slice(0, 4)}.json`)) || {};
-    const md = Cockpit.construire(CK.photo, S.ref, p, th, { tri, objectifs: S.objectifs, taux: await tauxChange(), siege });
+    const exclus = selCockpit(p.id);
+    const pAff = (p.filtre && exclus.size) ? { ...p, filtre: r => p.filtre(r) && !exclus.has(String(r.code)) } : p;
+    majBoutonSel(p, exclus);
+    const md = Cockpit.construire(CK.photo, S.ref, pAff, th, { tri, objectifs: S.objectifs, taux: await tauxChange(), siege });
     const triLib = $('#ck-tri').selectedOptions[0].textContent.replace('Tri : ', '');
     const poser = (h, pages) => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h, pages })}</div>`; return [...$('#ck-apercu').querySelectorAll('.cockpit')]; };
     let pages = poser(640, 1), page = pages[0];
@@ -499,6 +502,39 @@
 
 
 
+
+
+  // ---------- Cockpit : magasins affichés (mémorisé par périmètre, sur cet ordinateur) ----------
+  const cleSel = id => 'ckSel:' + ((Store.cloud() && Store.profil() && Store.profil().email) || 'local') + ':' + id;
+  function selCockpit(id) { try { return new Set(JSON.parse(localStorage.getItem(cleSel(id)) || '[]')); } catch (e) { return new Set(); } }
+  function ecrireSel(id, set) { if (set.size) localStorage.setItem(cleSel(id), JSON.stringify([...set])); else localStorage.removeItem(cleSel(id)); }
+  function magsPerim(p) { return p.filtre ? S.ref.filter(r => r.actif === 'Oui' && p.filtre(r) && CK.photo && CK.photo.magasins[String(r.code)]) : []; }
+  function majBoutonSel(p, exclus) {
+    const mags = magsPerim(p), b = $('#ck-sel-btn');
+    b.hidden = !mags.length; if (!mags.length) { $('#ck-sel').hidden = true; return; }
+    const n = mags.filter(r => !exclus.has(String(r.code))).length;
+    b.textContent = `Magasins affichés (${n} / ${mags.length})`; b.classList.toggle('primaire', n < mags.length);
+    if (!$('#ck-sel').hidden) remplirSel(p, exclus);
+  }
+  function remplirSel(p, exclus) {
+    const grp = p.sousTotal || p.regrouper || (r => r.pays === 'FRANCE' ? (r.ar || 'France') : r.pays);
+    const groupes = {}; magsPerim(p).forEach(r => { const g = grp(r) || '–'; (groupes[g] = groupes[g] || []).push(r); });
+    $('#ck-sel-liste').innerHTML = Object.keys(groupes).sort().map(g => {
+      const l = groupes[g].sort((x, y) => String(x.magasin).localeCompare(String(y.magasin))), tous = l.every(r => !exclus.has(String(r.code)));
+      return `<fieldset><legend><label><input type="checkbox" data-groupe="${esc(g)}"${tous ? ' checked' : ''}> ${esc(g)} (${l.length})</label></legend>` +
+        l.map(r => `<label><input type="checkbox" data-code="${esc(r.code)}"${exclus.has(String(r.code)) ? '' : ' checked'}> ${esc(r.code)} ${esc(r.magasin)}</label>`).join('') + '</fieldset>';
+    }).join('');
+    $('#ck-sel-liste').onchange = e => {
+      const ex = selCockpit(p.id), i = e.target;
+      if (i.dataset.groupe != null) groupes[i.dataset.groupe].forEach(r => i.checked ? ex.delete(String(r.code)) : ex.add(String(r.code)));
+      else if (i.dataset.code) i.checked ? ex.delete(i.dataset.code) : ex.add(i.dataset.code);
+      ecrireSel(p.id, ex); afficherCockpit();
+    };
+  }
+  function brancherSelCockpit() {
+    $('#ck-sel-btn').onclick = () => { const p = CK.perims.find(x => x.id === $('#ck-perim').value); $('#ck-sel').hidden = !$('#ck-sel').hidden; if (!$('#ck-sel').hidden && p) remplirSel(p, selCockpit(p.id)); };
+    $('#ck-sel-tout').onclick = e => { e.preventDefault(); const id = $('#ck-perim').value; ecrireSel(id, new Set()); afficherCockpit(); };
+  }
 
   // ---------- Récupération des pièces jointes dans Zimbra (administrateurs, mode Cloudflare) ----------
   // Cosium : tous les ZIP de la fenêtre sont téléchargés, puis on garde, par serveur et par mail (n/4),
