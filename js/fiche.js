@@ -3,7 +3,7 @@
   'use strict';
 
   const LANGUES = { FRANCAIS: 'fr', HEBREU: 'he', ANGLAIS: 'en', ESPAGNOL: 'es', FLAMAND: 'nl', ALLEMAND: 'de' };
-  const DEVISES = { 'Euro': '€', 'Shekel': '₪', 'Franc Suisse': 'CHF', 'Livre Sterling': '£', 'Dollars Canadien': '$CA', 'Dolard': '$' };
+  const DEVISES = { 'Euro': '€', 'Shekel': '₪', 'Franc Suisse': 'CHF', 'Livre Sterling': '£', 'Dollars Canadien': '$', 'Dolard': '$' };
   const OBJ_REPORTING = { CS: 0.70, CU: 0.06, CW: 0.07, CY: 0.28, CQ: 0.20 };
 
   const nz = v => (v == null || v === '' || !isFinite(v)) ? null : +v;
@@ -190,6 +190,7 @@
     const loc = lang === 'he' ? 'he-IL' : lang === 'en' ? 'en-GB' : lang === 'es' ? 'es-ES' : 'fr-FR';
     const nb = (v, d = 0) => v == null ? '–' : Number(v).toLocaleString(loc, { maximumFractionDigits: d, minimumFractionDigits: d });
     const eur = v => v == null ? '–' : nb(Math.round(v)) + ' ' + dev;
+    const keur = v => v == null ? '–' : nb(Math.round(v / 1000)) + ' k' + dev; // vignettes du haut : en milliers
     const pc = (v, d = 1) => v == null ? '–' : nb(v * 100, d) + ' %';
     const sg = (v, f) => v == null ? '' : (v > 0 ? '+' : '') + f(v);
     const cls = v => v == null ? '' : v >= 0 ? 'ok' : 'ko';
@@ -267,11 +268,11 @@
 <div class="fiche" dir="${lang === 'he' ? 'rtl' : 'ltr'}" lang="${lang}">
   ${entete(false)}
   <div class="chiffres">
-    ${tuile(t('CA GÉNÉRÉ:').replace(/:$/, ''), eur(c.ca.ca), '', evo(c.ca.evol, null, pc))}
-    ${tuile(t('OBJECTIF:').replace(/:$/, ''), eur(c.ca.obj))}
+    ${tuile(t('CA GÉNÉRÉ:').replace(/:$/, ''), keur(c.ca.ca), '', evo(c.ca.evol, null, pc))}
+    ${tuile(t('OBJECTIF:').replace(/:$/, ''), keur(c.ca.obj))}
     ${tuile('Positionnement', pc(c.ca.posit), 'fort ' + etatPct(c.ca.posit, 1), 'projection fin d’année')}
-    ${tuile(t('CA MANQUANT'), eur(c.ca.manquant), c.ca.manquant ? 'rouge' : '', `${esc(t('Restant par mois'))} ${eur(c.ca.restant)}`)}
-    ${tuile(t('Potentiel CA'), eur(c.ca.potentiel), '', `${esc(t('Positionnement potentiel'))} ${pc(c.ca.positPot)}`)}
+    ${tuile(t('CA MANQUANT'), keur(c.ca.manquant), c.ca.manquant ? 'rouge' : '', `${esc(t('Restant par mois'))} ${keur(c.ca.restant)}`)}
+    ${tuile(t('Potentiel CA'), keur(c.ca.potentiel), '', `${esc(t('Positionnement potentiel'))} ${pc(c.ca.positPot)}`)}
   </div>
   ${section('Équipe', blocEquipe(), 'sec-equipe')}
   ${section('Répartition du CA', repartition())}
