@@ -92,6 +92,9 @@
     dep.ondrop = async e => { e.preventDefault(); dep.classList.remove('survol'); ajouterFichiers(await fichiersDepuisDrop(e.dataTransfer)); };
     $('#inp-fichiers').onchange = e => ajouterFichiers([...e.target.files]);
     $('#btn-calculer').onclick = calculer;
+    const majCompleter = () => { const k = `${$('#imp-annee').value}-${pad(+$('#imp-mois').value)}`, existe = (S.moisDispo || []).includes(k);
+      $('#imp-completer').checked = existe; $('#lbl-completer').hidden = !existe; };
+    $('#imp-mois').addEventListener('change', majCompleter); $('#imp-annee').addEventListener('change', majCompleter); S.majCompleter = majCompleter;
     $('#btn-enregistrer').onclick = enregistrer;
   }
   async function fichiersDepuisDrop(dt) {
@@ -158,12 +161,17 @@
     $('#calc-info').textContent = 'Calcul en cours…'; $('#btn-calculer').disabled = true; $('#barre-calc').hidden = false; $('#barre-calc div').style.width = '30%';
     try {
       const etatAnnee = (await Store.lireJSON(`donnees/${annee}/etat.json`)) || {};
-      const precedent = mois > 1 ? await Store.lireJSON(`donnees/${annee}-${pad(mois - 1)}/photo.json`) : null;
-      let wr = await workerRatings(); const alerteW = wr && wr.erreur ? 'Worker avis Google injoignable : ' + wr.erreur : null; if (wr && wr.erreur) wr = null;
+      const completer = $('#imp-completer').checked && !$('#lbl-completer').hidden;
+      const existante = completer ? await Store.lireJSON(`donnees/${annee}-${pad(mois)}/photo.json`) : null;
+      if (completer && !existante) throw new Error('aucune photo enregistrée pour ce mois : décochez « Compléter ».');
+      const precedent = completer ? existante : mois > 1 ? await Store.lireJSON(`donnees/${annee}-${pad(mois - 1)}/photo.json`) : null;
+      let wr = completer ? null : await workerRatings(); const alerteW = wr && wr.erreur ? 'Worker avis Google injoignable : ' + wr.erreur : null; if (wr && wr.erreur) wr = null;
       const listes = S.listesConf || etatAnnee.listesConfidence || null;
       const res = await Pipeline.construire({ fichiers: S.fichiers, pastes: { lyleoo: $('#paste-lyleoo').value, ocm: $('#paste-ocm').value, site: $('#paste-site').value },
         annee, mois, ref: S.ref, spec: S.spec, etatAnnee, photoPrecedente: precedent, workerRatings: wr, listesConfidence: listes });
       if (alerteW) res.rapport.alertes.unshift(alerteW);
+      if (completer) { completerPhoto(existante, res); S.resultat = res; afficherRapport(res.rapport); $('#btn-enregistrer').disabled = false;
+        $('#calc-info').textContent = `${MOIS[mois - 1]} ${annee} complété (${res.rapport.misesAJour.join(', ') || 'aucune source'}) – vérifie puis enregistre.`; return; }
       // Mr Qualité : mis à jour une fois par an → dernier fichier connu conservé hors année (config/mr-qualite.json)
       try {
         const sm = res.rapport.sources.mr_qualite;
@@ -196,7 +204,29 @@
       $('#btn-enregistrer').disabled = false;
       $('#calc-info').textContent = `${MOIS[mois - 1]} ${annee} calculé – vérifie le rapport puis enregistre.`;
     } catch (e) { console.error(e); $('#calc-info').textContent = 'Erreur : ' + e.message; }
-    $('#btn-calculer').disabled = false; $('#barre-calc div').style.width = '100%'; setTimeout(() => $('#barre-calc').hidden = true, 600);
+    finally { $('#btn-calculer').disabled = false; $('#barre-calc div').style.width = '100%'; setTimeout(() => $('#barre-calc').hidden = true, 600); }
+  }
+  // Complément d'un mois déjà enregistré : seules les sources reçues remplacent leurs colonnes, tout le reste est conservé
+  function completerPhoto(base, res) {
+    const np = res.photo, srcs = res.rapport.sources, maj = [];
+    if ((srcs.cosium_n && srcs.cosium_n.statut === 'recu') || (srcs.cosium_n1 && srcs.cosium_n1.statut === 'recu'))
+      throw new Error('les exports Cosium demandent un import complet : décochez « Compléter le mois déjà enregistré ».');
+    const photo = JSON.parse(JSON.stringify(base)); photo.sources = photo.sources || {};
+    const EXTRAS = { confidence: ['_listes'], avis_google: ['_avisSource'] };
+    for (const src in Pipeline.COLONNES_SOURCE) {
+      if (!srcs[src] || srcs[src].statut !== 'recu') continue;
+      const cols = Pipeline.COLONNES_SOURCE[src].concat(EXTRAS[src] || []);
+      for (const c in photo.magasins) { const n = np.magasins[c] && np.magasins[c].N; if (!n) continue; cols.forEach(k => { if (k in n) photo.magasins[c].N[k] = n[k]; }); }
+      photo.sources[src] = srcs[src]; maj.push(Pipeline.LIBELLE_SOURCE[src] || src);
+    }
+    if (srcs.rh && srcs.rh.statut === 'recu') { photo.rh = np.rh; photo.equipes = np.equipes; photo.sources.rh = srcs.rh; maj.push('Export RH'); }
+    if (srcs.stat_indiv && srcs.stat_indiv.statut === 'recu') { photo.statsVendeurs = np.statsVendeurs; photo.equipes = np.equipes; photo.sources.stat_indiv = srcs.stat_indiv; maj.push('Stats par vendeur'); }
+    for (const s of ['lyleoo', 'ocm', 'site']) if (srcs[s] && srcs[s].statut === 'recu' && !maj.includes(Pipeline.LIBELLE_SOURCE[s])) { photo.sources[s] = srcs[s]; maj.push(Pipeline.LIBELLE_SOURCE[s]); }
+    if (srcs.site && srcs.site.statut === 'recu' && np.groupe && np.groupe.site) photo.groupe = Object.assign({}, photo.groupe, { site: np.groupe.site });
+    photo.genereLe = new Date().toISOString(); photo.completeLe = photo.genereLe;
+    res.photo = photo;
+    res.rapport.sources = photo.sources; res.rapport.misesAJour = maj;
+    res.rapport.journal.unshift(maj.length ? `Complément du mois enregistré : ${maj.join(', ')} mis à jour ; tout le reste est conservé.` : 'Complément : aucune source reconnue dans les fichiers déposés.');
   }
   function afficherRapport(r) {
     $('#carte-rapport').hidden = false;
@@ -234,6 +264,7 @@
   async function listerPhotos() {
     const ks = (await Store.lister('donnees')).filter(n => /^\d{4}-\d{2}$/.test(n)).sort().reverse();
     S.moisDispo = ks;
+    if (S.majCompleter) S.majCompleter();
     $('#ck-photo').innerHTML = ks.length ? ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)} (cumul depuis janvier)</option>`).join('') : '<option value="">Aucun mois enregistré</option>';
     $('#fi-photo').innerHTML = ks.length ? ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join('') : '<option value="">Aucun mois enregistré</option>';
     if (ks.length) await chargerPhoto(ks[0]);
