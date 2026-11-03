@@ -113,5 +113,5 @@
     return { total: fichiers.length, echecs, dossier: d.name };
   }
 
-  root.Store = { cloud, estAdmin, profil, connecter, deconnecter, copierDossierVersCloud, ecritureDurable, supporte, choisirDossier, restaurer, autoriser, nomDossier, lire, lireTexte, lireJSON, lireBinaire, ecrire, ecrireJSON, lister, _memoire: memoire };
+  root.Store = { api: (c, o) => appel(c, o), cloud, estAdmin, profil, connecter, deconnecter, copierDossierVersCloud, ecritureDurable, supporte, choisirDossier, restaurer, autoriser, nomDossier, lire, lireTexte, lireJSON, lireBinaire, ecrire, ecrireJSON, lister, _memoire: memoire };
 })(typeof self !== 'undefined' ? self : this);

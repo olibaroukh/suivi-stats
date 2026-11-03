@@ -179,6 +179,36 @@
         <button id="btn-s-login">Se connecter</button> <span class="muted" id="s-info"></span>
         <div style="margin-top:8px"><button id="btn-s-maj">Mettre à jour le score santé et les bilans de passage du mois traité</button> <span class="muted" id="s-maj-info"></span></div>
       </div>
+      <div class="carte" id="carte-acces" hidden>
+        <h2>Accès des équipes</h2>
+        <p class="aide">Chaque personne se connecte avec son adresse et son mot de passe Zimbra. Elle ne voit que les magasins de son périmètre et ne peut rien modifier. Un compte désactivé perd l'accès immédiatement.</p>
+        <div id="acces-liste" class="tableau-acces"></div>
+        <button id="btn-acces-nouveau" style="margin-top:10px">+ Ajouter une personne</button>
+        <div id="acces-form" hidden style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+          <div class="grille2">
+            <div><label>Adresse e-mail Zimbra</label><input id="ac-email" type="email" placeholder="prenom.nom@optical-center.com" style="width:100%"></div>
+            <div><label>Nom affiché</label><input id="ac-nom" placeholder="Prénom Nom" style="width:100%"></div>
+          </div>
+          <label style="margin-top:10px"><input type="checkbox" id="ac-tous"> Tout le réseau</label>
+          <div id="ac-perim">
+            <label style="margin-top:10px">Pays</label><div class="chk" id="ac-pays"></div>
+            <label style="margin-top:10px">Animateurs régionaux (AR)</label><div class="chk" id="ac-ar"></div>
+            <label style="margin-top:10px">Franchisés / groupes</label><div class="chk" id="ac-groupes"></div>
+            <div class="grille2" style="margin-top:10px">
+              <div><label>Magasins ajoutés (codes séparés par des virgules)</label><input id="ac-codes" style="width:100%" placeholder="ex. 1302, 1303"></div>
+              <div><label>Magasins exclus (codes)</label><input id="ac-exclure-codes" style="width:100%"></div>
+            </div>
+            <label style="margin-top:10px">Pays exclus</label><div class="chk" id="ac-exclure-pays"></div>
+          </div>
+          <label style="margin-top:10px">Écrans visibles</label>
+          <div class="chk"><label><input type="checkbox" class="ac-ecran" value="fiches" checked> Fiches magasins</label><label><input type="checkbox" class="ac-ecran" value="cockpits" checked> Cockpits</label></div>
+          <label style="margin-top:10px"><input type="checkbox" id="ac-actif" checked> Compte actif</label>
+          <p class="muted" id="ac-apercu"></p>
+          <button class="primaire" id="btn-acces-enregistrer">Enregistrer</button> <button id="btn-acces-annuler">Annuler</button>
+          <span class="muted" id="ac-info"></span>
+        </div>
+        <details style="margin-top:14px"><summary class="muted" style="cursor:pointer">Dernières connexions</summary><div id="acces-journal" class="tableau-acces"></div></details>
+      </div>
       <div class="carte" id="carte-cloud" hidden>
         <h2>Cloudflare – reprise du dossier Dropbox</h2>
         <p class="aide">Copie tout le contenu du dossier « Suivi Stats » (référentiel, objectifs, mois enregistrés, fichiers reçus) vers Cloudflare. Les PDF du dossier sorties ne sont pas copiés (ils se régénèrent). À faire une fois ; peut être relancé sans risque (les fichiers sont remplacés).</p>

@@ -60,10 +60,11 @@
       if (!admin && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
       b.hidden = !ok;
     });
-    $('#carte-cloud').hidden = !admin;
+    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin;
     if (!admin) { const prem = [...document.querySelectorAll('.app-head nav button')].find(b => !b.hidden); if (prem) vue(prem.dataset.vue); }
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
+    if (admin) brancherAcces();
   }
   async function modeLocal() {
     document.body.classList.remove('non-connecte'); $('#ecran-connexion').hidden = true;
@@ -311,6 +312,9 @@
   async function tauxChange() { return Object.assign({}, Cockpit.TAUX_DEFAUT, (await Store.lireJSON('config/taux-change.json')) || {}); }
   function remplirPerimetres() {
     CK.perims = Cockpit.perimetres(S.ref);
+    // Comptes à périmètre limité : pas de vue Siège (elle supposerait tout le réseau)
+    const pr = Store.cloud() && Store.profil();
+    if (pr && pr.role !== 'admin' && !(pr.perimetre && pr.perimetre.tous)) CK.perims = CK.perims.filter(p => p.id !== 'siege');
     const groupes = [...new Set(CK.perims.map(p => p.groupeLib))];
     const avant = $('#ck-perim').value;
     $('#ck-perim').innerHTML = groupes.map(g => `<optgroup label="${esc(g)}">${CK.perims.filter(p => p.groupeLib === g).map(p => `<option value="${esc(p.id)}">${esc(p.lib)}</option>`).join('')}</optgroup>`).join('');
@@ -456,6 +460,74 @@
   function exporterXlsx(feuille, data, cols, nom) {
     const inv = Object.entries(cols); const rows = data.map(d => Object.fromEntries(inv.map(([lab, k]) => [lab, d[k] == null ? '' : d[k]])));
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows, { header: inv.map(x => x[0]) }), feuille.slice(0, 31)); XLSX.writeFile(wb, nom);
+  }
+
+
+  // ---------- Accès des équipes (administrateurs, mode Cloudflare) ----------
+  const AC = { liste: [] };
+  const listeCodes = s => String(s || '').split(/[,;\s]+/).map(x => x.trim().replace(/^0+/, '')).filter(Boolean);
+  function resumePerim(p) {
+    if (!p || p.tous) return 'Tout le réseau';
+    const morceaux = [];
+    if (p.pays && p.pays.length) morceaux.push(p.pays.join(', '));
+    if (p.ar && p.ar.length) morceaux.push('AR : ' + p.ar.join(', '));
+    if (p.groupes && p.groupes.length) morceaux.push('Groupes : ' + p.groupes.join(', '));
+    if (p.codes && p.codes.length) morceaux.push('+ ' + p.codes.join(', '));
+    if (p.exclurePays && p.exclurePays.length) morceaux.push('sauf ' + p.exclurePays.join(', '));
+    if (p.exclureCodes && p.exclureCodes.length) morceaux.push('sauf ' + p.exclureCodes.join(', '));
+    return morceaux.join(' · ') || 'Aucun magasin';
+  }
+  // Même règle que le Worker (worker/src/index.js › codesAutorises), pour l'aperçu
+  function nbMagasins(p) {
+    const n = x => String(x == null ? '' : x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    const dans = (l, v) => Array.isArray(l) && l.some(x => n(x) === n(v));
+    return S.ref.filter(m => { let ok = !!p.tous || dans(p.codes, m.code) || dans(p.pays, m.pays) || dans(p.groupes, m.groupe) || dans(p.ar, m.ar); if (dans(p.exclurePays, m.pays) || dans(p.exclureCodes, m.code)) ok = false; return ok && m.actif === 'Oui'; }).length;
+  }
+  function cases(id, valeurs, cochees) { $(id).innerHTML = valeurs.map(v => `<label><input type="checkbox" value="${esc(v)}"${cochees.includes(v) ? ' checked' : ''}> ${esc(v)}</label>`).join(''); }
+  const coches = id => [...document.querySelectorAll(id + ' input:checked')].map(i => i.value);
+  function lirePerimForm() {
+    if ($('#ac-tous').checked) return { tous: true };
+    return { pays: coches('#ac-pays'), ar: coches('#ac-ar'), groupes: coches('#ac-groupes'), codes: listeCodes($('#ac-codes').value), exclurePays: coches('#ac-exclure-pays'), exclureCodes: listeCodes($('#ac-exclure-codes').value) };
+  }
+  function majApercu() { $('#ac-perim').hidden = $('#ac-tous').checked; $('#ac-apercu').textContent = `Périmètre : ${resumePerim(lirePerimForm())} — ${nbMagasins(lirePerimForm())} magasin(s) actif(s)`; }
+  function ouvrirForm(u) {
+    u = u || { email: '', nom: '', perimetre: {}, ecrans: ['fiches', 'cockpits'], actif: 1 };
+    const p = u.perimetre || {}, uniq = k => [...new Set(S.ref.map(m => m[k]).filter(Boolean))].sort((x, y) => x.localeCompare(y));
+    $('#ac-email').value = u.email; $('#ac-email').disabled = !!u.email; $('#ac-nom').value = u.nom || '';
+    $('#ac-tous').checked = !!p.tous;
+    cases('#ac-pays', uniq('pays'), p.pays || []); cases('#ac-exclure-pays', uniq('pays'), p.exclurePays || []);
+    cases('#ac-ar', uniq('ar'), p.ar || []); cases('#ac-groupes', uniq('groupe').filter(g => !/^optical center$/i.test(g)), p.groupes || []);
+    $('#ac-codes').value = (p.codes || []).join(', '); $('#ac-exclure-codes').value = (p.exclureCodes || []).join(', ');
+    document.querySelectorAll('.ac-ecran').forEach(c => c.checked = !u.ecrans || u.ecrans.includes(c.value));
+    $('#ac-actif').checked = u.actif !== 0 && u.actif !== false; $('#ac-info').textContent = '';
+    $('#acces-form').hidden = false; majApercu(); $('#acces-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  async function chargerAcces() {
+    try {
+      const r = await Store.api('/admin/utilisateurs'); AC.liste = (await r.json()).utilisateurs || [];
+      $('#acces-liste').innerHTML = AC.liste.length ? `<table><tr><th>Personne</th><th>Périmètre</th><th>Écrans</th><th></th></tr>` + AC.liste.map((u, i) => `<tr class="${u.actif ? '' : 'inactif'}"><td><b>${esc(u.nom || '')}</b><br>${esc(u.email)}</td><td>${esc(resumePerim(u.perimetre))}<br><span class="muted">${nbMagasins(u.perimetre || {})} magasin(s)</span></td><td>${esc((u.ecrans || ['fiches', 'cockpits']).join(', '))}</td><td><a href="#" data-i="${i}">Modifier</a></td></tr>`).join('') + '</table>' : '<p class="muted">Aucun compte pour l’instant (en dehors des administrateurs).</p>';
+      document.querySelectorAll('#acces-liste a[data-i]').forEach(l => l.onclick = e => { e.preventDefault(); ouvrirForm(AC.liste[+l.dataset.i]); });
+      const j = await (await Store.api('/admin/connexions')).json();
+      const lib = { ok: 'connecté', 'refus-zimbra': 'mot de passe refusé', 'non-autorise': 'sans accès' };
+      $('#acces-journal').innerHTML = '<table><tr><th>Date</th><th>Adresse</th><th>Résultat</th></tr>' + (j.connexions || []).slice(0, 50).map(c => `<tr><td>${esc(new Date(c.le).toLocaleString('fr-FR'))}</td><td>${esc(c.email)}</td><td>${esc(lib[c.resultat] || c.resultat)}</td></tr>`).join('') + '</table>';
+    } catch (e) { $('#acces-liste').innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+  }
+  function brancherAcces() {
+    $('#btn-acces-nouveau').onclick = () => ouvrirForm();
+    $('#btn-acces-annuler').onclick = () => { $('#acces-form').hidden = true; };
+    $('#acces-form').oninput = majApercu; $('#acces-form').onchange = majApercu;
+    $('#btn-acces-enregistrer').onclick = async () => {
+      const email = $('#ac-email').value.trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $('#ac-info').textContent = 'Adresse e-mail invalide'; return; }
+      const perimetre = lirePerimForm(), ecrans = [...document.querySelectorAll('.ac-ecran:checked')].map(c => c.value);
+      if (!ecrans.length) { $('#ac-info').textContent = 'Cochez au moins un écran'; return; }
+      if (!perimetre.tous && !nbMagasins(perimetre)) { $('#ac-info').textContent = 'Ce périmètre ne contient aucun magasin'; return; }
+      $('#ac-info').textContent = 'Enregistrement…';
+      const r = await Store.api('/admin/utilisateurs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, nom: $('#ac-nom').value.trim(), role: 'lecteur', perimetre, ecrans, actif: $('#ac-actif').checked }) });
+      if (!r.ok) { $('#ac-info').textContent = 'Échec de l’enregistrement'; return; }
+      $('#acces-form').hidden = true; await chargerAcces();
+    };
+    chargerAcces();
   }
 
   // ---------- Utilitaires ----------
