@@ -402,3 +402,6 @@ body.non-connecte .recherche-globale{display:none}
 /* Bandeau de mise à jour */
 #bandeau-maj{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:100;display:flex;gap:14px;align-items:center;background:var(--noir);color:#fff;padding:10px 12px 10px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:13.5px;max-width:calc(100vw - 24px)}
 #bandeau-maj[hidden]{display:none}
+
+.cockpit .moy{color:#D9822B}
+.cockpit .ck-syn tr.tot td.moy{color:#FFC27A}
