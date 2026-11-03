@@ -466,14 +466,16 @@
   // ---------- Accès des équipes (administrateurs, mode Cloudflare) ----------
   const AC = { liste: [] };
   const listeCodes = s => String(s || '').split(/[,;\s]+/).map(x => x.trim().replace(/^0+/, '')).filter(Boolean);
+  const libTypes = p => (p.types && p.types.length === 1) ? (p.types[0] === 'Franchise' ? 'Franchises uniquement' : 'Succursales uniquement') : '';
   function resumePerim(p) {
-    if (!p || p.tous) return 'Tout le réseau';
-    const morceaux = [];
+    p = p || {};
+    if (p.tous) return ['Tout le réseau', libTypes(p)].filter(Boolean).join(' · ');
+    const morceaux = [libTypes(p)].filter(Boolean);
     if (p.pays && p.pays.length) morceaux.push(p.pays.join(', '));
     if (p.ar && p.ar.length) morceaux.push('AR : ' + p.ar.join(', '));
     if (p.groupes && p.groupes.length) morceaux.push('Groupes : ' + p.groupes.join(', '));
     if (p.codes && p.codes.length) morceaux.push('+ ' + p.codes.join(', '));
-    if (p.exclurePays && p.exclurePays.length) morceaux.push('sauf ' + p.exclurePays.join(', '));
+
     if (p.exclureCodes && p.exclureCodes.length) morceaux.push('sauf ' + p.exclureCodes.join(', '));
     return morceaux.join(' · ') || 'Aucun magasin';
   }
@@ -481,21 +483,26 @@
   function nbMagasins(p) {
     const n = x => String(x == null ? '' : x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
     const dans = (l, v) => Array.isArray(l) && l.some(x => n(x) === n(v));
-    return S.ref.filter(m => { let ok = !!p.tous || dans(p.codes, m.code) || dans(p.pays, m.pays) || dans(p.groupes, m.groupe) || dans(p.ar, m.ar); if (dans(p.exclurePays, m.pays) || dans(p.exclureCodes, m.code)) ok = false; return ok && m.actif === 'Oui'; }).length;
+    return S.ref.filter(m => { let ok = !!p.tous || dans(p.codes, m.code) || dans(p.pays, m.pays) || dans(p.groupes, m.groupe) || dans(p.ar, m.ar); if (Array.isArray(p.types) && p.types.length && !dans(p.types, m.type) && !dans(p.codes, m.code)) ok = false; if (dans(p.exclurePays, m.pays) || dans(p.exclureCodes, m.code)) ok = false; return ok && m.actif === 'Oui'; }).length;
   }
   function cases(id, valeurs, cochees) { $(id).innerHTML = valeurs.map(v => `<label><input type="checkbox" value="${esc(v)}"${cochees.includes(v) ? ' checked' : ''}> ${esc(v)}</label>`).join(''); }
   const coches = id => [...document.querySelectorAll(id + ' input:checked')].map(i => i.value);
   function lirePerimForm() {
-    if ($('#ac-tous').checked) return { tous: true };
-    return { pays: coches('#ac-pays'), ar: coches('#ac-ar'), groupes: coches('#ac-groupes'), codes: listeCodes($('#ac-codes').value), exclurePays: coches('#ac-exclure-pays'), exclureCodes: listeCodes($('#ac-exclure-codes').value) };
+    const t = [...document.querySelectorAll('.ac-type:checked')].map(c => c.value);
+    const types = t.length === 1 ? t : undefined; // les deux cochés = pas de restriction
+    if ($('#ac-tous').checked) return { tous: true, types, exclureCodes: listeCodes($('#ac-exclure-codes').value) };
+    return { pays: coches('#ac-pays'), ar: coches('#ac-ar'), groupes: coches('#ac-groupes'), codes: listeCodes($('#ac-codes').value), types, exclureCodes: listeCodes($('#ac-exclure-codes').value) };
   }
-  function majApercu() { $('#ac-perim').hidden = $('#ac-tous').checked; $('#ac-apercu').textContent = `Périmètre : ${resumePerim(lirePerimForm())} — ${nbMagasins(lirePerimForm())} magasin(s) actif(s)`; }
+  function majApercu() {
+    if (!document.querySelectorAll('.ac-type:checked').length) { $('#ac-apercu').textContent = 'Cochez au moins un type de magasins'; return; }
+    $('#ac-perim').querySelectorAll('.chk, label').forEach(x => { if (x.closest('.grille2')) return; x.hidden = $('#ac-tous').checked; }); $('#ac-apercu').textContent = `Périmètre : ${resumePerim(lirePerimForm())} — ${nbMagasins(lirePerimForm())} magasin(s) actif(s)`; }
   function ouvrirForm(u) {
     u = u || { email: '', nom: '', perimetre: {}, ecrans: ['fiches', 'cockpits'], actif: 1 };
     const p = u.perimetre || {}, uniq = k => [...new Set(S.ref.map(m => m[k]).filter(Boolean))].sort((x, y) => x.localeCompare(y));
     $('#ac-email').value = u.email; $('#ac-email').disabled = !!u.email; $('#ac-nom').value = u.nom || '';
     $('#ac-tous').checked = !!p.tous;
-    cases('#ac-pays', uniq('pays'), p.pays || []); cases('#ac-exclure-pays', uniq('pays'), p.exclurePays || []);
+    cases('#ac-pays', uniq('pays'), p.pays || []);
+    document.querySelectorAll('.ac-type').forEach(c => c.checked = !(p.types && p.types.length) || p.types.includes(c.value));
     cases('#ac-ar', uniq('ar'), p.ar || []); cases('#ac-groupes', uniq('groupe').filter(g => !/^optical center$/i.test(g)), p.groupes || []);
     $('#ac-codes').value = (p.codes || []).join(', '); $('#ac-exclure-codes').value = (p.exclureCodes || []).join(', ');
     document.querySelectorAll('.ac-ecran').forEach(c => c.checked = !u.ecrans || u.ecrans.includes(c.value));
