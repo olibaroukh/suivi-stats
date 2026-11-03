@@ -40,9 +40,10 @@
     $('#lien-mode-local').onclick = e => { e.preventDefault(); localStorage.setItem('modeLocal', '1'); modeLocal(); };
     $('#lien-deconnexion').onclick = e => { e.preventDefault(); Store.deconnecter(); localStorage.removeItem('modeLocal'); location.reload(); };
     $('#btn-copie-cloud').onclick = async () => {
-      if (!confirm('Copier le dossier Suivi Stats vers Cloudflare ? Choisissez ensuite le dossier Dropbox › Suivi Stats.')) return;
       try {
-        const r = await Store.copierDossierVersCloud((n, t, c) => { $('#copie-info').textContent = `${n} / ${t} – ${c}`; });
+        const r = await Store.copierDossierVersCloud((n, t, c) => { $('#copie-info').textContent = `${n} / ${t} – ${c}`; },
+          (nb, nom) => confirm(`Copier ${nb} fichier(s) du dossier « ${nom} » vers Cloudflare ?`));
+        if (!r) { $('#copie-info').textContent = 'Copie annulée.'; return; }
         $('#copie-info').textContent = `Terminé : ${r.total - r.echecs.length} fichier(s) copié(s) depuis « ${r.dossier} »` + (r.echecs.length ? ` – ${r.echecs.length} échec(s) : ${r.echecs.slice(0, 5).join(', ')}` : '') + '. Rechargement…';
         setTimeout(() => location.reload(), 1500);
       } catch (e) { if (e.name !== 'AbortError') $('#copie-info').textContent = 'Erreur : ' + e.message; }

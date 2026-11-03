@@ -97,12 +97,14 @@
   }
 
   // Reprise : copie d'un dossier local (Dropbox › Suivi Stats) vers Cloudflare, hors PDF de sorties/
-  async function copierDossierVersCloud(progres) {
+  // Le sélecteur doit s'ouvrir immédiatement au clic (exigence de Chrome) : la confirmation vient après.
+  async function copierDossierVersCloud(progres, confirmer) {
     if (!estAdmin()) throw new Error('Réservé aux administrateurs');
     const d = await root.showDirectoryPicker({ id: 'suivi-stats', mode: 'read' });
     const fichiers = [];
     const parcourir = async (h, pre) => { for await (const [n, x] of h.entries()) { if (n.startsWith('.')) continue; if (x.kind === 'directory') { if (!(pre === '' && n === 'sorties')) await parcourir(x, pre + n + '/'); } else fichiers.push([pre + n, x]); } };
     await parcourir(d, '');
+    if (confirmer && !confirmer(fichiers.length, d.name)) return null;
     let n = 0, echecs = [];
     for (const [chemin, h] of fichiers) {
       try { await cloudEcrire(chemin, await h.getFile()); } catch (e) { echecs.push(chemin); }
