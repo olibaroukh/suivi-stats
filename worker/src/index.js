@@ -73,6 +73,7 @@ async function schema(env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS connexions (email TEXT, le TEXT, resultat TEXT)`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS echecs (identifiant TEXT PRIMARY KEY, nb INTEGER, depuis INTEGER)`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS mois (cle TEXT PRIMARY KEY, enregistre_le TEXT, par TEXT)`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS jetons_zimbra (email TEXT PRIMARY KEY, jeton TEXT NOT NULL, expire INTEGER NOT NULL)`),
   ]);
   schemaPret = true;
 }
@@ -117,6 +118,40 @@ function cheminValide(c) {
 }
 async function lireJSON(env, chemin) { const o = await env.FICHIERS.get(chemin); if (!o) return null; try { return await o.json(); } catch (e) { return null; } }
 
+// ---------- Pièces jointes Zimbra ----------
+const ZIMBRA_REST = 'https://zimbra.oc-pratique.com/service/home/~/';
+async function soap(jeton, corps) {
+  const r = await fetch(ZIMBRA_SOAP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ Header: { context: { _jsns: 'urn:zimbra', authToken: { _content: jeton }, format: { type: 'js' } } }, Body: corps }) });
+  const d = await r.json().catch(() => null);
+  if (!d || d.Body?.Fault) throw new Error(d?.Body?.Fault?.Reason?.Text || 'réponse invalide');
+  return d.Body;
+}
+function piecesDe(mp, out) { for (const p of mp || []) { if (p.filename && p.part) out.push({ part: p.part, nom: p.filename, taille: p.s || null }); if (p.mp) piecesDe(p.mp, out); } return out; }
+// Fenêtre : du 1er du mois traité au 25 du mois suivant ; seules les pièces utiles à l'import sont gardées
+async function piecesDuMois(jeton, mois) {
+  const [a, m] = mois.split('-').map(Number);
+  const debut = Date.UTC(a, m - 1, 1) - 2 * 3600e3, fin = Date.UTC(a, m, 26);
+  const pieces = [];
+  for (let offset = 0; offset < 1000; offset += 100) {
+    const b = await soap(jeton, { SearchRequest: { _jsns: 'urn:zimbraMail', types: 'message', query: 'has:attachment', sortBy: 'dateDesc', limit: 100, offset, fetch: 'all', html: 0, max: 1 } });
+    const res = b.SearchResponse || {}, ms = res.m || [];
+    for (const msg of ms) {
+      if (msg.d > fin || msg.d < debut) continue;
+      for (const p of piecesDe(msg.mp, [])) {
+        const nom = p.nom, sujet = msg.su || '';
+        let type = null;
+        if (/\.zip$/i.test(nom) && /\d{2}OPTI\d+/i.test(nom + ' ' + sujet)) type = 'cosium';
+        else if (/^confidence-dashboard.*\.xlsx$/i.test(nom)) type = 'confidence';
+        else if (/\.xlsx?$/i.test(nom) && /(rest|indus|avoir)/i.test(nom + ' ' + sujet)) type = 'restes';
+        if (type) pieces.push({ id: msg.id, part: p.part, nom, taille: p.taille, date: msg.d, sujet, type });
+      }
+    }
+    if (!res.more || !ms.length || ms[ms.length - 1].d < debut) break;
+  }
+  return pieces;
+}
+
 // ---------- Connexion Zimbra ----------
 async function authZimbra(identifiant, motDePasse) {
   const r = await fetch(ZIMBRA_SOAP_URL, {
@@ -124,7 +159,9 @@ async function authZimbra(identifiant, motDePasse) {
     body: JSON.stringify({ Header: { context: { _jsns: 'urn:zimbra', format: { type: 'js' } } }, Body: { AuthRequest: { _jsns: 'urn:zimbraAccount', account: { by: 'name', _content: identifiant }, password: { _content: motDePasse } } } }),
   });
   const d = await r.json().catch(() => null);
-  return !!d?.Body?.AuthResponse?.authToken?.[0]?._content;
+  const a = d?.Body?.AuthResponse;
+  const jeton = a?.authToken?.[0]?._content;
+  return jeton ? { jeton, dureeMs: Number(a.lifetime) || SESSION_TTL_MS } : null;
 }
 
 async function connexion(env, request, h) {
@@ -134,7 +171,8 @@ async function connexion(env, request, h) {
   const e = await env.DB.prepare('SELECT nb, depuis FROM echecs WHERE identifiant = ?').bind(email).first();
   if (e && e.nb >= MAX_ECHECS && Date.now() - e.depuis < FENETRE_ECHECS_MS) return erreur('Trop de tentatives. Réessayez dans 15 minutes.', 429, h);
   const journal = res => env.DB.prepare('INSERT INTO connexions (email, le, resultat) VALUES (?, ?, ?)').bind(email, new Date().toISOString(), res).run();
-  if (!(await authZimbra(email, motDePasse))) {
+  const z = await authZimbra(email, motDePasse);
+  if (!z) {
     const nb = e && Date.now() - e.depuis < FENETRE_ECHECS_MS ? e.nb + 1 : 1, depuis = nb === 1 ? Date.now() : e.depuis;
     await env.DB.prepare('INSERT INTO echecs (identifiant, nb, depuis) VALUES (?, ?, ?) ON CONFLICT(identifiant) DO UPDATE SET nb = excluded.nb, depuis = excluded.depuis').bind(email, nb, depuis).run();
     await journal('refus-zimbra');
@@ -144,6 +182,9 @@ async function connexion(env, request, h) {
   const p = await profil(env, email);
   if (!p) { await journal('non-autorise'); return erreur("Votre compte n'a pas accès à Suivi Stats. Demandez l'accès à Olivier Baroukh.", 403, h); }
   await journal('ok');
+  // Administrateurs : le jeton Zimbra est gardé côté serveur (jamais renvoyé) pour récupérer les pièces jointes du mois
+  if (p.role === 'admin') await env.DB.prepare('INSERT INTO jetons_zimbra (email, jeton, expire) VALUES (?, ?, ?) ON CONFLICT(email) DO UPDATE SET jeton = excluded.jeton, expire = excluded.expire')
+    .bind(email, z.jeton, Date.now() + Math.min(z.dureeMs, SESSION_TTL_MS)).run();
   return json({ ok: true, session: await creerSession(env, email), expireDansMs: SESSION_TTL_MS, profil: p }, 200, h);
 }
 
@@ -222,6 +263,23 @@ async function routes(request, env) {
       curseur = r.truncated ? r.cursor : null;
     } while (curseur);
     return json({ ok: true, noms: [...noms] }, 200, h);
+  }
+
+  // Pièces jointes Zimbra du mois (administrateurs)
+  if (chemin === '/zimbra/pieces' || chemin === '/zimbra/piece') {
+    const j = await env.DB.prepare('SELECT jeton, expire FROM jetons_zimbra WHERE email = ?').bind(email).first();
+    if (!j || j.expire < Date.now()) return erreur('Connexion Zimbra expirée : déconnectez-vous puis reconnectez-vous.', 409, h);
+    if (chemin === '/zimbra/pieces') {
+      const m = url.searchParams.get('mois') || '';
+      if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois (AAAA-MM) requis', 400, h);
+      try { return json({ ok: true, pieces: await piecesDuMois(j.jeton, m) }, 200, h); }
+      catch (e) { return erreur('Zimbra : ' + e.message, 502, h); }
+    }
+    const id = url.searchParams.get('id') || '', part = url.searchParams.get('part') || '';
+    if (!/^-?\d+(:\d+)?$/.test(id) || !/^[\d.]+$/.test(part)) return erreur('Paramètres invalides', 400, h);
+    const r = await fetch(`${ZIMBRA_REST}?auth=co&id=${encodeURIComponent(id)}&part=${encodeURIComponent(part)}`, { headers: { Cookie: 'ZM_AUTH_TOKEN=' + j.jeton } });
+    if (!r.ok) return erreur('Pièce jointe introuvable (' + r.status + ')', 502, h);
+    return new Response(r.body, { headers: { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-store', ...h } });
   }
 
   // Gestion des accès (administrateurs)

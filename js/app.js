@@ -60,7 +60,7 @@
       if (!admin && v !== 'accueil' && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
       b.hidden = !ok;
     });
-    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin;
+    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; $('#zone-zimbra').hidden = !admin;
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
@@ -92,6 +92,7 @@
     dep.ondrop = async e => { e.preventDefault(); dep.classList.remove('survol'); ajouterFichiers(await fichiersDepuisDrop(e.dataTransfer)); };
     $('#inp-fichiers').onchange = e => ajouterFichiers([...e.target.files]);
     $('#btn-calculer').onclick = calculer;
+    $('#btn-zimbra').onclick = recupererZimbra;
     const majCompleter = () => { const k = `${$('#imp-annee').value}-${pad(+$('#imp-mois').value)}`, existe = (S.moisDispo || []).includes(k);
       $('#imp-completer').checked = existe; $('#lbl-completer').hidden = !existe; };
     $('#imp-mois').addEventListener('change', majCompleter); $('#imp-annee').addEventListener('change', majCompleter); S.majCompleter = majCompleter;
@@ -497,6 +498,56 @@
   }
 
 
+
+
+  // ---------- Récupération des pièces jointes dans Zimbra (administrateurs, mode Cloudflare) ----------
+  // Cosium : tous les ZIP de la fenêtre sont téléchargés, puis on garde, par serveur et par mail (n/4),
+  // le plus récent dont les exports se terminent bien sur le mois traité (période lue dans les CSV).
+  async function recupererZimbra() {
+    const annee = +$('#imp-annee').value, mois = +$('#imp-mois').value, k = `${annee}-${pad(mois)}`, info = t => { $('#zimbra-info').textContent = t; };
+    $('#btn-zimbra').disabled = true;
+    try {
+      info('Recherche des mails…');
+      const r = await Store.api('/zimbra/pieces?mois=' + k); const d = await r.json();
+      if (!r.ok) throw new Error(d.erreur || 'recherche impossible');
+      const pieces = d.pieces.sort((x, y) => y.date - x.date);
+      if (!pieces.length) { info(`Aucune pièce jointe utile trouvée pour ${MOIS[mois - 1]} ${annee}.`); return; }
+      const telecharger = async p => { const x = await Store.api(`/zimbra/piece?id=${encodeURIComponent(p.id)}&part=${encodeURIComponent(p.part)}`); if (!x.ok) throw new Error('téléchargement de ' + p.nom); return new File([await x.blob()], p.nom, { lastModified: p.date }); };
+      const gardes = [], bilan = [];
+      // Cosium
+      const cos = pieces.filter(p => p.type === 'cosium'), parCle = {};
+      for (let i = 0; i < cos.length; i++) {
+        const p = cos[i]; info(`Cosium : ${i + 1} / ${cos.length} – ${p.nom}`);
+        const f = await telecharger(p), srv = Cosium.serverFromZipName(p.nom);
+        let ok = false;
+        try { const z = await JSZip.loadAsync(await f.arrayBuffer());
+          for (const e of Object.values(z.files)) { if (e.dir || !/\.csv$/i.test(e.name)) continue;
+            const pr = Cosium.identify(e.name.split('/').pop()); // la période est dans le nom du fichier
+            if (pr.period && pr.period.month === mois && (pr.period.year === annee || pr.period.year === annee - 1)) { ok = true; break; } }
+        } catch (e) { console.warn(p.nom, e); }
+        const nMail = srv.mail || +((p.sujet || '').match(/OPTI\d+\s*(\d)\s*\/\s*4/i) || p.nom.match(/OPTI\d+[\s_-]*(\d)\s*[\/_-]?\s*4\b/i) || [])[1] || '?';
+        const cle = (srv.server || p.nom) + ' ' + nMail + '/4';
+        if (ok && !parCle[cle]) parCle[cle] = f; // le plus récent valide (liste triée par date décroissante)
+      }
+      gardes.push(...Object.values(parCle));
+      const serveurs = ['EURO', 'CANADA', 'IRLANDE', 'SUISSE', 'UK', 'MARTINIQUE', 'ISRAEL'];
+      const manquants = serveurs.flatMap(s => [1, 2, 3, 4].map(n => `${s} ${n}/4`)).filter(c => !parCle[c]);
+      bilan.push(`Cosium : ${Object.keys(parCle).length} / 28` + (manquants.length ? ` (manque ${manquants.join(', ')})` : ' ✓'));
+      // Confidence : fichier dont la période se termine dans le mois traité
+      const conf = pieces.filter(p => p.type === 'confidence' && (p.nom.match(/_(\d{4})-(\d{2})-\d{2}\.xlsx$/i) || []).slice(1).join('-') === k);
+      if (conf.length) { info('Confidence…'); gardes.push(await telecharger(conf[0])); bilan.push('Confidence ✓'); } else bilan.push('Confidence : pas encore reçu');
+      // Restes dus : classeur contenant l'onglet « Données Restes Dus »
+      let restes = false;
+      for (const p of pieces.filter(p => p.type === 'restes')) {
+        info('Restes dus…'); const f = await telecharger(p);
+        try { const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', bookSheets: true }); if (wb.SheetNames.some(s => /^Donn.es Restes Dus/i.test(s))) { gardes.push(f); restes = true; break; } } catch (e) {}
+      }
+      bilan.push(restes ? 'Restes dus ✓' : 'Restes dus : pas encore reçu');
+      ajouterFichiers(gardes);
+      info(`${MOIS[mois - 1]} ${annee} – ` + bilan.join(' · '));
+    } catch (e) { info('Erreur : ' + e.message); }
+    finally { $('#btn-zimbra').disabled = false; }
+  }
 
   // ---------- Accueil ----------
   // Dates d'arrivée habituelles (jour du mois suivant) ; null = pas de date fixe
