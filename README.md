@@ -2,9 +2,11 @@
 
 Application de suivi statistique mensuel du réseau (remplace le fichier Numbers « Suivi 2026 »).
 
-**Le code est publié ici, les données jamais.** L'appli s'ouvre depuis GitHub Pages, mais elle lit et écrit uniquement dans un dossier choisi sur l'ordinateur (Dropbox). Aucune donnée n'est envoyée en ligne. Navigateur : Google Chrome (API « File System Access »).
+**Le code est publié ici, les données jamais.** L'appli s'ouvre depuis GitHub Pages ; les données sont sur Cloudflare (Worker `suivi-stats-api`, dossier `worker/`), accessibles uniquement après connexion avec les identifiants Zimbra. Les administrateurs voient et modifient tout ; les autres comptes ne voient que les magasins de leur périmètre. L'ancien mode (dossier Dropbox choisi dans Chrome) reste disponible depuis l'écran de connexion.
 
-## Dossier de travail (Dropbox)
+Le Worker est déployé automatiquement par Cloudflare à chaque fusion sur `main`. Secrets saisis dans Cloudflare : `SESSION_KEY` ; variable `ADMINS` (adresses des administrateurs).
+
+## Organisation des données (Cloudflare, même arborescence que l'ancien dossier Dropbox)
 
 ```
 Suivi Stats/

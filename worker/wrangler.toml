@@ -6,6 +6,7 @@ name = "suivi-stats-api"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
 workers_dev = true
+preview_urls = false
 keep_vars = true   # ne jamais effacer les variables saisies dans le tableau de bord
 
 [[d1_databases]]

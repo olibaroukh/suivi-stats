@@ -355,3 +355,10 @@ main{max-width:1240px;margin:0 auto;padding:24px 28px 10px}
 .fiche table.bilan td.ko{color:var(--r);font-weight:700}
 .fiche.serre .chal li{padding:2px 0}.fiche.serre .mini>div{padding:6px 9px}.fiche.serre .tuiles8 .tuile{padding:6px 10px}
 .fiche.tres-serre .chal-g{display:none}.fiche.tres-serre table.bilan td{padding:1.5px 6px}.fiche.tres-serre .sante-dims{gap:3px 12px}
+
+/* Connexion */
+#ecran-connexion{display:flex;justify-content:center;padding:60px 16px}
+#ecran-connexion[hidden]{display:none}
+#ecran-connexion .connexion{max-width:380px;width:100%}
+body.non-connecte main,body.non-connecte .app-head nav{display:none}
+.app-head .dossier a{color:var(--accent);margin-left:8px;font-size:12px}
