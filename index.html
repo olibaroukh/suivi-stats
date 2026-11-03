@@ -150,9 +150,14 @@
         <select id="ck-perim" style="min-width:280px"></select>
         <select id="ck-theme"></select>
         <select id="ck-tri"><option value="code">Tri : code</option><option value="nom">Tri : nom</option><option value="__theme">Tri : indicateur principal</option></select>
+        <button id="ck-sel-btn" hidden>Magasins affichés</button>
         <span style="flex:1"></span>
         <button id="ck-print">Imprimer (A3 paysage)</button>
         <button class="primaire" id="ck-pdf">PDF</button>
+      </div>
+      <div id="ck-sel" class="ck-sel" hidden>
+        <p class="aide">Décochez les magasins (ou un pays / un groupe entier) à retirer de ce cockpit. Le choix est mémorisé pour ce périmètre, sur cet ordinateur. <a href="#" id="ck-sel-tout">Tout réafficher</a></p>
+        <div id="ck-sel-liste"></div>
       </div>
       <p class="aide" id="ck-info"></p>
     </div>
