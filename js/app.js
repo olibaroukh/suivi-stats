@@ -538,7 +538,9 @@
       if (conf.length) { info('Confidence…'); gardes.push(await telecharger(conf[0])); bilan.push('Confidence ✓'); } else bilan.push('Confidence : pas encore reçu');
       // Restes dus : classeur contenant l'onglet « Données Restes Dus »
       let restes = false;
-      for (const p of pieces.filter(p => p.type === 'restes')) {
+      // Restes dus : pas de période lisible dans le fichier → seuls les envois reçus à partir du 1er du mois suivant comptent
+      const debutSuivant = Date.UTC(annee, mois, 1) - 2 * 3600e3;
+      for (const p of pieces.filter(p => p.type === 'restes' && p.date >= debutSuivant)) {
         info('Restes dus…'); const f = await telecharger(p);
         try { const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', bookSheets: true }); if (wb.SheetNames.some(s => /^Donn.es Restes Dus/i.test(s))) { gardes.push(f); restes = true; break; } } catch (e) {}
       }

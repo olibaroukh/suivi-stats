@@ -128,10 +128,11 @@ async function soap(jeton, corps) {
   return d.Body;
 }
 function piecesDe(mp, out) { for (const p of mp || []) { if (p.filename && p.part) out.push({ part: p.part, nom: p.filename, taille: p.s || null }); if (p.mp) piecesDe(p.mp, out); } return out; }
-// Fenêtre : du 1er du mois traité au 25 du mois suivant ; seules les pièces utiles à l'import sont gardées
+// Fenêtre : du 20 du mois précédent (certains envois arrivent le dernier jour du mois d'avant) au 25 du mois suivant.
+// Le bon fichier est ensuite choisi par l'appli d'après la période inscrite dans les exports.
 async function piecesDuMois(jeton, mois) {
   const [a, m] = mois.split('-').map(Number);
-  const debut = Date.UTC(a, m - 1, 1) - 2 * 3600e3, fin = Date.UTC(a, m, 26);
+  const debut = Date.UTC(a, m - 2, 20), fin = Date.UTC(a, m, 26);
   const pieces = [];
   for (let offset = 0; offset < 1000; offset += 100) {
     const b = await soap(jeton, { SearchRequest: { _jsns: 'urn:zimbraMail', types: 'message', query: 'has:attachment', sortBy: 'dateDesc', limit: 100, offset, fetch: 'all', html: 0, max: 1 } });
