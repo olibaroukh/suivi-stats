@@ -11,7 +11,7 @@
   // ---------- Agrégation : montants additionnés, ratios pondérés par leur base ----------
   const POIDS = { V: 'U', W: 'U', AC: 'U', AD: 'U', AE: 'U', AF: 'U', AN: 'U', AP: 'U', AR: 'U',
     AY: 'AW', BB: 'AW', BH: 'AW', AZ: 'AX', BA: 'AX', BD: 'AX', BC: 'Q', BE: 'U',
-    BV: 'BU', BQ: 'BU', CQ: 'CP', CS: 'CP', CU: 'CP', CW: 'CP', CY: 'CP', CM: 'P', BK: 'BL', BN: 'BO', CK: '_1' };
+    BV: 'BU', XP: 'BU', XQ: 'BU', BQ: 'BU', CQ: 'CP', CS: 'CP', CU: 'CP', CW: 'CP', CY: 'CP', CM: 'P', BK: 'BL', BN: 'BO', CK: '_1' };
   const MONTANTS = new Set(['O', 'P', 'Q', 'R', 'S', 'BR', 'BS', 'BT', 'BU', 'CP', 'EH']); // convertis en € si multi-devises
   function agreger(items, conv) {
     const out = { N: {}, N1: {} };
@@ -68,7 +68,9 @@
     rdus: { lib: 'Restes dus', f: (n) => n.BR, fmt: 'eur' },
     avoirs: { lib: 'Avoirs', f: (n) => n.BS, fmt: 'eur' },
     gel: { lib: 'Gel de primes', f: (n) => n.BT, fmt: 'eur' },
-    indus: { lib: 'Taux d’indus', f: (n) => n.BV, fmt: 'pct2', seuil: 0.01, inverse: true },
+    indus: { lib: 'Taux d’indus', f: (n) => n.BV, fmt: 'pct2', seuil: 0.01, seuil2: 0.02, inverse: true },
+    evolIndus: { lib: 'Évol. indus', f: (n) => (n.XQ != null && n.XP != null) ? n.XQ - n.XP : null, fmt: 'pts2', seuil: 0, inverse: true },
+    recup: { lib: 'Tx de récup', f: (n) => pct(n.BX), fmt: 'pct1' },
     caHt: { lib: 'CA HT (reporting)', f: (n) => n.CP, fmt: 'k' },
     re: { lib: 'RE', f: (n) => pct(n.CQ), fmt: 'pct1', seuil: 0.20 },
     marge: { lib: 'Marge produits', f: (n) => pct(n.CS), fmt: 'pct1', seuil: 0.70 },
@@ -99,7 +101,7 @@
       top: [['ndv', 'Nombre de ventes'], ['panier', 'Panier moyen'], ['tc', 'Taux de concrétisation']] },
     audio: { lib: 'Audio', cols: ['caAudio', 'evolAudio', 'ventesA', 'protheses', 'panierA', 'pmProt', 'sap', 'tcA', 'vadd', 'depist'], tri: 'caAudio',
       top: [['protheses', 'Nombre de prothèses'], ['caAudio', 'CA audio'], ['depist', 'Dépistage']] },
-    restes: { lib: 'Restes dus', cols: ['rdus', 'avoirs', 'gel', 'indus'], tri: 'indus',
+    restes: { lib: 'Restes dus', cols: ['rdus', 'avoirs', 'gel', 'indus', 'evolIndus', 'recup'], tri: 'indus',
       top: [['indus', 'Taux d’indus le plus bas', true]] },
     renta: { lib: 'Rentabilité & gestion', cols: ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel', 'rentaSal', 'indus', 'note', 'mrq'], tri: 're',
       top: [['re', 'Résultat d’exploitation'], ['note', 'Note Google'], ['indus', 'Taux d’indus le plus bas', true]] },
@@ -138,9 +140,12 @@
     const multi = devises.length > 1;
     const conv = multi ? it => taux[it.devise] || 1 : null;
     // Effectifs (export RH ; une personne sur plusieurs magasins compte 1/n dans chacun) et effectif théorique = max(3,5 ; CA prévisionnel / 250 000)
-    const avecEff = d => { if (!photo.equipes) return d; const N = { ...(d.N || {}) }; const eq = photo.equipes[String(d.code)];
+    const avecEff = d => { const N = { ...(d.N || {}) }; const eq = photo.equipes && photo.equipes[String(d.code)];
       if (eq) { const part = p => p.part != null ? p.part : 1; N.XA = eq.filter(p => p.famille !== 'audio').reduce((a, p) => a + part(p), 0); N.XC = eq.filter(p => p.famille === 'audio').reduce((a, p) => a + part(p), 0); }
-      N.XB = N.P != null ? Math.max(3.5, N.P * 12 / m / 250000) : null; return { ...d, N }; };
+      N.XB = N.P != null ? Math.max(3.5, N.P * 12 / m / 250000) : null;
+      // Taux d'indus du mois précédent (évolution), si la photo précédente est fournie
+      const pr = opts.precedente && opts.precedente.magasins[String(d.code)]; if (pr && pr.N && pr.N.BV != null && N.BV != null) { N.XP = pr.N.BV; N.XQ = N.BV; } // XQ : taux actuel limité aux magasins comparables
+      return { ...d, N }; };
     const donnees = r => avecEff({ ...photo.magasins[String(r.code)], code: String(r.code) });
     const item = r => ({ ...donnees(r), devise: r.devise || 'Euro', r });
     const valeurs = (d) => { const o = {}; th.cols.forEach(k => { o[k] = COL[k].f(d.N || {}, d.N1 || {}, m); }); return o; };
@@ -239,6 +244,7 @@
         case 'pct0': return nb(v * 100) + ' %';
         case 'pct1': return nb(v * 100, 1) + ' %';
         case 'pct2': return nb(v * 100, 2) + ' %';
+        case 'pts2': return (v > 0 ? '+' : v < 0 ? '−' : '') + nb(Math.abs(v) * 100, 2) + ' pt';
         case 'evol': return (v > 0 ? '+' : '') + nb(v * 100, 1) + ' %';
         case 'note': return nb(v, 1);
         case 'nb1': return nb(v, 1);
@@ -250,7 +256,9 @@
     };
     const logo = opts.logo || 'assets/logo-optical-center.png';
     const titreMois = `À fin ${MOIS[md.photo.mois - 1]} ${md.photo.annee}`;
-    const periode = `cumul du 1er janvier au ${new Date(md.photo.annee, md.photo.mois, 0).toLocaleDateString('fr-FR')}`;
+    // Restes dus : période propre au fichier reçu (sa date de fin diffère souvent du mois traité)
+    const pR = md.themeId === 'restes' && md.photo.sources && md.photo.sources.restes_dus && md.photo.sources.restes_dus.periode;
+    const periode = pR ? `restes dus du ${pR.du.split('-').reverse().join('/')} au ${pR.au.split('-').reverse().join('/')}` : `cumul du 1er janvier au ${new Date(md.photo.annee, md.photo.mois, 0).toLocaleDateString('fr-FR')}`;
     const entete = (perimLib, themeLib) => `<header class="ck-head"><img src="${logo}" alt=""><div class="ck-t"><div class="ck-label">${esc(titreMois)} · ${esc(periode)}</div><h1>${esc(perimLib)}</h1></div><div class="ck-theme">${esc(themeLib)}</div></header>`;
     const pied = `<footer class="ck-pied"><span>Optical Center · Suivi statistique · généré le ${new Date().toLocaleDateString('fr-FR')}</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span><span>N-1 : même période de l’année précédente${md.multi || md.type === 'siege' ? ' · totaux multi-devises convertis en € (taux en Réglages)' : ''}</span></footer>`;
 
@@ -259,6 +267,8 @@
     const cl = (k, v, obj) => {
       const c = COL[k]; let ref = c.obj ? obj[c.obj] : c.seuil;
       if (v == null || ref == null) return c.fmt === 'evol' ? (v == null ? '' : v >= 0 ? 'ok' : 'ko') : '';
+      if (c.seuil2 != null && c.inverse) return v <= ref ? 'ok' : v <= c.seuil2 ? 'moy' : 'ko';
+      if (c.fmt === 'pts2' && v === 0) return '';
       return (c.inverse ? v <= ref : v >= ref) ? 'ok' : 'ko';
     };
     const cellules = (l, dev) => md.cols.map(k => `<td class="${cl(k, l.v[k], md.obj)}${COL[k].fort ? ' fort' : ''}">${f(l.v[k], COL[k].fmt, dev)}</td>`).join('');

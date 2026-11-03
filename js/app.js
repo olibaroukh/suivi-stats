@@ -379,7 +379,8 @@
     const exclus = selCockpit(p.id);
     const pAff = (p.filtre && exclus.size) ? { ...p, filtre: r => p.filtre(r) && !exclus.has(String(r.code)) } : p;
     majBoutonSel(p, exclus);
-    const md = Cockpit.construire(CK.photo, S.ref, pAff, th, { tri, objectifs: S.objectifs, taux: await tauxChange(), siege });
+    const precedente = th === 'restes' ? await photoMois(moisPrec(CK.cle)) : null;
+    const md = Cockpit.construire(CK.photo, S.ref, pAff, th, { tri, objectifs: S.objectifs, taux: await tauxChange(), siege, precedente });
     const triLib = $('#ck-tri').selectedOptions[0].textContent.replace('Tri : ', '');
     const poser = (h, pages) => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h, pages })}</div>`; return [...$('#ck-apercu').querySelectorAll('.cockpit')]; };
     let pages = poser(640, 1), page = pages[0];
