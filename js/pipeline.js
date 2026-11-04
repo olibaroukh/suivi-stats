@@ -122,8 +122,16 @@
     const srvN1 = Object.keys(cosN1);
     if (srvN1.length) {
       const spec1 = spec.filter(s => COLS_N1.includes(s.col));
-      const l1 = Hub.build(cosN1, spec1, ref, { zeroIfMissing: { IRLANDE: ['R'] } });
-      l1.forEach(l => { const o = {}; COLS_N1.forEach(c => o[c] = l[c]); o.ET = l.AF ? l.U * 100 / l.AF : null; o.EH = l.U != null && l.V != null ? l.U * l.V : null; mag[l.code].N1 = o; });
+      // Changement de code d'une année sur l'autre : le N-1 d'un magasin est lu sous son « Ancien code site »
+      const versActuel = {};
+      const refN1 = ref.map(r => { const a = String(r.ancienCode || '').trim().replace(/^0+/, '');
+        if (!a || a === String(r.code) || refIdx[a]) return r; versActuel[a] = String(r.code); return { ...r, code: a }; });
+      const l1 = Hub.build(cosN1, spec1, refN1, { zeroIfMissing: { IRLANDE: ['R'] } });
+      l1.forEach(l => { const o = {}; COLS_N1.forEach(c => o[c] = l[c]); o.ET = l.AF ? l.U * 100 / l.AF : null; o.EH = l.U != null && l.V != null ? l.U * l.V : null;
+        const c = versActuel[String(l.code)] || l.code; if (mag[c]) mag[c].N1 = o; });
+      const nAnc = Object.keys(versActuel).length;
+      if (nAnc) journal.push(`N-1 lu sous l’ancien code pour ${nAnc} magasin(s) : ` + Object.entries(versActuel).map(([a, c]) => `${c} ← ${a}`).join(', '));
+      Object.keys(versActuel).forEach(a => { delete codesHorsRef[a]; delete codesHorsRef[a + 'A']; });
       sources.cosium_n1 = { statut: 'recu', detail: `${srvN1.length} serveur(s)` };
     } else sources.cosium_n1 = { statut: 'absent' };
 
