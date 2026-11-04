@@ -263,7 +263,7 @@
     $('#btn-pdf-tous').onclick = pdfSelection;
     $('#btn-visite').onclick = async () => { if (!S.magSel) return; const b = $('#btn-visite'); b.disabled = true; b.textContent = 'Préparation…';
       try { telecharger(await pdfVisite(S.magSel), 'Visite - ' + nomPdf(S.magSel)); } finally { b.disabled = false; b.textContent = 'Dossier de visite (PDF)'; } };
-    $('#btn-visite-voir').onclick = async () => { if (!S.magSel) return; $('#apercu').innerHTML = await htmlVisite(S.magSel); ajuster($('#apercu')); };
+    $('#btn-visite-voir').onclick = async () => { if (!S.magSel) return; $('#apercu').innerHTML = await htmlVisite(S.magSel); ajuster($('#apercu')); adapterEchelle(); };
   }
   async function listerPhotos() {
     const ks = (await Store.lister('donnees')).filter(n => /^\d{4}-\d{2}$/.test(n)).sort().reverse();
@@ -293,6 +293,15 @@
   }
   function langues(m) { const forcer = $('#fi-langue').value; if (forcer) return [forcer]; const l = Fiche.LANGUES[m.langue] || 'fr'; return l === 'fr' ? ['fr'] : [l, 'fr']; }
   // Si une page déborde (grosse équipe, police locale plus haute), on resserre le tableau équipe
+  // Petits écrans : les pages A4 (fiches) et A3 (cockpits) sont réduites à la largeur disponible
+  function adapterEchelle() {
+    for (const [hote, sel] of [[$('#apercu'), '.fiche']]) { // les cockpits ont déjà leur propre mise à l'échelle
+      if (!hote) continue;
+      const cs = getComputedStyle(hote), larg = hote.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 2;
+      hote.querySelectorAll(sel).forEach(p => { p.style.zoom = ''; const w = p.offsetWidth; if (w && larg && w > larg) p.style.zoom = (larg / w).toFixed(4); });
+    }
+  }
+  window.addEventListener('resize', () => { clearTimeout(S.tEchelle); S.tEchelle = setTimeout(adapterEchelle, 150); });
   function ajuster(hote) {
     hote.querySelectorAll('.fiche').forEach(f => {
       const tb = f.querySelector('table.equipe');
@@ -304,8 +313,10 @@
   }
   async function afficherFiche(m) {
     const serie = await serieMagasin(m.code);
+    const tel = window.innerWidth <= 820;
     $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l, serie })).join('');
-    ajuster($('#apercu'));
+    ajuster($('#apercu')); adapterEchelle();
+    if (tel) $('#apercu').scrollIntoView({ behavior: 'smooth', block: 'start' }); // téléphone : on descend directement sur la fiche
   }
   // ---------- Historique de l'année : séries mensuelles (CA du mois, N-1, positionnement) ----------
   // Toutes les photos de janvier au mois affiché sont lues une fois, puis réduites à quelques chiffres par magasin.
