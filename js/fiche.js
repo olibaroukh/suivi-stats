@@ -269,6 +269,30 @@
           <td>${e0(a.ventes)}</td><td>${e0(a.protheses)}</td><td>${e0(a.panier)}</td>${k(a.pmProthese, c.o.pmProthese, e0)}${k(a.tc, c.o.tcAudio, x => pc(x, 0))}<td>${a.reussite == null ? '–' : pc(a.reussite, 0)}</td>${k(a.garantie, c.o.garantieAudio, x => pc(x, 0))}${k(a.ventesAdd, c.o.ventesAdd, x => pc(x, 0))}<td>${a.stereo == null ? '–' : pc(a.stereo, 0)}</td>${k(a.duree, c.o.dureeEssai, x => nb(x, 0) + ' j')}${k(a.ouiezen, c.o.ouiezen, x => pc(x, 0))}</tr>`; }).join('')}
         </tbody>` : ''}</table>${eq.autres.length ? `<div class="autres">Sans vente sur la période : ${eq.autres.map(x => esc(x.replace('Optométriste/Contactologue', 'Opto/Contacto').replace('Opticien/vendeur', 'Opticien'))).join(' · ')}</div>` : ''}`;
     };
+    // Évolution mensuelle (historique de l'année) : CA du mois N et N-1 en barres, positionnement en courbe
+    // Mois abrégés sans ambiguïté (juin / juillet)
+    const COURT = { fr: ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'] };
+    const moisCourt = m => COURT[lang] ? COURT[lang][m - 1] : (t.mois(m) || '').slice(0, 3);
+    const courbeMois = () => {
+      const s = (opts.serie || []).filter(x => x.mois <= photo.mois);
+      if (s.length < 2) return '';
+      const W = 714, H = 118, g = 34, d = 36, haut = 14, bas = 22, lc = (W - g - d) / s.length;
+      const maxCa = Math.max(1, ...s.map(x => Math.max(x.caMois || 0, x.caMoisN1 || 0)));
+      const ps = s.map(x => x.posit).filter(v => v != null), pMin = Math.min(0.6, ...ps), pMax = Math.max(1.2, ...ps);
+      const yCa = v => H - bas - (v / maxCa) * (H - bas - haut), yP = v => H - bas - (v - pMin) / (pMax - pMin) * (H - bas - haut);
+      const barres = s.map((x, i) => { const x0 = g + i * lc, bw = lc * 0.3;
+        return (x.caMoisN1 != null ? `<rect x="${(x0 + lc / 2 - bw - 1).toFixed(1)}" y="${yCa(Math.max(0, x.caMoisN1)).toFixed(1)}" width="${bw.toFixed(1)}" height="${(H - bas - yCa(Math.max(0, x.caMoisN1))).toFixed(1)}" fill="#D9D2D1"/>` : '')
+          + (x.caMois != null ? `<rect x="${(x0 + lc / 2 + 1).toFixed(1)}" y="${yCa(Math.max(0, x.caMois)).toFixed(1)}" width="${bw.toFixed(1)}" height="${(H - bas - yCa(Math.max(0, x.caMois))).toFixed(1)}" fill="#E22F2A"/>` : '')
+          + `<text x="${(x0 + lc / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle" class="cm-m">${esc(moisCourt(x.mois))}</text>`; }).join('');
+      const pts = s.map((x, i) => x.posit == null ? null : [g + i * lc + lc / 2, yP(x.posit), x.posit]).filter(Boolean);
+      const ligne = pts.length > 1 ? `<polyline points="${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke="#231F20" stroke-width="1.6"/>` : '';
+      const ptsSvg = pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="${p[2] >= 1 ? '#1E8A52' : '#231F20'}"/><text x="${p[0].toFixed(1)}" y="${(p[1] - 5).toFixed(1)}" text-anchor="middle" class="cm-p">${nb(p[2] * 100, 0)}%</text>`).join('');
+      const cent = yP(1);
+      const svg = `<svg class="courbe-mois" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">
+        <line x1="${g}" x2="${W - d}" y1="${cent.toFixed(1)}" y2="${cent.toFixed(1)}" stroke="#1E8A52" stroke-dasharray="3 3" stroke-width="1"/><text x="${W - d + 4}" y="${(cent + 3).toFixed(1)}" class="cm-ax">100%</text>
+        <text x="2" y="${haut + 4}" class="cm-ax">${nb(maxCa / 1000)}k</text>${barres}${ligne}${ptsSvg}</svg>`;
+      return section('Évolution mois par mois', `${svg}<div class="cm-leg"><span><i style="background:#E22F2A"></i>${esc(t('CA du mois'))} (${esc(dev)})</span><span><i style="background:#D9D2D1"></i>N-1</span><span><i class="ligne"></i>${esc(t('Positionnement'))}</span></div>`, 'courbe');
+    };
     const page1 = `
 <div class="fiche" dir="${lang === 'he' ? 'rtl' : 'ltr'}" lang="${lang}">
   ${entete(false)}
@@ -291,6 +315,7 @@
       <div class="gros-kpi"><div class="l">${esc(t('Panier Moyen'))}</div><div class="v">${eur(c.audio.panier)}</div>${evo(c.audio.panierEvol, c.audio.panierEvolPct, eur)}</div>
       <div class="gros-kpi"><div class="l">${esc(t('Nb de Ventes'))}</div><div class="v">${nb(c.audio.ventes)}${c.audio.protheses != null ? `<small class="sous-v">${nb(c.audio.protheses)} ${lang === 'fr' ? 'prothèses' : esc(t('P moyen Prothèse').replace(/^P moyen /, ''))}</small>` : ''}</div>${evo(c.audio.ventesEvol, c.audio.ventesEvolPct, x => nb(x))}</div>
     </div>${tableKpi(c.audio.kpis)}`)}
+  ${courbeMois()}
   <footer class="f-pied"><span>${esc(titreMois)} · ${esc(mag.magasin)}</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span><span>1 / 2</span></footer>
 </div>`;
 

@@ -246,7 +246,7 @@
     const { photo, etatAnnee } = S.resultat; const k = `${photo.annee}-${pad(photo.mois)}`;
     $('#calc-info').textContent = 'Enregistrement…';
     await Store.ecrireJSON(`donnees/${k}/photo.json`, photo);
-    A.photos = {}; CK.cle = null; // les cockpits relisent la photo qui vient d'être enregistrée
+    A.photos = {}; CK.cle = null; S.series = null; // les cockpits relisent la photo qui vient d'être enregistrée
     await Store.ecrireJSON(`donnees/${photo.annee}/etat.json`, etatAnnee);
     for (const f of S.fichiers) await Store.ecrire(`donnees/${k}/imports/${f.name.replace(/^[0-9a-f]{8}-/, '')}`, f);
     for (const p of ['lyleoo', 'ocm', 'site']) { const v = $('#paste-' + p).value; if (v.trim()) await Store.ecrire(`donnees/${k}/imports/copier-coller-${p}.txt`, v); }
@@ -302,10 +302,48 @@
       if (f.scrollHeight > f.clientHeight + 1) f.classList.add('tres-serre');
     });
   }
-  function afficherFiche(m) {
-    $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l })).join('');
+  async function afficherFiche(m) {
+    const serie = await serieMagasin(m.code);
+    $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l, serie })).join('');
     ajuster($('#apercu'));
   }
+  // ---------- Historique de l'année : séries mensuelles (CA du mois, N-1, positionnement) ----------
+  // Toutes les photos de janvier au mois affiché sont lues une fois, puis réduites à quelques chiffres par magasin.
+  async function series() {
+    if (!S.photo) return {};
+    const cle = `${S.photo.annee}-${pad(S.photo.mois)}`;
+    if (S.series && S.series.cle === cle) return S.series.par;
+    const par = {}, prec = {};
+    for (let mo = 1; mo <= S.photo.mois; mo++) {
+      const k = `${S.photo.annee}-${pad(mo)}`;
+      if (!(S.moisDispo || []).includes(k)) continue;
+      const ph = mo === S.photo.mois ? S.photo : await Store.lireJSON(`donnees/${k}/photo.json`);
+      if (!ph) continue;
+      for (const code in ph.magasins) {
+        const d = ph.magasins[code], n = d.N || {}, n1 = d.N1 || {}, p = prec[code] || {};
+        const caMois = n.P == null ? null : n.P - (p.mois === mo - 1 ? (p.P || 0) : (mo === 1 ? 0 : NaN));
+        const caMoisN1 = n1.P == null ? null : n1.P - (p.mois === mo - 1 ? (p.P1 || 0) : (mo === 1 ? 0 : NaN));
+        (par[code] = par[code] || []).push({ mois: mo, caCum: n.P, O: n.O, caMois: isFinite(caMois) ? caMois : null, caMoisN1: isFinite(caMoisN1) ? caMoisN1 : null,
+          posit: n.P != null && n.O ? n.P * 12 / mo / (n.O * 1000) : null });
+        prec[code] = { mois: mo, P: n.P, P1: n1.P };
+      }
+    }
+    S.series = { cle, par };
+    return par;
+  }
+  // Positionnement d'un périmètre mois par mois (montants convertis en € si plusieurs devises)
+  async function seriePerimetre(p, tx) {
+    if (!p || !p.filtre || !CK.photo || !S.photo || CK.photo.annee !== S.photo.annee || CK.photo.mois !== S.photo.mois) return null;
+    const par = await series(), ref = S.ref.filter(r => p.filtre(r));
+    const out = [];
+    for (let mo = 1; mo <= S.photo.mois; mo++) {
+      let P = 0, O = 0, ok = false;
+      ref.forEach(r => { const x = (par[String(r.code)] || []).find(y => y.mois === mo); if (!x || x.caCum == null || !x.O) return; const t = tx[r.devise] || 1; P += x.caCum * t; O += x.O * 1000 * t; ok = true; });
+      if (ok) out.push({ mois: mo, posit: O ? P * 12 / mo / O : null });
+    }
+    return out.length > 1 ? out : null;
+  }
+  async function serieMagasin(code) { try { return (await series())[String(code)] || []; } catch (e) { console.warn(e); return []; } }
   const nomPdf = m => `${m.code} - ${String(m.magasin).replace(/[\\/:*?"<>|]/g, '-')} - ${S.photo.annee}-${pad(S.photo.mois)}.pdf`;
   async function pdfMagasin(m) {
     const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -314,7 +352,7 @@
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
     let n = 0;
     for (let i = 0; i < ls.length; i++) {
-      hote.innerHTML = Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: ls[i] });
+      hote.innerHTML = Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: ls[i], serie: await serieMagasin(m.code) });
       ajuster(hote);
       await Promise.all([...hote.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
       for (const page of hote.querySelectorAll('.fiche')) {
@@ -329,7 +367,7 @@
   // Dossier de visite : page de préparation (comparaison au groupe, bilan, notes) + fiche magasin en français
   async function htmlVisite(m) {
     const prec = await photoMois(moisPrec(`${S.photo.annee}-${pad(S.photo.mois)}`));
-    return Visite.rendre(S.photo, prec, S.ref, m, S.objectifs) + Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: 'fr' });
+    return Visite.rendre(S.photo, prec, S.ref, m, S.objectifs) + Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: 'fr', serie: await serieMagasin(m.code) });
   }
   async function pdfVisite(m) {
     const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -403,7 +441,9 @@
     const pAff = (p.filtre && exclus.size) ? { ...p, filtre: r => p.filtre(r) && !exclus.has(String(r.code)) } : p;
     majBoutonSel(p, exclus);
     const precedente = th === 'restes' ? await photoMois(moisPrec(CK.cle)) : null;
-    const md = Cockpit.construire(CK.photo, S.ref, pAff, th, { tri, objectifs: S.objectifs, taux: await tauxChange(), siege, precedente });
+    const tx = await tauxChange();
+    const md = Cockpit.construire(CK.photo, S.ref, pAff, th, { tri, objectifs: S.objectifs, taux: tx, siege, precedente });
+    md.serie = await seriePerimetre(pAff, tx);
     const triLib = $('#ck-tri').selectedOptions[0].textContent.replace('Tri : ', '');
     const poser = (h, pages) => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h, pages })}</div>`; return [...$('#ck-apercu').querySelectorAll('.cockpit')]; };
     let pages = poser(640, 1), page = pages[0];

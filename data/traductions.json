@@ -1609,6 +1609,24 @@
    "es": "Global",
    "nl": "Totaal",
    "de": "Gesamt"
+  },
+  {
+   "base": "Évolution mois par mois",
+   "fr": "Évolution mois par mois",
+   "he": "התפתחות חודשית",
+   "en": "Month-by-month trend",
+   "es": "Evolución mes a mes",
+   "nl": "Evolutie per maand",
+   "de": "Monatliche Entwicklung"
+  },
+  {
+   "base": "CA du mois",
+   "fr": "CA du mois",
+   "he": "מחזור החודש",
+   "en": "Monthly revenue",
+   "es": "Facturación del mes",
+   "nl": "Omzet van de maand",
+   "de": "Monatsumsatz"
   }
  ],
  "mois": [
