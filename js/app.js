@@ -8,8 +8,9 @@
 
   // Libellés Excel ↔ clés internes
   const REF_COLS = { 'Code site': 'code', 'Magasin': 'magasin', 'Type': 'type', 'Groupe': 'groupe', 'Date ouverture': 'ouverture', 'Pays': 'pays', 'Nature': 'nature', 'AR': 'ar', 'Langue': 'langue', 'Devise': 'devise', 'Serveur Cosium': 'serveur', 'Manager': 'manager', 'Nom Lyleoo': 'lyleoo', 'E-mail magasin': 'email', 'Actif': 'actif', 'Ancien code site': 'ancienCode',
-    // Colonnes reprises du référentiel de bilan-passage (référentiel unique)
-    'E-mail AR': 'arEmail', 'Google place id': 'googlePlaceId', 'Concept': 'concept', 'Meuble vitrine': 'meubleVitrine', 'Présentoir verres': 'presentoirVerres', 'Alsace-Moselle': 'alsaceMoselle', 'Libellé bilans': 'libelleBilans' };
+    // Colonnes reprises du référentiel de bilan-passage (référentiel unique).
+    // « Animateur terrain » : personne qui anime le magasin dans les applis terrain (bilans, accueil…) quand ce n'est pas l'AR (vide = l'AR).
+    'E-mail AR': 'arEmail', 'Animateur terrain': 'animateur', 'E-mail animateur terrain': 'animateurEmail', 'Google place id': 'googlePlaceId', 'Concept': 'concept', 'Meuble vitrine': 'meubleVitrine', 'Présentoir verres': 'presentoirVerres', 'Alsace-Moselle': 'alsaceMoselle', 'Libellé bilans': 'libelleBilans' };
   const OBJ_COLS = { 'Type': 'type', 'Clé (pays ou franchisé)': 'cle', 'PM 1ère paire': 'pm1', '% Unif individualisés': 'unifIndiv', '% Anti-reflet HG': 'arHG', '% Transition': 'transition', '% SOP': 'sop', 'Nb Lyleoo': 'lyleoo', '% Pack confort': 'pcPct', '€ Pack confort': 'pcEur', '% Taux de concrétisation': 'tc', 'Panier moyen': 'panier', '% MdC': 'mdc', 'Devise': 'devise', 'Prix moyen prothèse': 'pmProthese', '% Garantie audio': 'garantieAudio', '% Ventes additionnelles': 'ventesAdd', '% TC audio': 'tcAudio', 'Durée moyenne d’essai': 'dureeEssai', '% Dépistage': 'depistage', 'PM vente audio': 'pmVente', '% Ouiezen premium': 'ouiezen' };
 
   // ---------- Démarrage ----------
