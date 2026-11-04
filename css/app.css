@@ -494,3 +494,5 @@ body.non-connecte .recherche-globale{display:none}
 .fiche.visite .v-notes{flex:1;display:flex;flex-direction:column}
 .fiche.visite .v-lignes{flex:1;display:flex;flex-direction:column;justify-content:space-between}
 .fiche.visite .v-lignes div{border-bottom:1px dashed #D9D2D1;height:1px;flex:1}
+
+.cockpit.sg .sg-ring-t{display:block;font-size:9px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#231F20;margin-bottom:4px}
