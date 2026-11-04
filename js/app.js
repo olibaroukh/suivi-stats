@@ -42,7 +42,7 @@
     $('#btn-copie-cloud').onclick = async () => {
       try {
         const r = await Store.copierDossierVersCloud((n, t, c) => { $('#copie-info').textContent = `${n} / ${t} – ${c}`; },
-          (nb, nom) => confirm(`Copier ${nb} fichier(s) du dossier « ${nom} » vers Cloudflare ?`));
+          (nb, nom, liste) => confirm(`Copier ${nb} fichier(s) du dossier « ${nom} » vers Cloudflare ?\n\n` + liste.slice(0, 12).join('\n') + (liste.length > 12 ? '\n…' : '')));
         if (!r) { $('#copie-info').textContent = 'Copie annulée.'; return; }
         $('#copie-info').textContent = `Terminé : ${r.total - r.echecs.length} fichier(s) copié(s) depuis « ${r.dossier} »` + (r.echecs.length ? ` – ${r.echecs.length} échec(s) : ${r.echecs.slice(0, 5).join(', ')}` : '') + '. Rechargement…';
         setTimeout(() => location.reload(), 1500);

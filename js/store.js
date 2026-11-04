@@ -102,9 +102,14 @@
     if (!estAdmin()) throw new Error('Réservé aux administrateurs');
     const d = await root.showDirectoryPicker({ id: 'suivi-stats', mode: 'read' });
     const fichiers = [];
-    const parcourir = async (h, pre) => { for await (const [n, x] of h.entries()) { if (n.startsWith('.')) continue; if (x.kind === 'directory') { if (!(pre === '' && n === 'sorties')) await parcourir(x, pre + n + '/'); } else fichiers.push([pre + n, x]); } };
-    await parcourir(d, '');
-    if (confirmer && !confirmer(fichiers.length, d.name)) return null;
+    const parcourir = async (h, pre) => { for await (const [n, x] of h.entries()) { if (n.startsWith('.')) continue; if (x.kind === 'directory') { if (!((pre === '' || pre === racineCopie) && n === 'sorties')) await parcourir(x, pre + n + '/'); } else fichiers.push([pre + n, x]); } };
+    // Tolérance : si l'on a choisi directement le dossier « donnees » (ou un dossier ne contenant que des mois AAAA-MM),
+    // les fichiers sont rangés sous donnees/ comme dans le dossier Suivi Stats.
+    let racineCopie = '';
+    const enfants = []; for await (const [n2, x] of d.entries()) if (!n2.startsWith('.')) enfants.push([n2, x.kind]);
+    if (d.name === 'donnees' || (enfants.length && enfants.every(([n2, k]) => k === 'directory' && /^\d{4}(-\d{2})?$/.test(n2)))) racineCopie = 'donnees/';
+    await parcourir(d, racineCopie);
+    if (confirmer && !confirmer(fichiers.length, d.name, fichiers.map(f => f[0]))) return null;
     let n = 0, echecs = [];
     for (const [chemin, h] of fichiers) {
       try { await cloudEcrire(chemin, await h.getFile()); } catch (e) { echecs.push(chemin); }
