@@ -246,7 +246,7 @@
     const { photo, etatAnnee } = S.resultat; const k = `${photo.annee}-${pad(photo.mois)}`;
     $('#calc-info').textContent = 'Enregistrement…';
     await Store.ecrireJSON(`donnees/${k}/photo.json`, photo);
-    A.photos = {};
+    A.photos = {}; CK.cle = null; // les cockpits relisent la photo qui vient d'être enregistrée
     await Store.ecrireJSON(`donnees/${photo.annee}/etat.json`, etatAnnee);
     for (const f of S.fichiers) await Store.ecrire(`donnees/${k}/imports/${f.name.replace(/^[0-9a-f]{8}-/, '')}`, f);
     for (const p of ['lyleoo', 'ocm', 'site']) { const v = $('#paste-' + p).value; if (v.trim()) await Store.ecrire(`donnees/${k}/imports/copier-coller-${p}.txt`, v); }
