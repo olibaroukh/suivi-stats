@@ -383,10 +383,10 @@
         <div class="evo ${t.evol >= 0 ? 'ok' : 'ko'}">${t.evol >= 0 ? '▲' : '▼'} ${f(t.evol, 'evol')} vs N-1</div>
         <div class="sg-prog"><i style="width:${(progCA * 100).toFixed(1)}%"></i><b style="left:${(attendu * 100).toFixed(1)}%" title="rythme attendu"></b></div>
         <div class="s">${nb(progCA * 100)} % de l’objectif groupe ${f(g.obj, 'k')} · repère : ${nb(attendu * 100)} % de l’année écoulée</div></div>
-      <div class="sg-ring">${anneau(g.posit, 112, 12, coulPosit(g.posit), f(g.posit, 'pct0'), 'positionnement')}<div class="s">prévisionnel ${f(t.prev, 'k')}<br>objectif groupe ${f(g.obj, 'k')}</div></div>
+      <div class="sg-ring">${anneau(g.posit, 112, 12, coulPosit(g.posit), f(g.posit, 'pct0'))}<div class="s"><b class="sg-ring-t">Positionnement groupe</b>prévisionnel ${f(t.prev, 'k')}<br>objectif groupe ${f(g.obj, 'k')}</div></div>
       <div class="sg-kpis">
         <div><div class="v">${nb(t.succ + t.fr)}</div><div class="l">magasins</div><div class="s">${t.succ} succ. · ${t.fr} franch.</div></div>
-        <div><div class="v">${nb(t.sup12)}</div><div class="l">prévisionnel ≥ 1,2 M€</div><div class="s">${nb(t.sup12 / Math.max(1, t.succ + t.fr) * 100)} % du réseau</div></div>
+        <div><div class="v">${nb(t.sup12)}</div><div class="l">magasins à prévisionnel ≥ 1,2 M€</div><div class="s">${nb(t.sup12 / Math.max(1, t.succ + t.fr) * 100)} % du réseau</div></div>
         <div><div class="v ${c(t.evolNdv, t.evolNdv >= 0)}">${f(t.evolNdv, 'evol')}</div><div class="l">ventes optique</div><div class="s">${nb(t.ndv)} ventes</div></div>
         <div><div class="v ${c(t.evolNdvA, t.evolNdvA >= 0)}">${f(t.evolNdvA, 'evol')}</div><div class="l">ventes audio</div><div class="s">${nb(t.ndvA)} ventes</div></div>
       </div>
