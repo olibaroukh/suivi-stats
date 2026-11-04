@@ -118,6 +118,26 @@ function cheminValide(c) {
 }
 async function lireJSON(env, chemin) { const o = await env.FICHIERS.get(chemin); if (!o) return null; try { return await o.json(); } catch (e) { return null; } }
 
+// ---------- Taux de change (mise à jour automatique le 1er du mois) ----------
+// Valeur d'une unité de devise en euros, d'après les cours de référence de la BCE (service Frankfurter, sans clé).
+const DEVISES_ISO = { 'Shekel': 'ILS', 'Franc Suisse': 'CHF', 'Livre Sterling': 'GBP', 'Dollars Canadien': 'CAD', 'Dolard': 'USD' };
+async function majTaux(env, par) {
+  const iso = Object.values(DEVISES_ISO).join(',');
+  let d = null;
+  for (const u of [`https://api.frankfurter.dev/v1/latest?base=EUR&symbols=${iso}`, `https://api.frankfurter.app/latest?from=EUR&to=${iso}`]) {
+    try { const r = await fetch(u, { headers: { 'Accept': 'application/json' } }); if (r.ok) { d = await r.json(); if (d && d.rates) break; } } catch (e) {}
+  }
+  if (!d || !d.rates) throw new Error('cours indisponibles');
+  const taux = { 'Euro': 1 };
+  for (const [dev, code] of Object.entries(DEVISES_ISO)) if (d.rates[code]) taux[dev] = Math.round(1 / d.rates[code] * 10000) / 10000;
+  taux._maj = d.date; taux._source = 'BCE (cours de référence)'; taux._par = par;
+  await env.FICHIERS.put('config/taux-change.json', JSON.stringify(taux), { httpMetadata: { contentType: 'application/json' } });
+  const h = (await lireJSON(env, 'config/taux-historique.json')) || {};
+  h[String(d.date).slice(0, 7)] = taux;
+  await env.FICHIERS.put('config/taux-historique.json', JSON.stringify(h), { httpMetadata: { contentType: 'application/json' } });
+  return taux;
+}
+
 // ---------- Pièces jointes Zimbra ----------
 const ZIMBRA_REST = 'https://zimbra.oc-pratique.com/service/home/~/';
 async function soap(jeton, corps) {
@@ -283,6 +303,10 @@ async function routes(request, env) {
     return new Response(r.body, { headers: { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-store', ...h } });
   }
 
+  if (chemin === '/admin/taux' && request.method === 'POST') {
+    try { return json({ ok: true, taux: await majTaux(env, email) }, 200, h); } catch (e) { return erreur('Taux : ' + e.message, 502, h); }
+  }
+
   // Gestion des accès (administrateurs)
   if (chemin === '/admin/utilisateurs' && request.method === 'GET') {
     const r = await env.DB.prepare('SELECT * FROM utilisateurs ORDER BY nom, email').all();
@@ -309,6 +333,10 @@ export default {
   async fetch(request, env) {
     try { return await routes(request, env); }
     catch (e) { console.error(e); return erreur('Erreur interne', 500, cors(request)); }
+  },
+  // Tâche planifiée (wrangler.toml › triggers) : le 1er de chaque mois, mise à jour des taux de change
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(majTaux(env, 'automatique').catch(e => console.error('taux', e)));
   },
 };
 

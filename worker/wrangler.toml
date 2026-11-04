@@ -20,3 +20,7 @@ bucket_name = "suivi-stats-fichiers"
 
 [observability]
 enabled = true
+
+# Le 1er de chaque mois à 6 h (heure de Paris en hiver) : mise à jour des taux de change
+[triggers]
+crons = ["0 5 1 * *"]
