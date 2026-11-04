@@ -262,9 +262,11 @@
   // (« Taux d'indus du 01/01/2026 au 31/07/2026 ») → lecture directe du XML du classeur.
   async function periodeRestes(buf) {
     try {
-      const z = await JSZip.loadAsync(buf);
-      for (const n of Object.keys(z.files).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))) {
-        const x = await z.files[n].async('string');
+      // Fichiers bruts du classeur via SheetJS (synchrone, sans JSZip)
+      const wb = XLSX.read(buf, { type: 'array', bookFiles: true });
+      for (const n of Object.keys(wb.files || {}).filter(n => /worksheets\/sheet\d+\.xml$/.test(n))) {
+        const c = wb.files[n].content; if (!c) continue;
+        let x = ''; if (typeof c === 'string') x = c; else { const u = c.length != null ? c : new Uint8Array(c); for (let i = 0; i < u.length; i += 8192) x += String.fromCharCode.apply(null, Array.prototype.slice.call(u, i, i + 8192)); }
         const h = (x.match(/<(?:odd|even|first)Header>([\s\S]*?)<\//) || [])[1]; if (!h) continue;
         const m = h.match(/du\s+(\d{2})\/(\d{2})\/(\d{4})\s+au\s+(\d{2})\/(\d{2})\/(\d{4})/i);
         if (m) return { du: `${m[3]}-${m[2]}-${m[1]}`, au: `${m[6]}-${m[5]}-${m[4]}` };
