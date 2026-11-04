@@ -1,0 +1,595 @@
+{
+ "titre": "Les 32 Actions 2026",
+ "actions": [
+  {
+   "num": 1,
+   "resp": "TOUS",
+   "libelle": "CA OC groupe TTC (en M€)",
+   "objectif": {
+    "texte": "1 150 M€",
+    "valeur": 1150,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "ca",
+    "perimetre": "reseau",
+    "sites": "tous"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 2,
+   "resp": "OB",
+   "libelle": "CA France + OCM Succ + site France TTC (en M€)",
+   "objectif": {
+    "texte": "170 M€",
+    "valeur": 170,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "ca",
+    "perimetre": "france_succ",
+    "sites": "France"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 3,
+   "resp": "SA",
+   "libelle": "CA France + Dom Tom + OCM Franchises TTC (en M€)",
+   "objectif": {
+    "texte": "880 M€",
+    "valeur": 880,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "ca",
+    "perimetre": "france_franch",
+    "sites": "aucun"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 4,
+   "resp": "CL",
+   "libelle": "CA International + OCM + sites TTC (en M€)",
+   "objectif": {
+    "texte": "80 M€",
+    "valeur": 80,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "ca",
+    "perimetre": "international",
+    "sites": "international"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 5,
+   "resp": "SA",
+   "libelle": "Nb ouvertures France + Dom Tom Franchises",
+   "objectif": {
+    "texte": "30",
+    "valeur": 30,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "ouvertures",
+    "perimetre": "france_franch"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 6,
+   "resp": "LT",
+   "libelle": "Nb ouvertures internationales",
+   "objectif": {
+    "texte": "10",
+    "valeur": 10,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "ouvertures",
+    "perimetre": "international"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 7,
+   "resp": "RL",
+   "libelle": "Marge brute produits",
+   "objectif": {
+    "texte": "70 %",
+    "valeur": 70,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "marge12",
+    "perimetre": "france_succ"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 8,
+   "resp": "DA",
+   "libelle": "RE France",
+   "objectif": {
+    "texte": "17 %",
+    "valeur": 17,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "re",
+    "perimetre": "france_succ"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 9,
+   "resp": "LT",
+   "libelle": "Ouverture New York",
+   "objectif": {
+    "texte": "Avant le 31/05/26",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "Non",
+    "statut": "ko"
+   }
+  },
+  {
+   "num": 10,
+   "resp": "OB",
+   "libelle": "Rentabilité salariale France",
+   "objectif": {
+    "texte": "28 %",
+    "valeur": 28,
+    "sens": "<=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "rentaSal",
+    "perimetre": "france_succ"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 11,
+   "resp": "OB",
+   "libelle": "Nb de magasins d’excellence succ",
+   "objectif": {
+    "texte": "15",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "4",
+    "statut": "ko"
+   }
+  },
+  {
+   "num": 12,
+   "resp": "OB",
+   "libelle": "Nb de managers Leaders succ",
+   "objectif": {
+    "texte": "30",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "2",
+    "statut": "ko"
+   }
+  },
+  {
+   "num": 13,
+   "resp": "TOUS",
+   "libelle": "Disponibilité + efficacité + réactivité par pôle",
+   "objectif": {
+    "texte": "8/10",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "7,6",
+    "statut": "ko"
+   }
+  },
+  {
+   "num": 14,
+   "resp": "JB",
+   "libelle": "Application OC téléchargée *",
+   "objectif": {
+    "texte": "100 000",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "30 000 (prev 60 000)",
+    "statut": "ko"
+   }
+  },
+  {
+   "num": 15,
+   "resp": "SA",
+   "libelle": "Confidence en Franchise (Utilisé)",
+   "objectif": {
+    "texte": "100 %",
+    "valeur": 100,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "confUtil",
+    "perimetre": "france_franch"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 16,
+   "resp": "LL",
+   "libelle": "AA sans incidence *",
+   "objectif": {
+    "texte": "OK",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "Pas de Nouvelles",
+    "statut": ""
+   }
+  },
+  {
+   "num": 17,
+   "resp": "SA",
+   "libelle": "Audio légal dans l’OCM *",
+   "objectif": {
+    "texte": "OK",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "En Cours",
+    "statut": ""
+   }
+  },
+  {
+   "num": 18,
+   "resp": "LL",
+   "libelle": "PNF : fin *",
+   "objectif": {
+    "texte": "OK",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "Pas de Nouvelles",
+    "statut": ""
+   }
+  },
+  {
+   "num": 19,
+   "resp": "LL",
+   "libelle": "Paris plus rentable qu’en 2025",
+   "objectif": {
+    "texte": "RE ≥ -10%",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "-21,8 % à FIN 2026-06",
+    "statut": "ko"
+   }
+  },
+  {
+   "num": 20,
+   "resp": "SV",
+   "libelle": "Taux de remplissage du Chateau *",
+   "objectif": {
+    "texte": "30 %",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 21,
+   "resp": "CL",
+   "libelle": "Renta Salariale Be, Sw, UK, Esp, Can",
+   "objectif": {
+    "texte": "35 %",
+    "valeur": 35,
+    "sens": "<=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "rentaSal",
+    "perimetre": "pays:BELGIQUE|SUISSE|ROYAUME-UNI|ESPAGNE|CANADA"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 22,
+   "resp": "RL",
+   "libelle": "Taux de MdC + Intemporelles (Succursales)",
+   "objectif": {
+    "texte": "66 %",
+    "valeur": 66,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "mdc",
+    "perimetre": "france_succ"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 23,
+   "resp": "RL",
+   "libelle": "Sur-stock MdC Gennevilliers + Mag succursales *",
+   "objectif": {
+    "texte": "10 000",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 24,
+   "resp": "JB",
+   "libelle": "Fichier avec Ophtalmologistes visités",
+   "objectif": {
+    "texte": "5 000",
+    "valeur": 5000,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "visOphta",
+    "perimetre": "reseau"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 25,
+   "resp": "JB",
+   "libelle": "Fichier avec ORL visités",
+   "objectif": {
+    "texte": "2 500",
+    "valeur": 2500,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "visOrl",
+    "perimetre": "reseau"
+   },
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 26,
+   "resp": "LL",
+   "libelle": "Fin des contrôles fiscaux *",
+   "objectif": {
+    "texte": "OK",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 27,
+   "resp": "DA",
+   "libelle": "Aucune dette fournisseur + Etat *",
+   "objectif": {
+    "texte": "OK",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 28,
+   "resp": "DA",
+   "libelle": "Dette franchises *",
+   "objectif": {
+    "texte": "< 5 M€",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 29,
+   "resp": "DA",
+   "libelle": "Bilan 2025 sans réserve *",
+   "objectif": {
+    "texte": "OK",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 30,
+   "resp": "LL",
+   "libelle": "Ouverture Optical Center TLV *",
+   "objectif": {
+    "texte": "OK",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "OK",
+    "statut": "ok"
+   }
+  },
+  {
+   "num": 31,
+   "resp": "OL/SA",
+   "libelle": "BI pour les franchisés + stats OC *",
+   "objectif": {
+    "texte": "OK",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  },
+  {
+   "num": 32,
+   "resp": "OL",
+   "libelle": "G6G 2,0 au ROF *",
+   "objectif": {
+    "texte": "OK",
+    "valeur": null,
+    "sens": ">=",
+    "projection": false
+   },
+   "mode": "manuel",
+   "indicateur": {},
+   "manuel": {
+    "valeur": "",
+    "statut": ""
+   }
+  }
+ ]
+}

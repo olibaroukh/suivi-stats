@@ -23,6 +23,7 @@
     <button data-vue="import">Import du mois</button>
     <button data-vue="fiches">Fiches magasins</button>
     <button data-vue="cockpits">Cockpits</button>
+    <button data-vue="actions">Actions de l’année</button>
     <button data-vue="reglages">Réglages</button>
   </nav>
   <div class="recherche-globale"><input id="rg-q" placeholder="🔍 Magasin, code, manager…" autocomplete="off"><div id="rg-res" hidden></div></div>
@@ -63,6 +64,21 @@
         <div><h3 class="cb-titre baisse">À surveiller</h3><div id="cb-bas"></div></div>
       </div>
     </div>
+  </section>
+
+  <!-- ACTIONS DE L'ANNÉE -->
+  <section class="vue" id="vue-actions">
+    <div class="carte">
+      <div class="ligne-outils">
+        <select id="ac-mois"></select>
+        <span style="flex:1"></span>
+        <button id="ac-param" hidden>Paramétrer les actions</button>
+        <button class="primaire" id="ac-pdf">PDF (A3 paysage)</button>
+      </div>
+      <p class="aide" id="ac-info"></p>
+      <div id="ac-editeur" hidden></div>
+    </div>
+    <div class="ck-cadre"><div id="ac-apercu"></div></div>
   </section>
 
   <!-- IMPORT -->
@@ -247,7 +263,7 @@
             </div>
           </div>
           <label style="margin-top:10px">Écrans visibles</label>
-          <div class="chk"><label><input type="checkbox" class="ac-ecran" value="fiches" checked> Fiches magasins</label><label><input type="checkbox" class="ac-ecran" value="cockpits" checked> Cockpits</label></div>
+          <div class="chk"><label><input type="checkbox" class="ac-ecran" value="fiches" checked> Fiches magasins</label><label><input type="checkbox" class="ac-ecran" value="cockpits" checked> Cockpits</label><label><input type="checkbox" class="ac-ecran" value="actions"> Actions de l’année</label></div>
           <label style="margin-top:10px"><input type="checkbox" id="ac-actif" checked> Compte actif</label>
           <p class="muted" id="ac-apercu"></p>
           <button class="primaire" id="btn-acces-enregistrer">Enregistrer</button> <button id="btn-acces-annuler">Annuler</button>
@@ -277,7 +293,7 @@
  * ce qui force le navigateur à prendre les nouveaux fichiers dès qu'une version est publiée.
  * Toutes les 3 minutes et au retour sur l'onglet, l'appli revérifie version.json et propose « Mettre à jour ». */
 (function () {
-  var FICHIERS = ['lib/xlsx.full.min.js', 'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'js/engine/cosium.js', 'js/engine/hub.js', 'js/engine/sources.js', 'js/engine/lyleoo.js', 'js/engine/ocm.js', 'js/engine/site.js', 'js/engine/equipe.js', 'js/pipeline.js', 'js/fiche.js', 'js/visite.js', 'js/cockpit.js', 'js/store.js', 'js/app.js'];
+  var FICHIERS = ['lib/xlsx.full.min.js', 'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'js/engine/cosium.js', 'js/engine/hub.js', 'js/engine/sources.js', 'js/engine/lyleoo.js', 'js/engine/ocm.js', 'js/engine/site.js', 'js/engine/equipe.js', 'js/pipeline.js', 'js/fiche.js', 'js/visite.js', 'js/cockpit.js', 'js/actions.js', 'js/store.js', 'js/app.js'];
   function charger(v) {
     window.APP_VERSION = v;
     var q = v ? '?v=' + encodeURIComponent(v) : '';
