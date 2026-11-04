@@ -132,6 +132,8 @@
         <div class="liste-mag" id="liste-mag"></div>
         <div class="carte" style="margin-top:12px">
           <button id="btn-pdf-un" style="width:100%">PDF de cette fiche</button>
+          <button id="btn-visite" style="width:100%;margin-top:8px">Dossier de visite (PDF)</button>
+          <button id="btn-visite-voir" style="width:100%;margin-top:8px">Aperçu du dossier de visite</button>
           <button class="primaire" id="btn-pdf-tous" style="width:100%;margin-top:8px">Générer les PDF de la sélection</button>
           <div class="barre" id="barre-pdf" hidden><div></div></div>
           <p class="aide" id="pdf-info"></p>
@@ -262,7 +264,7 @@
  * ce qui force le navigateur à prendre les nouveaux fichiers dès qu'une version est publiée.
  * Toutes les 3 minutes et au retour sur l'onglet, l'appli revérifie version.json et propose « Mettre à jour ». */
 (function () {
-  var FICHIERS = ['lib/xlsx.full.min.js', 'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'js/engine/cosium.js', 'js/engine/hub.js', 'js/engine/sources.js', 'js/engine/lyleoo.js', 'js/engine/ocm.js', 'js/engine/site.js', 'js/engine/equipe.js', 'js/pipeline.js', 'js/fiche.js', 'js/cockpit.js', 'js/store.js', 'js/app.js'];
+  var FICHIERS = ['lib/xlsx.full.min.js', 'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'js/engine/cosium.js', 'js/engine/hub.js', 'js/engine/sources.js', 'js/engine/lyleoo.js', 'js/engine/ocm.js', 'js/engine/site.js', 'js/engine/equipe.js', 'js/pipeline.js', 'js/fiche.js', 'js/visite.js', 'js/cockpit.js', 'js/store.js', 'js/app.js'];
   function charger(v) {
     window.APP_VERSION = v;
     var q = v ? '?v=' + encodeURIComponent(v) : '';

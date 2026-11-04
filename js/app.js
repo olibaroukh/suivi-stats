@@ -261,6 +261,9 @@
     $('#fi-langue').onchange = () => S.magSel && afficherFiche(S.magSel);
     $('#btn-pdf-un').onclick = async () => { if (!S.magSel) return; const m = S.magSel; const b = await pdfMagasin(m); telecharger(b, nomPdf(m)); };
     $('#btn-pdf-tous').onclick = pdfSelection;
+    $('#btn-visite').onclick = async () => { if (!S.magSel) return; const b = $('#btn-visite'); b.disabled = true; b.textContent = 'Préparation…';
+      try { telecharger(await pdfVisite(S.magSel), 'Visite - ' + nomPdf(S.magSel)); } finally { b.disabled = false; b.textContent = 'Dossier de visite (PDF)'; } };
+    $('#btn-visite-voir').onclick = async () => { if (!S.magSel) return; $('#apercu').innerHTML = await htmlVisite(S.magSel); ajuster($('#apercu')); };
   }
   async function listerPhotos() {
     const ks = (await Store.lister('donnees')).filter(n => /^\d{4}-\d{2}$/.test(n)).sort().reverse();
@@ -319,6 +322,26 @@
         if (n++) doc.addPage();
         doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
       }
+    }
+    hote.remove();
+    return doc.output('blob');
+  }
+  // Dossier de visite : page de préparation (comparaison au groupe, bilan, notes) + fiche magasin en français
+  async function htmlVisite(m) {
+    const prec = await photoMois(moisPrec(`${S.photo.annee}-${pad(S.photo.mois)}`));
+    return Visite.rendre(S.photo, prec, S.ref, m, S.objectifs) + Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: 'fr' });
+  }
+  async function pdfVisite(m) {
+    const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const hote = document.createElement('div'); hote.style.cssText = 'position:fixed;left:-10000px;top:0'; document.body.appendChild(hote);
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    hote.innerHTML = await htmlVisite(m); ajuster(hote);
+    await Promise.all([...hote.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
+    let n = 0;
+    for (const page of hote.querySelectorAll('.fiche')) {
+      const canvas = await html2canvas(page, { scale: 2, backgroundColor: '#ffffff', logging: false });
+      if (n++) doc.addPage();
+      doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
     }
     hote.remove();
     return doc.output('blob');
