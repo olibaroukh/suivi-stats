@@ -136,7 +136,9 @@
     const th = THEMES[themeId];
     if (th.sections && !th.cols) th.cols = [...new Set(th.sections.flatMap(se => se.groupes.flatMap(g => g[1])))];
     const mags = ref.filter(r => r.actif === 'Oui' && perim.filtre(r) && photo.magasins[String(r.code)]);
-    const devises = [...new Set(mags.map(r => r.devise || 'Euro'))];
+    // Magasins non actifs : absents des lignes, mais leur chiffre compte dans les totaux (synthèses, total)
+    const magsTot = ref.filter(r => perim.filtre(r) && photo.magasins[String(r.code)]);
+    const devises = [...new Set(magsTot.map(r => r.devise || 'Euro'))];
     const multi = devises.length > 1;
     const conv = multi ? it => taux[it.devise] || 1 : null;
     // Effectifs (export RH ; une personne sur plusieurs magasins compte 1/n dans chacun) et effectif théorique = max(3,5 ; CA prévisionnel / 250 000)
@@ -151,23 +153,25 @@
     const valeurs = (d) => { const o = {}; th.cols.forEach(k => { o[k] = COL[k].f(d.N || {}, d.N1 || {}, m); }); return o; };
     let lignes;
     if (perim.regrouper) {
-      const g = {}; mags.forEach(r => { const k = perim.regrouper(r) || '—'; (g[k] = g[k] || []).push(item(r)); });
-      lignes = Object.entries(g).map(([k, its]) => ({ code: its.length + ' mag.', nom: k, v: valeurs(agreger(its, conv)) }));
-    } else lignes = mags.map(r => ({ code: String(r.code), nom: r.magasin, v: valeurs(donnees(r)), dev: DEVISE_SYM[r.devise] || '€' }));
+      const g = {}, nAct = {}; magsTot.forEach(r => { const k = perim.regrouper(r) || '—'; (g[k] = g[k] || []).push(item(r)); if (r.actif === 'Oui') nAct[k] = (nAct[k] || 0) + 1; });
+      lignes = Object.entries(g).map(([k, its]) => ({ code: (nAct[k] || 0) + ' mag.', nom: k, v: valeurs(agreger(its, conv)) }));
+    } else lignes = mags.map(r => ({ code: String(r.code), nom: r.magasin, v: valeurs(donnees(r)), dev: DEVISE_SYM[r.devise] || '€', devise: r.devise || 'Euro' }));
     // Objectifs (pays de référence du périmètre) pour colorer les cellules
     const obj = objectifsRef(opts.objectifs, mags);
-    const total = { nom: 'TOTAL', v: valeurs(agreger(mags.map(item), conv)) };
+    const total = { nom: 'TOTAL', v: valeurs(agreger(magsTot.map(item), conv)) };
     let sous = [];
     if (perim.sousTotal) {
-      const g = {}; mags.forEach(r => { const k = perim.sousTotal(r) || '—'; (g[k] = g[k] || []).push(r); });
-      sous = Object.entries(g).sort((a, b) => a[0].localeCompare(b[0])).map(([k, rs]) => ({ nom: k, n: rs.length, v: valeurs(agreger(rs.map(item), conv)), dev: [...new Set(rs.map(r => DEVISE_SYM[r.devise] || '€'))].join('/') }));
+      const g = {}; magsTot.forEach(r => { const k = perim.sousTotal(r) || '—'; (g[k] = g[k] || []).push(r); });
+      sous = Object.entries(g).sort((a, b) => a[0].localeCompare(b[0])).map(([k, rs]) => ({ nom: k, n: rs.filter(r => r.actif === 'Oui').length, v: valeurs(agreger(rs.map(item), conv)), dev: [...new Set(rs.map(r => DEVISE_SYM[r.devise] || '€'))].join('/') }));
     }
     let tri = opts.tri || 'code'; if (tri === 'code' && perim.regrouper) tri = 'nom';
     if (tri === 'code') lignes.sort((a, b) => String(a.code).localeCompare(String(b.code), 'fr', { numeric: true }));
     else if (tri === 'nom') lignes.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
     else lignes.sort((a, b) => (b.v[tri] ?? -Infinity) - (a.v[tri] ?? -Infinity));
     lignes.forEach((l, i) => l.rang = i + 1);
-    const top = th.top.map(([k, lib, asc]) => ({ lib, fmt: COL[k].fmt, liste: lignes.filter(l => l.v[k] != null && !(asc && l.v[k] === 0 && k === 'indus' && false)).slice().sort((a, b) => asc ? a.v[k] - b.v[k] : b.v[k] - a.v[k]).slice(0, 3).map(l => [l.nom, l.v[k]]) }));
+    // Top 3 : en multi-devises, les montants sont convertis en € avant classement (affichés en €)
+    const enEur = (l, k) => (multi && l.devise && ['k', 'kn', 'eur'].includes(COL[k].fmt)) ? l.v[k] * (taux[l.devise] || 1) : l.v[k];
+    const top = th.top.map(([k, lib, asc]) => ({ lib, fmt: COL[k].fmt, liste: lignes.filter(l => l.v[k] != null).map(l => [l.nom, enEur(l, k)]).sort((a, b) => asc ? a[1] - b[1] : b[1] - a[1]).slice(0, 3) }));
     const posit = mags.map(r => COL.posit.f(photo.magasins[String(r.code)].N || {}, {}, m));
     const prevs = mags.map(r => COL.prev.f(photo.magasins[String(r.code)].N || {}, {}, m) * (multi ? (taux[r.devise] || 1) : 1));
     const compteurs = [['Magasins', mags.length], ['Magasins à 100 %', posit.filter(x => x != null && x >= 1).length], ['Prévisionnel ≥ 1,2 M€', prevs.filter(x => x >= 1.2e6).length]];
@@ -185,7 +189,8 @@
   // Objectifs propres à la vue Siège (fixés chaque année dans Réglages ; valeurs 2026 du Numbers par défaut)
   const SIEGE_DEFAUT = { groupe: 1.1e9, siteFrance: 6000000, siteIsrael: 1200000, siteUK: 840000, siteCanada: 500000, mobileSucc: 1200000, mobileFranchise: 450000, mdc: 0.66 };
   function construireSiege(photo, ref, taux, objS) {
-    const m = photo.mois, act = ref.filter(r => r.actif === 'Oui' && photo.magasins[String(r.code)]);
+    // Tous les magasins ayant du chiffre (actifs ou non) comptent dans les montants ; les compteurs ne retiennent que les actifs
+    const m = photo.mois, act = ref.filter(r => photo.magasins[String(r.code)]), estActif = r => r.actif === 'Oui';
     const conv = it => taux[it.devise] || 1;
     const item = r => ({ ...photo.magasins[String(r.code)], devise: r.devise || 'Euro' });
     const ordre = ['FRANCE', 'ESPAGNE', 'BELGIQUE', 'LUXEMBOURG', 'SUISSE', 'ISRAEL', 'CANADA', 'ROYAUME-UNI', 'IRLANDE'];
@@ -193,9 +198,9 @@
     const ligne = (nom, rs) => {
       const a = agreger(rs.map(item), conv), n = a.N, p = a.N1;
       const prev = n.P != null ? n.P * 12 / m : null, obj = n.O != null ? n.O * 1000 : null;
-      const prevMag = rs.map(r => { const x = photo.magasins[String(r.code)].N || {}; return x.P != null ? x.P * 12 / m * (taux[r.devise] || 1) : 0; });
+      const prevMag = rs.filter(estActif).map(r => { const x = photo.magasins[String(r.code)].N || {}; return x.P != null ? x.P * 12 / m * (taux[r.devise] || 1) : 0; });
       return { nom, ca: n.P, evol: evol(n.P, p.P), obj, posit: div(prev, obj), prev,
-        succ: rs.filter(r => r.type === 'Succursale' && r.nature !== 'Camion').length, fr: rs.filter(r => r.type === 'Franchise' && r.nature !== 'Camion').length, sup12: prevMag.filter(x => x >= 1.2e6).length,
+        succ: rs.filter(r => estActif(r) && r.type === 'Succursale' && r.nature !== 'Camion').length, fr: rs.filter(r => estActif(r) && r.type === 'Franchise' && r.nature !== 'Camion').length, sup12: prevMag.filter(x => x >= 1.2e6).length,
         evolOpt: evol(n.P != null ? n.P - (n.Q || 0) - (n.R || 0) : null, p.P != null ? p.P - (p.Q || 0) - (p.R || 0) : null), evolAud: evol(n.Q, p.Q),
         evolNdv: evol(n.U, p.U), evolNdvA: evol(n.AW, p.AW), ndv: n.U, ndvA: n.AW,
         re: pct(n.CQ), marge: pct(n.CS), loyers: pct(n.CU), pub: pct(n.CW), rentaSal: pct(n.CM), note: n.BL ? n.BK : null, avis: n.BL };
@@ -215,14 +220,14 @@
     // Segments pour Confidence, MdC, visites, OC Mobile
     const SEG = [['Succursales', r => r.type === 'Succursale' && r.pays === 'FRANCE'], ['Franchises', r => r.type === 'Franchise' && r.pays === 'FRANCE'], ['International', r => r.pays !== 'FRANCE']];
     const aggSeg = f => agreger(act.filter(f).map(item), conv).N;
-    const confidence = SEG.map(([nom, f]) => { const n = aggSeg(f), rs = act.filter(f); return { nom, devis: div(n.DI, n.DJ), n1: div(n.DK, n.DL), audio: div(n.DM, n.DN), global: div(n.DO, n.DP), utilisent: rs.filter(r => ((photo.magasins[String(r.code)].N || {}).DP || 0) > 0).length, nb: rs.length }; });
+    const confidence = SEG.map(([nom, f]) => { const n = aggSeg(f), rs = act.filter(f); return { nom, devis: div(n.DI, n.DJ), n1: div(n.DK, n.DL), audio: div(n.DM, n.DN), global: div(n.DO, n.DP), utilisent: rs.filter(r => estActif(r) && ((photo.magasins[String(r.code)].N || {}).DP || 0) > 0).length, nb: rs.filter(estActif).length }; });
     const nT = agreger(act.map(item), conv).N;
-    confidence.push({ nom: 'Total', devis: div(nT.DI, nT.DJ), n1: div(nT.DK, nT.DL), audio: div(nT.DM, nT.DN), global: div(nT.DO, nT.DP), utilisent: confidence.reduce((a, c) => a + c.utilisent, 0), nb: act.length, tot: true });
+    confidence.push({ nom: 'Total', devis: div(nT.DI, nT.DJ), n1: div(nT.DK, nT.DL), audio: div(nT.DM, nT.DN), global: div(nT.DO, nT.DP), utilisent: confidence.reduce((a, c) => a + c.utilisent, 0), nb: act.filter(estActif).length, tot: true });
     const mdc = SEG.slice(0, 2).map(([nom, f]) => ({ nom: nom + ' France', v: pct(aggSeg(f).AN) }));
     const visites = SEG.map(([nom, f]) => { const n = aggSeg(f); return { nom, ophta: (n.DX || 0) + (n.DW || 0), orl: (n.DV || 0) + (n.DY || 0), ce: n.DZ || 0 }; });
     const mobile = [['Succursales', 'Succursale', objS.mobileSucc], ['Franchises', 'Franchise', objS.mobileFranchise]].map(([nom, ty, ob]) => {
       const rs = act.filter(r => r.nature === 'Camion' && r.type === ty), n = agreger(rs.map(item), conv).N;
-      return { nom, nb: rs.length, ca: n.P, obj: ob, posit: (n.P != null && ob) ? n.P * 12 / m / ob : null, ndv: n.U, prot: n.AX };
+      return { nom, nb: rs.filter(estActif).length, ca: n.P, obj: ob, posit: (n.P != null && ob) ? n.P * 12 / m / ob : null, ndv: n.U, prot: n.AX };
     });
     { const a = mobile[0], b = mobile[1], ob = (a.obj || 0) + (b.obj || 0), ca = (a.ca || 0) + (b.ca || 0); mobile.push({ nom: 'Total', nb: a.nb + b.nb, ca, obj: ob, posit: ob ? ca * 12 / m / ob : null, ndv: (a.ndv || 0) + (b.ndv || 0), prot: (a.prot || 0) + (b.prot || 0), tot: true }); }
     const groupe = { obj: objS.groupe, ca: total.ca, posit: objS.groupe && total.prev != null ? total.prev / objS.groupe : null };
