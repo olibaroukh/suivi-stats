@@ -474,3 +474,23 @@ body.non-connecte .recherche-globale{display:none}
 .cockpit.sg .sg-mobile>div{padding:6px 10px}
 .cockpit.sg .sg-vis>div{padding:9px 10px}.cockpit.sg .sg-vis .v{font-size:22px}
 .cockpit.sg .ck-g2,.cockpit.sg .ck-g3{gap:22px}
+
+/* ---------- Dossier de visite ---------- */
+.fiche.visite .v-chiffres{grid-template-columns:repeat(5,1fr)}
+.fiche.visite table.v-comp{width:100%;border-collapse:collapse;font-size:9.6px}
+.fiche.visite table.v-comp th{font-size:7.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--g);text-align:right;padding:0 6px 5px;border-bottom:1px solid var(--trait)}
+.fiche.visite table.v-comp th:first-child{text-align:left}
+.fiche.visite table.v-comp td{padding:4.2px 6px;border-bottom:1px solid var(--trait);text-align:right;white-space:nowrap}
+.fiche.visite table.v-comp td:first-child{text-align:left}
+.fiche.visite table.v-comp td.fort{font-weight:800}
+.fiche.visite table.v-comp small{color:var(--g)}
+.fiche.visite .v-rang{display:inline-block;position:relative;width:70px;height:6px;border-radius:3px;background:linear-gradient(90deg,#CFE9DA,#F6DCDA);vertical-align:middle}
+.fiche.visite .v-rang i{position:absolute;top:-3px;width:4px;height:12px;margin-left:-2px;border-radius:2px;background:var(--n)}
+.fiche.visite .v-forts ul,.fiche.visite .v-faibles ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+.fiche.visite .v-forts li,.fiche.visite .v-faibles li{padding:6px 10px;border-radius:8px;font-size:10px}
+.fiche.visite .v-forts li{background:#E3F2EA}.fiche.visite .v-faibles li{background:var(--rose)}
+.fiche.visite .v-forts li small,.fiche.visite .v-faibles li small{color:#6d6566}
+.fiche.visite .v-case{text-align:center;font-size:13px}
+.fiche.visite .v-notes{flex:1;display:flex;flex-direction:column}
+.fiche.visite .v-lignes{flex:1;display:flex;flex-direction:column;justify-content:space-between}
+.fiche.visite .v-lignes div{border-bottom:1px dashed #D9D2D1;height:1px;flex:1}
