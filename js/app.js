@@ -53,7 +53,7 @@
     document.body.classList.remove('non-connecte'); $('#ecran-connexion').hidden = true;
     const p = Store.profil(), admin = Store.estAdmin();
     $('#lien-deconnexion').hidden = false;
-    $('#pied-stockage').textContent = 'Données stockées sur Cloudflare, accès par connexion personnelle.';
+    $('#pied-stockage').textContent = 'Données stockées sur Cloudflare, accès par connexion personnelle.' + (window.APP_VERSION ? ' · version ' + window.APP_VERSION : '');
     // Lecteurs : ni import ni réglages ; écrans éventuellement limités par leur profil
     document.querySelectorAll('.app-head nav button').forEach(b => {
       const v = b.dataset.vue; let ok = admin || (v !== 'import' && v !== 'reglages');
