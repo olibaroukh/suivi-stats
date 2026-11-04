@@ -103,6 +103,7 @@
       top: [['protheses', 'Nombre de prothèses'], ['caAudio', 'CA audio'], ['depist', 'Dépistage']] },
     restes: { lib: 'Restes dus', cols: ['rdus', 'avoirs', 'gel', 'indus', 'evolIndus', 'recup'], tri: 'indus',
       top: [['indus', 'Taux d’indus le plus bas', true]] },
+    confidence: { lib: 'Confidence', cols: [], tri: 'cfG', top: [['cfG', 'Taux de contact global']] },
     renta: { lib: 'Rentabilité & gestion', cols: ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel', 'rentaSal', 'indus', 'note', 'mrq'], tri: 're',
       top: [['re', 'Résultat d’exploitation'], ['note', 'Note Google'], ['indus', 'Taux d’indus le plus bas', true]] },
   };
@@ -126,6 +127,7 @@
     out.push({ id: 'inter', lib: 'International – tous pays', groupeLib: 'International', filtre: r => !fr(r), sousTotal: r => r.pays, multiDevise: true, themes: ['ca', 'optique', 'audio', 'renta'] });
     [...new Set(act.filter(r => !fr(r)).map(r => r.pays))].sort().forEach(p =>
       out.push({ id: 'pays:' + p, lib: 'Pays – ' + p, groupeLib: 'International', filtre: r => r.pays === p, themes: ['ca', 'optique', 'audio', 'renta'] }));
+    out.forEach(p => { if (!p.special && p.themes && !p.themes.includes('confidence')) p.themes.push('confidence'); });
     return out;
   }
 
@@ -133,7 +135,21 @@
   function construire(photo, ref, perim, themeId, opts = {}) {
     const m = photo.mois, taux = Object.assign({}, TAUX_DEFAUT, opts.taux || {});
     if (perim.special === 'siege') return construireSiege(photo, ref, taux, Object.assign({}, SIEGE_DEFAUT, opts.siege || {}));
-    const th = THEMES[themeId];
+    let th = THEMES[themeId];
+    // Confidence : colonnes construites à partir des listes choisies (nombre de clients contactés + taux), global = somme des listes choisies
+    const CF_CT = ['ZA', 'ZB', 'ZC', 'ZD', 'ZE', 'ZF'], CF_TOT = ['ZG', 'ZH', 'ZI', 'ZJ', 'ZK', 'ZL'];
+    const listesConf = themeId === 'confidence' ? (opts.listesConf && opts.listesConf.length ? opts.listesConf : LISTES_CONF_DEFAUT).slice(0, 6) : [];
+    if (themeId === 'confidence') {
+      const cols = [];
+      listesConf.forEach((l, i) => {
+        COL['cfN' + i] = { lib: l, f: n => n[CF_CT[i]], fmt: 'nb' };
+        COL['cfT' + i] = { lib: 'Taux', f: n => n[CF_TOT[i]] ? n[CF_CT[i]] / n[CF_TOT[i]] : null, fmt: 'pct0' };
+        cols.push('cfN' + i, 'cfT' + i);
+      });
+      COL.cfGN = { lib: 'Global', f: n => n.ZM, fmt: 'nb' };
+      COL.cfG = { lib: 'Taux', f: n => n.ZN ? n.ZM / n.ZN : null, fmt: 'pct0', fort: true };
+      th = { ...th, cols: cols.concat(['cfGN', 'cfG']) };
+    }
     if (th.sections && !th.cols) th.cols = [...new Set(th.sections.flatMap(se => se.groupes.flatMap(g => g[1])))];
     const mags = ref.filter(r => r.actif === 'Oui' && perim.filtre(r) && photo.magasins[String(r.code)]);
     // Magasins non actifs : absents des lignes, mais leur chiffre compte dans les totaux (synthèses, total)
@@ -145,6 +161,12 @@
     const avecEff = d => { const N = { ...(d.N || {}) }; const eq = photo.equipes && photo.equipes[String(d.code)];
       if (eq) { const part = p => p.part != null ? p.part : 1; N.XA = eq.filter(p => p.famille !== 'audio').reduce((a, p) => a + part(p), 0); N.XC = eq.filter(p => p.famille === 'audio').reduce((a, p) => a + part(p), 0); }
       N.XB = N.P != null ? Math.max(3.5, N.P * 12 / m / 250000) : null;
+      if (listesConf.length) { const L = N._listes || {}, ANC = { 'Rappel Devis Optique': ['DI', 'DJ'], 'Rappel Optique N+1': ['DK', 'DL'], 'Rappel Audio N+4': ['DM', 'DN'] };
+        let gc = 0, gt = 0, vu = false;
+        listesConf.forEach((l, i) => { let ct = null, tot = null;
+          if (L[l]) { ct = L[l].contactes; tot = L[l].total; } else if (ANC[l] && N[ANC[l][0]] != null) { ct = N[ANC[l][0]]; tot = N[ANC[l][1]]; }
+          N[CF_CT[i]] = ct; N[CF_TOT[i]] = tot; if (ct != null) { gc += ct; gt += tot || 0; vu = true; } });
+        N.ZM = vu ? gc : null; N.ZN = vu ? gt : null; }
       // Taux d'indus du mois précédent (évolution), si la photo précédente est fournie
       const pr = opts.precedente && opts.precedente.magasins[String(d.code)]; if (pr && pr.N && pr.N.BV != null && N.BV != null) { N.XP = pr.N.BV; N.XQ = N.BV; } // XQ : taux actuel limité aux magasins comparables
       return { ...d, N }; };
@@ -175,6 +197,7 @@
     const posit = mags.map(r => COL.posit.f(photo.magasins[String(r.code)].N || {}, {}, m));
     const prevs = mags.map(r => COL.prev.f(photo.magasins[String(r.code)].N || {}, {}, m) * (multi ? (taux[r.devise] || 1) : 1));
     const compteurs = [['Magasins', mags.length], ['Magasins à 100 %', posit.filter(x => x != null && x >= 1).length], ['Prévisionnel ≥ 1,2 M€', prevs.filter(x => x >= 1.2e6).length]];
+    if (themeId === 'confidence') compteurs.push(['Magasins utilisateurs', mags.filter(r => { const it = donnees(r).N; return it.ZN > 0 && it.ZM > 0; }).length]);
     if (themeId === 'restes') compteurs.push(['Taux d’indus ≤ 1 %', mags.filter(r => { const v = (photo.magasins[String(r.code)].N || {}).BV; return v != null && v <= 0.01; }).length]);
     return { type: th.sections ? 'multi' : 'liste', perim, theme: th, themeId, photo, cols: th.cols, lignes, total, sous, top, compteurs, obj, multi, devTotal: multi ? '€' : (DEVISE_SYM[devises[0]] || '€'), sousLib: perim.id === 'france' ? 'AR' : perim.id === 'inter' ? 'Pays' : '' };
   }
@@ -438,6 +461,7 @@
       ${pied}</div>`;
   }
 
-  const api = { SIEGE_DEFAUT, perimetres, construire, rendre, THEMES, COL, TAUX_DEFAUT, DEVISE_SYM, agreger, W_PAGE, H_PAGE };
+  const LISTES_CONF_DEFAUT = ['Rappel Devis Optique', 'Rappel Optique N+1', 'Rappel Audio N+4'];
+  const api = { LISTES_CONF_DEFAUT, SIEGE_DEFAUT, perimetres, construire, rendre, THEMES, COL, TAUX_DEFAUT, DEVISE_SYM, agreger, W_PAGE, H_PAGE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Cockpit = api;
 })(typeof self !== 'undefined' ? self : this);

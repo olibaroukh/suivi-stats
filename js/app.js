@@ -17,7 +17,8 @@
     $('#imp-mois').innerHTML = MOIS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join(''); $('#imp-mois').value = prev.getMonth() + 1;
     $('#imp-annee').innerHTML = [0, 1, 2].map(k => `<option>${now.getFullYear() - k}</option>`).join(''); $('#imp-annee').value = prev.getFullYear();
     document.querySelectorAll('.app-head nav button').forEach(b => b.onclick = () => vue(b.dataset.vue));
-    brancherImport(); brancherFiches(); brancherReglages(); brancherCockpits(); brancherSelCockpit();
+    brancherImport(); brancherFiches(); brancherReglages(); brancherCockpits(); brancherSelCockpit(); brancherConfCockpit();
+    $('#ac-mois').onchange = afficherActions; $('#ac-param').onclick = editeurActions; $('#ac-pdf').onclick = pdfActions;
     $('#w-url').value = localStorage.getItem('workerUrl') || 'https://zimbra-relay.oli-baroukh.workers.dev';
     $('#w-cle').value = localStorage.getItem('workerCle') || '';
     $('#btn-dossier').onclick = async () => { await Store.choisirDossier(); await dossierPret(); };
@@ -82,7 +83,7 @@
     majInfosReglages(); await listerPhotos(); remplirPerimetres(); brancherTaux(); brancherObjSiege();
     await apresChargement();
   }
-  function vue(v) { if (v === 'cockpits' && !$('#ck-apercu .cockpit')) setTimeout(afficherCockpit, 0); document.querySelectorAll('.vue').forEach(x => x.classList.toggle('actif', x.id === 'vue-' + v)); document.querySelectorAll('.app-head nav button').forEach(b => b.classList.toggle('actif', b.dataset.vue === v)); }
+  function vue(v) { if (v === 'cockpits' && !$('#ck-apercu .cockpit')) setTimeout(afficherCockpit, 0); if (v === 'actions') setTimeout(afficherActions, 0); document.querySelectorAll('.vue').forEach(x => x.classList.toggle('actif', x.id === 'vue-' + v)); document.querySelectorAll('.app-head nav button').forEach(b => b.classList.toggle('actif', b.dataset.vue === v)); }
 
   // ---------- Import ----------
   function brancherImport() {
@@ -453,7 +454,9 @@
     majBoutonSel(p, exclus);
     const precedente = th === 'restes' ? await photoMois(moisPrec(CK.cle)) : null;
     const tx = await tauxChange();
-    const md = Cockpit.construire(CK.photo, S.ref, pAff, th, { tri, objectifs: S.objectifs, taux: tx, siege, precedente });
+    const listesConf = th === 'confidence' ? await listesConfChoisies() : null;
+    $('#ck-conf-btn').hidden = th !== 'confidence'; if (th !== 'confidence') $('#ck-conf').hidden = true;
+    const md = Cockpit.construire(CK.photo, S.ref, pAff, th, { tri, objectifs: S.objectifs, taux: tx, siege, precedente, listesConf });
     md.serie = await seriePerimetre(pAff, tx);
     const triLib = $('#ck-tri').selectedOptions[0].textContent.replace('Tri : ', '');
     const poser = (h, pages) => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h, pages })}</div>`; return [...$('#ck-apercu').querySelectorAll('.cockpit')]; };
@@ -585,6 +588,105 @@
 
 
 
+
+
+
+  // ---------- Les Actions de l'Année ----------
+  const ACT = { conf: null, annee: null };
+  async function confActions(annee) {
+    if (ACT.conf && ACT.annee === annee) return ACT.conf;
+    let c = await Store.lireJSON(`config/actions-${annee}.json`);
+    if (!c && annee === 2026) { try { c = await (await fetch('data/actions-modele-2026.json?v=' + (window.APP_VERSION || ''))).json(); c._modele = true; } catch (e) {} }
+    ACT.conf = c || { titre: `Les Actions ${annee}`, actions: [] }; ACT.annee = annee; return ACT.conf;
+  }
+  async function afficherActions() {
+    const ks = S.moisDispo || [];
+    if (!$('#ac-mois').options.length || $('#ac-mois').options.length !== ks.length) $('#ac-mois').innerHTML = ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join('');
+    const k = $('#ac-mois').value || ks[0]; if (!k) { $('#ac-info').textContent = 'Aucun mois enregistré.'; return; }
+    const photo = k === `${S.photo && S.photo.annee}-${pad(S.photo && S.photo.mois)}` ? S.photo : await photoMois(k);
+    const conf = await confActions(+k.slice(0, 4));
+    $('#ac-param').hidden = !(Store.estAdmin() || !Store.cloud());
+    $('#ac-info').textContent = conf._modele ? 'Modèle 2026 repris de votre tableau : vérifiez-le dans « Paramétrer les actions », puis enregistrez-le.' : `${(conf.actions || []).length} actions · les réalisés automatiques se mettent à jour à chaque mois enregistré.`;
+    $('#ac-apercu').innerHTML = `<div class="ac-echelle">${Actions.rendre(conf, photo, S.ref, await tauxChange())}</div>`;
+    const e = $('#ac-apercu .ac-echelle'), sc = Math.min(1, ($('#ac-apercu').clientWidth - 4) / 1587);
+    e.style.transform = `scale(${sc})`; e.style.height = (1123 * sc) + 'px';
+  }
+  function editeurActions() {
+    const conf = JSON.parse(JSON.stringify(ACT.conf)), perims = Actions.perimetres(S.ref);
+    const opt = (l, v) => l.map(([k, t]) => `<option value="${esc(k)}"${k === v ? ' selected' : ''}>${esc(t)}</option>`).join('');
+    const mesures = Object.entries(Actions.MESURES).map(([k, m]) => [k, m.lib]);
+    const per = perims.map(p => [p.id, p.lib]);
+    const ligne = (a, i) => { const ind = a.indicateur || {}, o = a.objectif || {}, mn = a.manuel || {};
+      const perL = per.some(p => p[0] === ind.perimetre) || !ind.perimetre ? per : per.concat([[ind.perimetre, ind.perimetre.replace('pays:', 'Pays – ').replace(/\|/g, ', ')]]);
+      return `<tr class="${a.mode === 'auto' ? 'auto' : 'manuel'}" data-i="${i}">
+        <td><input class="petit" data-k="num" value="${esc(a.num)}"></td><td><input class="petit" data-k="resp" value="${esc(a.resp)}"></td>
+        <td><input data-k="libelle" value="${esc(a.libelle)}"></td>
+        <td><input data-k="objTexte" value="${esc(o.texte || '')}" placeholder="affiché"><input data-k="objValeur" type="number" step="any" value="${o.valeur == null ? '' : o.valeur}" placeholder="valeur (auto)" class="auto-seul"><select data-k="sens" class="auto-seul">${opt([['>=', 'atteint si ≥'], ['<=', 'atteint si ≤']], o.sens || '>=')}</select><label class="auto-seul" style="font-size:10px"><input type="checkbox" data-k="projection" ${o.projection ? 'checked' : ''} style="width:auto"> sur la projection annuelle</label></td>
+        <td><select data-k="mode">${opt([['auto', 'Automatique'], ['manuel', 'Manuel']], a.mode === 'auto' ? 'auto' : 'manuel')}</select></td>
+        <td class="auto-seul"><select data-k="mesure">${opt(mesures, ind.mesure)}</select><select data-k="perimetre">${opt(perL, ind.perimetre || 'reseau')}</select>${ind.mesure === 'ca' ? `<select data-k="sites">${opt([['aucun', 'sans site internet'], ['tous', '+ tous les sites'], ['France', '+ site France'], ['international', '+ sites internationaux']], ind.sites || 'aucun')}</select>` : ''}</td>
+        <td class="manuel-seul"><input data-k="manValeur" value="${esc(mn.valeur || '')}" placeholder="réalisé"><select data-k="manStatut">${opt([['', 'neutre'], ['ok', 'atteint (vert)'], ['ko', 'pas encore (rouge)']], mn.statut || '')}</select></td>
+        <td><button data-suppr="${i}" title="Supprimer">✕</button></td></tr>`; };
+    const dessiner = () => {
+      $('#ac-editeur').innerHTML = `<div class="ligne-outils"><label style="flex:1">Titre <input id="ac-titre" value="${esc(conf.titre || '')}"></label>
+        <button id="ac-plus">+ Ajouter une action</button><button id="ac-copier">Reprendre l’année précédente</button><button class="primaire" id="ac-enr">Enregistrer</button><button id="ac-ann">Fermer</button></div>
+        <p class="aide">Automatique : le réalisé est calculé chaque mois (mesure + périmètre) et colorié selon l’objectif chiffré. Manuel : saisissez le réalisé ; il est conservé d’un mois sur l’autre. Pays multiples : choisissez un pays puis complétez l’identifiant (ex. pays:BELGIQUE|SUISSE).</p>
+        <table><thead><tr><th>N°</th><th>Resp.</th><th>Libellé</th><th>Objectif</th><th>Suivi</th><th>Mesure automatique</th><th>Réalisé manuel</th><th></th></tr></thead><tbody>${conf.actions.map(ligne).join('')}</tbody></table>`;
+      $('#ac-editeur tbody').onchange = $('#ac-editeur tbody').oninput = e => {
+        const tr = e.target.closest('tr'); if (!tr) return; const a = conf.actions[+tr.dataset.i], k = e.target.dataset.k, v = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+        a.objectif = a.objectif || {}; a.indicateur = a.indicateur || {}; a.manuel = a.manuel || {};
+        if (['num', 'resp', 'libelle'].includes(k)) a[k] = k === 'num' ? (+v || v) : v;
+        else if (k === 'objTexte') a.objectif.texte = v; else if (k === 'objValeur') a.objectif.valeur = v === '' ? null : +v;
+        else if (k === 'sens') a.objectif.sens = v; else if (k === 'projection') a.objectif.projection = v;
+        else if (k === 'mode') { a.mode = v; tr.className = v === 'auto' ? 'auto' : 'manuel'; if (v === 'auto' && !a.indicateur.mesure) { a.indicateur.mesure = 'ca'; a.indicateur.perimetre = 'reseau'; } }
+        else if (k === 'mesure' || k === 'perimetre' || k === 'sites') { a.indicateur[k] = v; if (k === 'mesure' && e.type === 'change') dessiner(); }
+        else if (k === 'manValeur') a.manuel.valeur = v; else if (k === 'manStatut') a.manuel.statut = v;
+      };
+      $('#ac-editeur tbody').onclick = e => { const i = e.target.dataset.suppr; if (i != null && confirm('Supprimer cette action ?')) { conf.actions.splice(+i, 1); dessiner(); } };
+      $('#ac-plus').onclick = () => { conf.actions.push({ num: conf.actions.length + 1, resp: '', libelle: '', objectif: { texte: '', valeur: null, sens: '>=' }, mode: 'manuel', indicateur: {}, manuel: { valeur: '', statut: '' } }); dessiner(); };
+      $('#ac-copier').onclick = async () => { const p = await Store.lireJSON(`config/actions-${ACT.annee - 1}.json`); if (!p) return alert(`Pas d’actions enregistrées pour ${ACT.annee - 1}.`); if (!confirm(`Remplacer par les ${p.actions.length} actions de ${ACT.annee - 1} (réalisés manuels remis à zéro) ?`)) return; conf.titre = (p.titre || '').replace(String(ACT.annee - 1), String(ACT.annee)); conf.actions = p.actions.map(a => ({ ...a, manuel: { valeur: '', statut: '' } })); dessiner(); };
+      $('#ac-ann').onclick = () => { $('#ac-editeur').hidden = true; };
+      $('#ac-enr').onclick = async () => { conf.titre = $('#ac-titre').value; delete conf._modele; conf.maj = new Date().toISOString().slice(0, 10);
+        await Store.ecrireJSON(`config/actions-${ACT.annee}.json`, conf); ACT.conf = conf; $('#ac-editeur').hidden = true; afficherActions(); };
+    };
+    dessiner(); $('#ac-editeur').hidden = false;
+  }
+  async function pdfActions() {
+    const page = $('#ac-apercu .actions-page'); if (!page) return;
+    const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' });
+    const clone = page.cloneNode(true), hote = document.createElement('div'); hote.style.cssText = 'position:fixed;left:-10000px;top:0'; hote.appendChild(clone); document.body.appendChild(hote);
+    const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', logging: false }); hote.remove();
+    doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 420, 297);
+    telecharger(doc.output('blob'), `Actions ${ACT.annee} - ${$('#ac-mois').value}.pdf`);
+  }
+
+  // ---------- Cockpit Confidence : listes affichées ----------
+  // Choix commun (enregistré par un administrateur pour toute l'équipe) ; un lecteur peut garder son propre choix sur son appareil.
+  async function listesConfChoisies() {
+    try { const perso = JSON.parse(localStorage.getItem('confListes') || 'null'); if (perso && perso.length && !Store.estAdmin()) return perso; } catch (e) {}
+    const c = await Store.lireJSON('config/confidence-listes.json');
+    return (c && c.listes && c.listes.length) ? c.listes : Cockpit.LISTES_CONF_DEFAUT;
+  }
+  function listesDisponibles() {
+    const s = new Set(Cockpit.LISTES_CONF_DEFAUT);
+    for (const c in (CK.photo || {}).magasins || {}) { const L = (CK.photo.magasins[c].N || {})._listes; if (L) Object.keys(L).forEach(k => { if (k !== 'Global') s.add(k); }); }
+    return [...s].sort((a, b) => a.localeCompare(b));
+  }
+  function brancherConfCockpit() {
+    $('#ck-conf-btn').onclick = async () => {
+      $('#ck-conf').hidden = !$('#ck-conf').hidden; if ($('#ck-conf').hidden) return;
+      const choix = await listesConfChoisies(), dispo = listesDisponibles();
+      $('#ck-conf-portee').textContent = Store.estAdmin() ? 'Choix enregistré pour toute l’équipe.' : 'Choix mémorisé sur cet appareil.';
+      $('#ck-conf-liste').innerHTML = dispo.map(l => `<label><input type="checkbox" value="${esc(l)}"${choix.includes(l) ? ' checked' : ''}> ${esc(l)}</label>`).join('');
+      $('#ck-conf-liste').onchange = async e => {
+        const sel = [...document.querySelectorAll('#ck-conf-liste input:checked')].map(i => i.value);
+        if (sel.length > 6) { e.target.checked = false; alert('6 listes au maximum.'); return; }
+        if (!sel.length) return;
+        if (Store.estAdmin()) await Store.ecrireJSON('config/confidence-listes.json', { listes: sel, maj: new Date().toISOString().slice(0, 10) });
+        else localStorage.setItem('confListes', JSON.stringify(sel));
+        afficherCockpit();
+      };
+    };
+  }
 
   // ---------- Cockpit : magasins affichés (mémorisé par périmètre, sur cet ordinateur) ----------
   const cleSel = id => 'ckSel:' + ((Store.cloud() && Store.profil() && Store.profil().email) || 'local') + ':' + id;
