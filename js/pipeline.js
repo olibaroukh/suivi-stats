@@ -102,7 +102,7 @@
         const wb = XLSX.read(it.buf, { type: 'array', cellDates: true });
         const ty = typeClasseur(wb);
         if (!ty) { ignores.push(it.nom + ' (classeur non reconnu)'); continue; }
-        (autres[ty] = autres[ty] || []).push({ nom: it.nom, wb });
+        (autres[ty] = autres[ty] || []).push({ nom: it.nom, wb, buf: it.buf });
       } else ignores.push(it.nom);
     }
 
@@ -139,7 +139,11 @@
       for (const c in o) { const r = o[c]; const a = ['CA','CC','CE','CG'].reduce((t, k) => t + (r[k] || 0), 0), m = ['CB','CD','CF','CH'].reduce((t, k) => t + (r[k] || 0), 0); r.CI = a ? m / a : null; }
       poser('marges', o, Sources.marges(XLSX, autres.marges[0].wb).periode); }
     if (autres.renta_sal) { const o = {}; autres.renta_sal.forEach(x => Object.assign(o, Sources.rentaSal(XLSX, x.wb).out)); poser('renta_sal', o, Sources.rentaSal(XLSX, autres.renta_sal[0].wb).periode); }
-    if (un('restes_dus')) poser('restes_dus', Sources.restesDus(XLSX, un('restes_dus').wb).out, un('restes_dus').nom);
+    if (un('restes_dus')) {
+      const per = await periodeRestes(un('restes_dus').buf);
+      poser('restes_dus', Sources.restesDus(XLSX, un('restes_dus').wb).out, per ? `du ${fr(per.du)} au ${fr(per.au)}` : un('restes_dus').nom);
+      if (per) sources.restes_dus.periode = per; else alertes.push('Restes dus : période introuvable dans l’en-tête des onglets Secteurs (« Taux d’indus du … au … »).');
+    }
     if (autres.rentabilites) { const o = {}; let per = ''; autres.rentabilites.forEach(x => { const r = Sources.rentabilites(XLSX, x.wb); Object.assign(o, r.out); per = r.periode; }); poser('rentabilites', o, per); }
     if (un('visites_presc')) { for (const c in mag) Object.assign(mag[c].N, { DV: 0, DW: 0, DX: 0, DY: 0 }); poser('visites_presc', Sources.visites(XLSX, un('visites_presc').wb).out); }
     if (un('mr_qualite')) poser('mr_qualite', Sources.mrQualite(XLSX, un('mr_qualite').wb).out, un('mr_qualite').nom);
@@ -208,7 +212,8 @@
         if (sources[src]) continue;
         let n = 0;
         for (const c in mag) { const prev = photoPrecedente.magasins[c]; if (!prev) continue; COLONNES_SOURCE[src].forEach(k => { if (prev.N[k] != null) { mag[c].N[k] = prev.N[k]; n++; } }); }
-        if (n) sources[src] = { statut: 'repris', detail: 'valeurs du mois précédent' };
+        if (n) { sources[src] = { statut: 'repris', detail: 'valeurs du mois précédent' };
+          const pp = photoPrecedente.sources && photoPrecedente.sources[src]; if (pp && pp.periode) sources[src].periode = pp.periode; }
       }
       if (!sources.cosium_n1 || sources.cosium_n1.statut === 'absent') { for (const c in mag) if (photoPrecedente.magasins[c]) mag[c].N1 = photoPrecedente.magasins[c].N1 || {}; }
     }
@@ -249,6 +254,23 @@
     const best = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
     return best ? best[0] : null;
   }
+
+
+  // Restes dus : la période n'est pas dans les cellules mais dans l'en-tête d'impression des onglets Secteurs
+  // (« Taux d'indus du 01/01/2026 au 31/07/2026 ») → lecture directe du XML du classeur.
+  async function periodeRestes(buf) {
+    try {
+      const z = await JSZip.loadAsync(buf);
+      for (const n of Object.keys(z.files).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))) {
+        const x = await z.files[n].async('string');
+        const h = (x.match(/<(?:odd|even|first)Header>([\s\S]*?)<\//) || [])[1]; if (!h) continue;
+        const m = h.match(/du\s+(\d{2})\/(\d{2})\/(\d{4})\s+au\s+(\d{2})\/(\d{2})\/(\d{4})/i);
+        if (m) return { du: `${m[3]}-${m[2]}-${m[1]}`, au: `${m[6]}-${m[5]}-${m[4]}` };
+      }
+    } catch (e) { console.warn('période restes dus', e); }
+    return null;
+  }
+  const fr = iso => iso.split('-').reverse().join('/');
 
   const api = { construire, LIBELLE_SOURCE, COLONNES_SOURCE, MOIS_FR, cle, finMois };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Pipeline = api;
