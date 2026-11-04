@@ -227,7 +227,7 @@
     const visites = SEG.map(([nom, f]) => { const n = aggSeg(f); return { nom, ophta: (n.DX || 0) + (n.DW || 0), orl: (n.DV || 0) + (n.DY || 0), ce: n.DZ || 0 }; });
     const mobile = [['Succursales', 'Succursale', objS.mobileSucc], ['Franchises', 'Franchise', objS.mobileFranchise]].map(([nom, ty, ob]) => {
       const rs = act.filter(r => r.nature === 'Camion' && r.type === ty), n = agreger(rs.map(item), conv).N;
-      return { nom, nb: rs.length, ca: n.P, obj: ob, posit: (n.P != null && ob) ? n.P * 12 / m / ob : null, ndv: n.U, prot: n.AX };
+      return { nom, nb: rs.filter(estActif).length, ca: n.P, obj: ob, posit: (n.P != null && ob) ? n.P * 12 / m / ob : null, ndv: n.U, prot: n.AX };
     });
     { const a = mobile[0], b = mobile[1], ob = (a.obj || 0) + (b.obj || 0), ca = (a.ca || 0) + (b.ca || 0); mobile.push({ nom: 'Total', nb: a.nb + b.nb, ca, obj: ob, posit: ob ? ca * 12 / m / ob : null, ndv: (a.ndv || 0) + (b.ndv || 0), prot: (a.prot || 0) + (b.prot || 0), tot: true }); }
     const groupe = { obj: objS.groupe, ca: total.ca, posit: objS.groupe && total.prev != null ? total.prev / objS.groupe : null };
