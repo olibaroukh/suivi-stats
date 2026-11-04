@@ -148,7 +148,7 @@
     const me = [
       ['COMMERCE', 'CA ≥ 2 M€', v(caAnnuel == null ? null : caAnnuel >= 2e6, caAnnuel != null ? Math.round(caAnnuel / 1000).toLocaleString('fr-FR') + ' k€ (proj.)' : null)],
       ['LEADERSHIP', '7/10 à l’évaluation Manager Leader', v(null)],
-      ['NOTORIÉTÉ', 'Note Google ≥ 4,5', v(n.BK == null || !n.BL ? null : n.BK >= 4.5, n.BL ? String(n.BK).replace('.', ',') : null)],
+      ['NOTORIÉTÉ', 'Note Google ≥ 4,5', v(n.BK == null || !n.BL ? null : n.BK >= 4.5, n.BL ? (Math.round(n.BK * 10) / 10).toString().replace('.', ',') : null)],
       ['RESSOURCES HUMAINES', 'Niveau de l’équipe ≥ 8 / Équilibre H/F / 3 jours de formation', v(null)],
       ['GESTION', 'Taux d’indus ≤ 1 %', v(n.BV == null ? null : n.BV <= 0.01, pc(n.BV))],
       ['FIDÉLISATION', '60 %', v(null)],
@@ -172,21 +172,21 @@
     const santeOk = sa && sa.score != null;
     const santeCl = v => v == null ? '' : v >= 75 ? 'vert' : v >= 50 ? 'orange' : 'rouge';
     const SANTE_LIB = { actions: 'Actions', effectif: 'Effectif', absenteisme: 'Absentéisme', positionnement: 'Positionnement', pedlv: 'Pedlv', avis: 'Avis', equipe: 'Équipe', kaizen: 'Kaizen', entretiens: 'Entretiens', lancements: 'Lancements' };
-    const badgeSante = () => !santeOk ? '' : `<div class="sante-badge ${santeCl(sa.score)}"><div class="v">${sa.score}<small>/100</small></div><div class="l">Score santé${photo.sante.apercu ? ' *' : ''}</div>${sa.precedent != null ? `<div class="e">${sa.score > sa.precedent ? '▲' : sa.score < sa.precedent ? '▼' : '='} ${sa.score - sa.precedent > 0 ? '+' : ''}${sa.score - sa.precedent} pts</div>` : ''}</div>`;
+    const badgeSante = () => !santeOk ? '' : `<div class="sante-badge ${santeCl(sa.score)}"><div class="v">${sa.score}<small>/100</small></div><div class="l">${esc(t('Score santé'))}${photo.sante.apercu ? ' *' : ''}</div>${sa.precedent != null ? `<div class="e">${sa.score > sa.precedent ? '▲' : sa.score < sa.precedent ? '▼' : '='} ${sa.score - sa.precedent > 0 ? '+' : ''}${sa.score - sa.precedent} pts</div>` : ''}</div>`;
     const bil = photo.bilans && photo.bilans.magasins && photo.bilans.magasins[String(mag.code)];
     const blocBilan = () => {
       if (!bil || !bil.actions || !bil.actions.length) return '';
       const finM = (photo.bilans.fin || '');
       const dfr = d => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '';
-      return section('Actions du dernier bilan de passage', `<table class="bilan"><thead><tr><th>Action</th><th>Responsable</th><th>Échéance</th></tr></thead><tbody>
+      return section('Actions du dernier bilan de passage', `<table class="bilan"><thead><tr><th>${esc(t('Action'))}</th><th>${esc(t('Responsable'))}</th><th>${esc(t('Échéance'))}</th></tr></thead><tbody>
         ${bil.actions.map((a, i) => `<tr><td><b>${i + 1}. ${esc(a.texte)}</b>${a.commentaire ? `<small>${esc(a.commentaire)}</small>` : ''}</td><td>${esc(a.qui || '–')}</td><td class="${a.echeance && finM && String(a.echeance).slice(0, 10) < finM ? 'ko' : ''}">${esc(dfr(a.echeance) || '–')}</td></tr>`).join('')}
-      </tbody></table>`, '', `passage du ${dfr(bil.date)}${bil.ar ? ' · ' + bil.ar : ''}`);
+      </tbody></table>`, '', `${t('passage du')} ${dfr(bil.date)}${bil.ar ? ' · ' + bil.ar : ''}`);
     };
     const blocSante = () => !santeOk ? '' : section('Score santé', `<div class="sante-l">
       ${badgeSante()}
       <div class="sante-dims">${(photo.sante.dims || Object.keys(SANTE_LIB)).map(d => { const v = sa.sous[d], off = v == null || sa.exclusions[d] || sa.neutralisations[d];
-        return `<div class="${off ? 'off' : santeCl(v)}"><div class="j"><div style="width:${off ? 0 : Math.max(2, Math.min(100, v))}%"></div></div><b>${off ? '–' : Math.round(v)}</b><span>${esc(SANTE_LIB[d] || d)}</span></div>`; }).join('')}</div>
-    </div>${photo.sante.apercu ? '<div class="autres">* Aperçu indicatif : le mois n’était pas encore calculé dans le dashboard au moment de l’import.</div>' : ''}`, '', `couverture ${nb(sa.couverture, 0)} %`);
+        return `<div class="${off ? 'off' : santeCl(v)}"><div class="j"><div style="width:${off ? 0 : Math.max(2, Math.min(100, v))}%"></div></div><b>${off ? '–' : Math.round(v)}</b><span>${esc(t(SANTE_LIB[d] || d))}</span></div>`; }).join('')}</div>
+    </div>${photo.sante.apercu ? '<div class="autres">* Aperçu indicatif : le mois n’était pas encore calculé dans le dashboard au moment de l’import.</div>' : ''}`, '', `${t('couverture')} ${nb(sa.couverture, 0)} %`);
     const loc = lang === 'he' ? 'he-IL' : lang === 'en' ? 'en-GB' : lang === 'es' ? 'es-ES' : 'fr-FR';
     const nb = (v, d = 0) => v == null ? '–' : Number(v).toLocaleString(loc, { maximumFractionDigits: d, minimumFractionDigits: d });
     const eur = v => v == null ? '–' : nb(Math.round(v)) + ' ' + dev;
@@ -227,8 +227,8 @@
     <div class="f-tag">${esc(mag.pays === 'FRANCE' ? (mag.ar || mag.pays) : mag.pays)}<small>${esc(mag.type || '')}</small></div>
     ${petit ? '' : badgeSante()}
   </header>`;
-    const section = (titre, corps, extra = '', sous = '') => `<section class="f-sec ${extra}"><h2><span>${esc(titre)}${sous ? ` <small>${esc(sous)}</small>` : ''}</span></h2>${corps}</section>`;
-    const tuile = (lib, val, cl = '', sous = '') => `<div class="tuile ${cl}"><div class="v">${val}</div><div class="l">${esc(lib)}</div>${sous ? `<div class="s">${sous}</div>` : ''}</div>`;
+    const section = (titre, corps, extra = '', sous = '') => `<section class="f-sec ${extra}"><h2><span>${esc(t(titre))}${sous ? ` <small>${esc(sous)}</small>` : ''}</span></h2>${corps}</section>`;
+    const tuile = (lib, val, cl = '', sous = '') => `<div class="tuile ${cl}"><div class="v">${val}</div><div class="l">${esc(t(lib))}</div>${sous ? `<div class="s">${sous}</div>` : ''}</div>`;
     const etatPct = (v, ob, inverse) => v == null || ob == null ? '' : (inverse ? v <= ob : v >= ob) ? 'ok' : 'ko';
     const repartition = () => {
       const parts = [['OPTIQUE', c.optique], ['CONTACTO', c.contacto], ['AUDIO', c.audio]];
@@ -238,8 +238,8 @@
     };
     const challenge = (titre, gain, lignes, sc) => `
       <div class="chal">
-        <div class="chal-h"><div><div class="chal-t">« ${esc(titre)} »</div><div class="chal-g">${esc(gain)}</div></div><div class="chal-sc">${sc.ok}<small>/10</small></div></div>
-        <ol>${lignes.map(([l, crit, st]) => `<li class="${st.s}"><span class="ic">${st.s === 'ok' ? '✓' : st.s === 'ko' ? '✕' : '•'}</span><div><b>${esc(l)}</b><small>${esc(crit)}</small></div><em>${st.val == null ? (st.s === 'na' ? 'à renseigner' : '') : esc(st.val)}</em></li>`).join('')}</ol>
+        <div class="chal-h"><div><div class="chal-t">« ${esc(t(titre))} »</div><div class="chal-g">${esc(t(gain))}</div></div><div class="chal-sc">${sc.ok}<small>/10</small></div></div>
+        <ol>${lignes.map(([l, crit, st]) => `<li class="${st.s}"><span class="ic">${st.s === 'ok' ? '✓' : st.s === 'ko' ? '✕' : '•'}</span><div><b>${esc(t(l))}</b><small>${esc(t(crit))}</small></div><em>${st.val == null ? (st.s === 'na' ? esc(t('à renseigner')) : '') : esc(st.val)}</em></li>`).join('')}</ol>
       </div>`;
 
     const posteCourt = p => ({ 'optométriste/contactologue': 'Opto/Contacto', 'opticien/vendeur': 'Opticien', 'audioprothésiste': 'Audioprothésiste', 'technicien audio': 'Tech. audio', 'monteur': 'Monteur', 'manager': 'Manager' }[String(p || '').toLowerCase()] || p);
@@ -250,7 +250,7 @@
         <span>${esc(t('Effectif Optique'))} <b>${nb(eq.effOpt, eq.effOpt % 1 ? 1 : 0)}</b></span><span>${esc(t('Effectif audio'))} <b>${nb(eq.effAud, eq.effAud % 1 ? 1 : 0)}</b></span>
         <span>${esc(t('Effectif Théorique'))} <b>${eq.effTheo == null ? '–' : nb(eq.effTheo, 1)}</b></span>
         <span>${esc(t('CA (k€) / Mois /Opticiens').replace('k€', 'k' + dev))} <b>${eq.caParOpticien == null ? '–' : nb(eq.caParOpticien, 1)}</b></span></div>`;
-      if (!eq.lignes.length && !eq.lignesAudio.length) return ent + `<div class="nd">${eq.connu ? 'Aucune vente individuelle sur la période' : 'Export RH ou stats par vendeur non chargés'}</div>`;
+      if (!eq.lignes.length && !eq.lignesAudio.length) return ent + `<div class="nd">${esc(t(eq.connu ? 'Aucune vente individuelle sur la période' : 'Export RH ou stats par vendeur non chargés'))}</div>`;
       const nl = eq.lignes.length + eq.lignesAudio.length + (eq.lignesAudio.length ? 2 : 0);
       const dense = nl > 9 ? (nl > 13 ? ' tres-dense' : ' dense') : '';
       return ent + `<table class="equipe${dense}"><thead>
@@ -275,7 +275,7 @@
   <div class="chiffres">
     ${tuile(t('CA GÉNÉRÉ:').replace(/:$/, ''), keur(c.ca.ca), '', evo(c.ca.evol, null, pc))}
     ${tuile(t('OBJECTIF:').replace(/:$/, ''), keur(c.ca.obj))}
-    ${tuile('Positionnement', pc(c.ca.posit), 'fort ' + etatPct(c.ca.posit, 1), 'projection fin d’année')}
+    ${tuile('Positionnement', pc(c.ca.posit), 'fort ' + etatPct(c.ca.posit, 1), t('projection fin d’année'))}
     ${tuile(t('CA MANQUANT'), keur(c.ca.manquant), c.ca.manquant ? 'rouge' : '', `${esc(t('Restant par mois'))} ${keur(c.ca.restant)}`)}
     ${tuile(t('Potentiel CA'), keur(c.ca.potentiel), '', `${esc(t('Positionnement potentiel'))} ${pc(c.ca.positPot)}`)}
   </div>
@@ -305,7 +305,7 @@
       <div><div class="v">${nb(c.visites.orlGen)}</div><div class="l">ORL / Généraliste</div></div>
       <div><div class="v">${nb(c.visites.ophtaOrtho)}</div><div class="l">Ophta / Orthoptiste</div></div>
       <div><div class="v">${nb(c.visites.ce)}</div><div class="l">CE</div></div></div>`)}
-    ${section(t('Mr Qualité'), `<div class="mini un"><div><div class="v">${c.mrq == null ? '–' : nb(c.mrq) + '<small style="font-size:9px;font-weight:600;opacity:.6">/100</small>'}</div><div class="l">Score global</div>${c.mrq == null ? '<div class="s">non disponible</div>' : ''}</div></div>`)}
+    ${section(t('Mr Qualité'), `<div class="mini un"><div><div class="v">${c.mrq == null ? '–' : nb(c.mrq) + '<small style="font-size:9px;font-weight:600;opacity:.6">/100</small>'}</div><div class="l">${esc(t('Score global'))}</div>${c.mrq == null ? `<div class="s">${esc(t('non disponible'))}</div>` : ''}</div></div>`)}
   </div>
   ${section(t('RENTABILITÉ'), `<div class="tuiles8">
     ${tuile(t('%MdC'), pc(c.renta.mdc), etatPct(c.renta.mdc, c.o.mdc))}
@@ -320,13 +320,13 @@
   <div class="grille2">
     ${section(t('Marges'), Object.values(c.marges).every(x => x == null) ? nd : `<div class="mini cinq">
       ${[['Verres', c.marges.verres], ['Montures', c.marges.montures], ['Contacto', c.marges.contacto], ['Audio', c.marges.audio], ['Globale', c.marges.globale]].map(([l, x], i) => `<div class="${i === 4 ? 'fort' : ''}"><div class="v">${pc(x, 0)}</div><div class="l">${esc(t(l))}</div></div>`).join('')}</div>`, '', (photo.sources.marges && photo.sources.marges.detail || '').split(' – ')[0])}
-    ${section('Confidence', `<div class="barres">${c.confidence.map(([l, ct, tot]) => `<div class="b"><span>${esc(l)}</span><div class="j"><div style="width:${tot ? Math.min(100, 100 * ct / tot).toFixed(0) : 0}%"></div></div><b>${tot ? pc(ct / tot, 0) : '–'}</b></div>`).join('')}</div>`)}
+    ${section('Confidence', `<div class="barres">${c.confidence.map(([l, ct, tot]) => `<div class="b"><span>${esc(t(l))}</span><div class="j"><div style="width:${tot ? Math.min(100, 100 * ct / tot).toFixed(0) : 0}%"></div></div><b>${tot ? pc(ct / tot, 0) : '–'}</b></div>`).join('')}</div>`)}
   </div>
   <div class="grille2 large-g">
     ${section('Reporting trimestriel', c.reporting.ca == null ? nd : `<div class="mini six">
-      <div><div class="v">${c.reporting.ca == null ? '–' : nb(c.reporting.ca / 1000) + ' k' + dev}</div><div class="l">CA HT</div></div>
-      ${c.reporting.lignes.map(([l, x, ob, k]) => `<div><div class="v ${x == null ? '' : (k === 'CS' || k === 'CQ' ? x >= ob : x <= ob) ? 'ok' : 'ko'}">${pc(x)}</div><div class="l">${esc(l)}</div><div class="s">obj. ${pc(ob, 0)}</div></div>`).join('')}</div>`, '', perReporting || (photo.sources.rentabilites && photo.sources.rentabilites.detail || '').split(' – ')[0])}
-    ${section(t('Renta Salariale'), `<div class="mini un"><div><div class="v ${c.rentaSal == null ? '' : c.rentaSal <= (mag.pays === 'FRANCE' ? 0.28 : 0.35) ? 'ok' : 'ko'}">${pc(c.rentaSal)}</div><div class="l">cumul de l’année</div></div></div>`)}
+      <div><div class="v">${c.reporting.ca == null ? '–' : nb(c.reporting.ca / 1000) + ' k' + dev}</div><div class="l">${esc(t('CA HT'))}</div></div>
+      ${c.reporting.lignes.map(([l, x, ob, k]) => `<div><div class="v ${x == null ? '' : (k === 'CS' || k === 'CQ' ? x >= ob : x <= ob) ? 'ok' : 'ko'}">${pc(x)}</div><div class="l">${esc(t(l))}</div><div class="s">${esc(t('obj.'))} ${pc(ob, 0)}</div></div>`).join('')}</div>`, '', perReporting || (photo.sources.rentabilites && photo.sources.rentabilites.detail || '').split(' – ')[0])}
+    ${section(t('Renta Salariale'), `<div class="mini un"><div><div class="v ${c.rentaSal == null ? '' : c.rentaSal <= (mag.pays === 'FRANCE' ? 0.28 : 0.35) ? 'ok' : 'ko'}">${pc(c.rentaSal)}</div><div class="l">${esc(t('cumul de l’année'))}</div></div></div>`)}
   </div>
   ${blocSante()}
   ${blocBilan()}

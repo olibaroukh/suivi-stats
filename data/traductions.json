@@ -68,7 +68,7 @@
    "he": "תאריך פתיחה",
    "en": "Opening Date",
    "es": "Fecha de apertura",
-   "nl": null,
+   "nl": "Openingsdatum",
    "de": "Eröffnungsdatum"
   },
   {
@@ -272,11 +272,11 @@
   {
    "base": "Nb de Lyleoo",
    "fr": "Nb de Lyleoo",
-   "he": null,
-   "en": null,
-   "es": null,
-   "nl": null,
-   "de": null
+   "he": "מספר תיקי Lyleoo",
+   "en": "Lyleoo files",
+   "es": "N.º de Lyleoo",
+   "nl": "Aantal Lyleoo",
+   "de": "Anzahl Lyleoo"
   },
   {
    "base": "AUDIO",
@@ -479,11 +479,11 @@
   {
    "base": "Dépistage",
    "fr": "Dépistage",
-   "he": null,
+   "he": "בדיקת שמיעה",
    "en": "Hearing Screening",
-   "es": null,
-   "nl": null,
-   "de": null
+   "es": "Prueba auditiva",
+   "nl": "Gehoortest",
+   "de": "Hörtest"
   },
   {
    "base": "Ca / Mois Restant",
@@ -659,11 +659,11 @@
   {
    "base": "Avis Manquants",
    "fr": "Avis Manquants",
-   "he": null,
-   "en": null,
-   "es": null,
-   "nl": null,
-   "de": null
+   "he": "ביקורות חסרות",
+   "en": "Missing reviews",
+   "es": "Reseñas que faltan",
+   "nl": "Ontbrekende reviews",
+   "de": "Fehlende Bewertungen"
   },
   {
    "base": "Statistiques",
@@ -785,29 +785,29 @@
   {
    "base": "Marges",
    "fr": "Marges",
-   "he": null,
-   "en": null,
-   "es": null,
-   "nl": null,
-   "de": null
+   "he": "רווחים גולמיים",
+   "en": "Margins",
+   "es": "Márgenes",
+   "nl": "Marges",
+   "de": "Margen"
   },
   {
    "base": "Verres",
    "fr": "Verres",
-   "he": null,
-   "en": null,
-   "es": null,
-   "nl": null,
-   "de": null
+   "he": "עדשות",
+   "en": "Lenses",
+   "es": "Cristales",
+   "nl": "Glazen",
+   "de": "Gläser"
   },
   {
    "base": "Montures",
    "fr": "Montures",
-   "he": null,
-   "en": null,
-   "es": null,
-   "nl": null,
-   "de": null
+   "he": "מסגרות",
+   "en": "Frames",
+   "es": "Monturas",
+   "nl": "Monturen",
+   "de": "Fassungen"
   },
   {
    "base": "Contacto",
@@ -830,11 +830,11 @@
   {
    "base": "Globale",
    "fr": "Globale",
-   "he": null,
-   "en": null,
-   "es": null,
-   "nl": null,
-   "de": null
+   "he": "כולל",
+   "en": "Overall",
+   "es": "Global",
+   "nl": "Totaal",
+   "de": "Gesamt"
   },
   {
    "base": "Mr Qualité",
@@ -857,29 +857,29 @@
   {
    "base": "Total des Avoirs",
    "fr": "Total des Avoirs",
-   "he": null,
+   "he": "סך זיכויים",
    "en": "Credit Note Total",
-   "es": null,
-   "nl": null,
-   "de": null
+   "es": "Total de abonos",
+   "nl": "Totaal creditnota’s",
+   "de": "Summe Gutschriften"
   },
   {
    "base": "Tx de Récupération",
    "fr": "Tx de Récupération",
-   "he": null,
+   "he": "שיעור גבייה",
    "en": "Recovery Rate",
-   "es": null,
-   "nl": null,
-   "de": null
+   "es": "Tasa de recuperación",
+   "nl": "Invorderingspercentage",
+   "de": "Einzugsquote"
   },
   {
    "base": "Taux d’Indus",
    "fr": "Taux d’indus",
-   "he": null,
+   "he": "שיעור חובות",
    "en": "Overdue Rate",
-   "es": null,
-   "nl": null,
-   "de": null
+   "es": "Tasa de impagados",
+   "nl": "Achterstandspercentage",
+   "de": "Überfälligkeitsquote"
   },
   {
    "base": "% Panier A",
@@ -898,6 +898,717 @@
    "es": " ",
    "nl": " ",
    "de": " "
+  },
+  {
+   "base": "Équipe",
+   "fr": "Équipe",
+   "he": "צוות",
+   "en": "Team",
+   "es": "Equipo",
+   "nl": "Team",
+   "de": "Team"
+  },
+  {
+   "base": "Répartition du CA",
+   "fr": "Répartition du CA",
+   "he": "פילוח המחזור",
+   "en": "Revenue breakdown",
+   "es": "Reparto de la facturación",
+   "nl": "Verdeling van de omzet",
+   "de": "Umsatzverteilung"
+  },
+  {
+   "base": "Visites externes",
+   "fr": "Visites externes",
+   "he": "ביקורים חיצוניים",
+   "en": "External visits",
+   "es": "Visitas externas",
+   "nl": "Externe bezoeken",
+   "de": "Externe Besuche"
+  },
+  {
+   "base": "Confidence",
+   "fr": "Confidence",
+   "he": "Confidence",
+   "en": "Confidence",
+   "es": "Confidence",
+   "nl": "Confidence",
+   "de": "Confidence"
+  },
+  {
+   "base": "Reporting trimestriel",
+   "fr": "Reporting trimestriel",
+   "he": "דוח רבעוני",
+   "en": "Quarterly reporting",
+   "es": "Informe trimestral",
+   "nl": "Kwartaalrapportage",
+   "de": "Quartalsbericht"
+  },
+  {
+   "base": "Score santé",
+   "fr": "Score santé",
+   "he": "מדד בריאות",
+   "en": "Health score",
+   "es": "Índice de salud",
+   "nl": "Gezondheidsscore",
+   "de": "Gesundheitsscore"
+  },
+  {
+   "base": "Actions du dernier bilan de passage",
+   "fr": "Actions du dernier bilan de passage",
+   "he": "פעולות מהביקור האחרון",
+   "en": "Actions from the last store visit",
+   "es": "Acciones de la última visita",
+   "nl": "Acties van het laatste winkelbezoek",
+   "de": "Maßnahmen aus dem letzten Filialbesuch"
+  },
+  {
+   "base": "Challenges",
+   "fr": "Challenges",
+   "he": "אתגרים",
+   "en": "Challenges",
+   "es": "Retos",
+   "nl": "Uitdagingen",
+   "de": "Challenges"
+  },
+  {
+   "base": "Positionnement",
+   "fr": "Positionnement",
+   "he": "מיצוב",
+   "en": "Positioning",
+   "es": "Posicionamiento",
+   "nl": "Positionering",
+   "de": "Positionierung"
+  },
+  {
+   "base": "projection fin d’année",
+   "fr": "projection fin d’année",
+   "he": "תחזית לסוף השנה",
+   "en": "year-end projection",
+   "es": "proyección a fin de año",
+   "nl": "prognose eind van het jaar",
+   "de": "Hochrechnung Jahresende"
+  },
+  {
+   "base": "Score global",
+   "fr": "Score global",
+   "he": "ציון כללי",
+   "en": "Overall score",
+   "es": "Puntuación global",
+   "nl": "Totaalscore",
+   "de": "Gesamtpunktzahl"
+  },
+  {
+   "base": "non disponible",
+   "fr": "non disponible",
+   "he": "לא זמין",
+   "en": "not available",
+   "es": "no disponible",
+   "nl": "niet beschikbaar",
+   "de": "nicht verfügbar"
+  },
+  {
+   "base": "cumul de l’année",
+   "fr": "cumul de l’année",
+   "he": "מצטבר שנתי",
+   "en": "year to date",
+   "es": "acumulado del año",
+   "nl": "cumulatief dit jaar",
+   "de": "seit Jahresbeginn"
+  },
+  {
+   "base": "CA HT",
+   "fr": "CA HT",
+   "he": "מחזור ללא מע״מ",
+   "en": "Revenue excl. VAT",
+   "es": "Facturación sin IVA",
+   "nl": "Omzet excl. btw",
+   "de": "Nettoumsatz"
+  },
+  {
+   "base": "Action",
+   "fr": "Action",
+   "he": "פעולה",
+   "en": "Action",
+   "es": "Acción",
+   "nl": "Actie",
+   "de": "Maßnahme"
+  },
+  {
+   "base": "Responsable",
+   "fr": "Responsable",
+   "he": "אחראי",
+   "en": "Owner",
+   "es": "Responsable",
+   "nl": "Verantwoordelijke",
+   "de": "Verantwortlich"
+  },
+  {
+   "base": "Échéance",
+   "fr": "Échéance",
+   "he": "מועד",
+   "en": "Due date",
+   "es": "Plazo",
+   "nl": "Deadline",
+   "de": "Frist"
+  },
+  {
+   "base": "passage du",
+   "fr": "passage du",
+   "he": "ביקור מתאריך",
+   "en": "visit of",
+   "es": "visita del",
+   "nl": "bezoek van",
+   "de": "Besuch vom"
+  },
+  {
+   "base": "couverture",
+   "fr": "couverture",
+   "he": "כיסוי",
+   "en": "coverage",
+   "es": "cobertura",
+   "nl": "dekking",
+   "de": "Abdeckung"
+  },
+  {
+   "base": "à renseigner",
+   "fr": "à renseigner",
+   "he": "למילוי",
+   "en": "to be filled in",
+   "es": "por completar",
+   "nl": "in te vullen",
+   "de": "auszufüllen"
+  },
+  {
+   "base": "Export RH ou stats par vendeur non chargés",
+   "fr": "Export RH ou stats par vendeur non chargés",
+   "he": "נתוני משאבי אנוש או נתוני מוכרים לא נטענו",
+   "en": "HR export or sales staff statistics not loaded",
+   "es": "Exportación de RR. HH. o estadísticas por vendedor no cargadas",
+   "nl": "HR-export of verkopersstatistieken niet geladen",
+   "de": "HR-Export oder Verkäuferstatistik nicht geladen"
+  },
+  {
+   "base": "Aucune vente individuelle sur la période",
+   "fr": "Aucune vente individuelle sur la période",
+   "he": "אין מכירות אישיות בתקופה",
+   "en": "No individual sales over the period",
+   "es": "Sin ventas individuales en el periodo",
+   "nl": "Geen individuele verkopen in de periode",
+   "de": "Keine Einzelverkäufe im Zeitraum"
+  },
+  {
+   "base": "Actions",
+   "fr": "Actions",
+   "he": "פעולות",
+   "en": "Actions",
+   "es": "Acciones",
+   "nl": "Acties",
+   "de": "Maßnahmen"
+  },
+  {
+   "base": "Effectif",
+   "fr": "Effectif",
+   "he": "כוח אדם",
+   "en": "Headcount",
+   "es": "Plantilla",
+   "nl": "Bezetting",
+   "de": "Personalbestand"
+  },
+  {
+   "base": "Absentéisme",
+   "fr": "Absentéisme",
+   "he": "היעדרויות",
+   "en": "Absenteeism",
+   "es": "Absentismo",
+   "nl": "Verzuim",
+   "de": "Fehlzeiten"
+  },
+  {
+   "base": "Avis",
+   "fr": "Avis",
+   "he": "ביקורות",
+   "en": "Reviews",
+   "es": "Reseñas",
+   "nl": "Reviews",
+   "de": "Bewertungen"
+  },
+  {
+   "base": "Entretiens",
+   "fr": "Entretiens",
+   "he": "שיחות הערכה",
+   "en": "Appraisals",
+   "es": "Entrevistas",
+   "nl": "Gesprekken",
+   "de": "Mitarbeitergespräche"
+  },
+  {
+   "base": "Lancements",
+   "fr": "Lancements",
+   "he": "השקות",
+   "en": "Launches",
+   "es": "Lanzamientos",
+   "nl": "Lanceringen",
+   "de": "Produkteinführungen"
+  },
+  {
+   "base": "Kaizen",
+   "fr": "Kaizen",
+   "he": "Kaizen",
+   "en": "Kaizen",
+   "es": "Kaizen",
+   "nl": "Kaizen",
+   "de": "Kaizen"
+  },
+  {
+   "base": "Pedlv",
+   "fr": "Pedlv",
+   "he": "Pedlv",
+   "en": "Pedlv",
+   "es": "Pedlv",
+   "nl": "Pedlv",
+   "de": "Pedlv"
+  },
+  {
+   "base": "LE MANAGER LEADER",
+   "fr": "LE MANAGER LEADER",
+   "he": "המנהל המוביל",
+   "en": "THE LEADER MANAGER",
+   "es": "EL ENCARGADO LÍDER",
+   "nl": "DE LEIDINGGEVENDE MANAGER",
+   "de": "DER FÜHRUNGSSTARKE MANAGER"
+  },
+  {
+   "base": "LE MAGASIN D’EXCELLENCE",
+   "fr": "LE MAGASIN D’EXCELLENCE",
+   "he": "החנות המצטיינת",
+   "en": "THE STORE OF EXCELLENCE",
+   "es": "LA TIENDA DE EXCELENCIA",
+   "nl": "DE TOPWINKEL",
+   "de": "DIE EXZELLENZ-FILIALE"
+  },
+  {
+   "base": "Une semaine de CP pour le manager (sous réserve d’avoir été en poste les 12 mois de l’année)",
+   "fr": "Une semaine de CP pour le manager (sous réserve d’avoir été en poste les 12 mois de l’année)",
+   "he": "שבוע חופשה בתשלום למנהל (בתנאי שכיהן בתפקיד במשך 12 חודשי השנה)",
+   "en": "One week of paid leave for the manager (provided they held the position for all 12 months of the year)",
+   "es": "Una semana de vacaciones pagadas para el encargado (siempre que haya ocupado el puesto los 12 meses del año)",
+   "nl": "Eén week betaald verlof voor de manager (mits 12 maanden van het jaar in functie)",
+   "de": "Eine Woche bezahlter Urlaub für den Manager (sofern alle 12 Monate des Jahres im Amt)"
+  },
+  {
+   "base": "3 jours de CP pour toute l’équipe (effectif au 31 décembre, proratisé au temps de présence)",
+   "fr": "3 jours de CP pour toute l’équipe (effectif au 31 décembre, proratisé au temps de présence)",
+   "he": "3 ימי חופשה בתשלום לכל הצוות (כוח האדם ב-31 בדצמבר, יחסית לזמן הנוכחות)",
+   "en": "3 days of paid leave for the whole team (headcount at 31 December, pro rata to time worked)",
+   "es": "3 días de vacaciones pagadas para todo el equipo (plantilla a 31 de diciembre, prorrateado según la presencia)",
+   "nl": "3 dagen betaald verlof voor het hele team (bezetting op 31 december, naar rato van aanwezigheid)",
+   "de": "3 Tage bezahlter Urlaub für das ganze Team (Bestand am 31. Dezember, anteilig nach Anwesenheit)"
+  },
+  {
+   "base": "LA PRISE DE DECISION",
+   "fr": "LA PRISE DE DECISION",
+   "he": "קבלת החלטות",
+   "en": "DECISION-MAKING",
+   "es": "LA TOMA DE DECISIONES",
+   "nl": "BESLUITVORMING",
+   "de": "ENTSCHEIDUNGSFINDUNG"
+  },
+  {
+   "base": "RE ≥ 20 %",
+   "fr": "RE ≥ 20 %",
+   "he": "רווח תפעולי ≥ 20 %",
+   "en": "Operating result ≥ 20 %",
+   "es": "Resultado de explotación ≥ 20 %",
+   "nl": "Bedrijfsresultaat ≥ 20 %",
+   "de": "Betriebsergebnis ≥ 20 %"
+  },
+  {
+   "base": "CONSTRUIRE EQUIPE GAGNANTE",
+   "fr": "CONSTRUIRE EQUIPE GAGNANTE",
+   "he": "בניית צוות מנצח",
+   "en": "BUILDING A WINNING TEAM",
+   "es": "CONSTRUIR UN EQUIPO GANADOR",
+   "nl": "EEN WINNEND TEAM BOUWEN",
+   "de": "EIN SIEGERTEAM AUFBAUEN"
+  },
+  {
+   "base": "Entretiens / Niveau de l’équipe ≥ 8 / Effectif",
+   "fr": "Entretiens / Niveau de l’équipe ≥ 8 / Effectif",
+   "he": "שיחות הערכה / רמת הצוות ≥ 8 / כוח אדם",
+   "en": "Appraisals / Team level ≥ 8 / Headcount",
+   "es": "Entrevistas / Nivel del equipo ≥ 8 / Plantilla",
+   "nl": "Gesprekken / Teamniveau ≥ 8 / Bezetting",
+   "de": "Gespräche / Teamniveau ≥ 8 / Personalbestand"
+  },
+  {
+   "base": "FORMATION",
+   "fr": "FORMATION",
+   "he": "הדרכה",
+   "en": "TRAINING",
+   "es": "FORMACIÓN",
+   "nl": "OPLEIDING",
+   "de": "SCHULUNG"
+  },
+  {
+   "base": "3 jours de formation par collaborateur",
+   "fr": "3 jours de formation par collaborateur",
+   "he": "3 ימי הדרכה לעובד",
+   "en": "3 training days per employee",
+   "es": "3 días de formación por empleado",
+   "nl": "3 opleidingsdagen per medewerker",
+   "de": "3 Schulungstage pro Mitarbeiter"
+  },
+  {
+   "base": "L’INTELLIGENCE ORGANISATIONNELLE",
+   "fr": "L’INTELLIGENCE ORGANISATIONNELLE",
+   "he": "אינטליגנציה ארגונית",
+   "en": "ORGANISATIONAL INTELLIGENCE",
+   "es": "LA INTELIGENCIA ORGANIZATIVA",
+   "nl": "ORGANISATORISCHE INTELLIGENTIE",
+   "de": "ORGANISATORISCHE INTELLIGENZ"
+  },
+  {
+   "base": "Retour terrain AR + Siège",
+   "fr": "Retour terrain AR + Siège",
+   "he": "משוב מהשטח: מנהל אזור + מטה",
+   "en": "Field feedback: area manager + head office",
+   "es": "Opinión de campo: responsable de zona + sede",
+   "nl": "Terugkoppeling: regiomanager + hoofdkantoor",
+   "de": "Rückmeldung: Gebietsleiter + Zentrale"
+  },
+  {
+   "base": "GESTIONNAIRE",
+   "fr": "GESTIONNAIRE",
+   "he": "ניהול",
+   "en": "MANAGEMENT",
+   "es": "GESTIÓN",
+   "nl": "BEHEER",
+   "de": "VERWALTUNG"
+  },
+  {
+   "base": "Planning / Retours / Taux d’indus",
+   "fr": "Planning / Retours / Taux d’indus",
+   "he": "תכנון / החזרות / שיעור חובות",
+   "en": "Scheduling / Returns / Overdue rate",
+   "es": "Planificación / Devoluciones / Tasa de impagados",
+   "nl": "Planning / Retouren / Achterstandspercentage",
+   "de": "Planung / Retouren / Überfälligkeitsquote"
+  },
+  {
+   "base": "LA COMPÉTENCE ÉMOTIONNELLE",
+   "fr": "LA COMPÉTENCE ÉMOTIONNELLE",
+   "he": "אינטליגנציה רגשית",
+   "en": "EMOTIONAL INTELLIGENCE",
+   "es": "LA COMPETENCIA EMOCIONAL",
+   "nl": "EMOTIONELE INTELLIGENTIE",
+   "de": "EMOTIONALE KOMPETENZ"
+  },
+  {
+   "base": "CA fait 3 fois les 5 dernières années",
+   "fr": "CA fait 3 fois les 5 dernières années",
+   "he": "יעד המחזור הושג 3 פעמים ב-5 השנים האחרונות",
+   "en": "Sales target met 3 times in the last 5 years",
+   "es": "Objetivo de facturación alcanzado 3 veces en los últimos 5 años",
+   "nl": "Omzetdoel 3 keer gehaald in de laatste 5 jaar",
+   "de": "Umsatzziel 3-mal in den letzten 5 Jahren erreicht"
+  },
+  {
+   "base": "LA NÉGOCIATION GAGNANTE",
+   "fr": "LA NÉGOCIATION GAGNANTE",
+   "he": "משא ומתן מנצח",
+   "en": "WINNING NEGOTIATION",
+   "es": "LA NEGOCIACIÓN GANADORA",
+   "nl": "WINNENDE ONDERHANDELING",
+   "de": "ERFOLGREICHE VERHANDLUNG"
+  },
+  {
+   "base": "Taux de concrétisation ≥ 95 %",
+   "fr": "Taux de concrétisation ≥ 95 %",
+   "he": "שיעור סגירת מכירות ≥ 95 %",
+   "en": "Conversion rate ≥ 95 %",
+   "es": "Tasa de concretización ≥ 95 %",
+   "nl": "Omzettingspercentage ≥ 95 %",
+   "de": "Abschlussquote ≥ 95 %"
+  },
+  {
+   "base": "DÉVELOPPER SA CRÉATIVITÉ",
+   "fr": "DÉVELOPPER SA CRÉATIVITÉ",
+   "he": "פיתוח היצירתיות",
+   "en": "DEVELOPING CREATIVITY",
+   "es": "DESARROLLAR LA CREATIVIDAD",
+   "nl": "CREATIVITEIT ONTWIKKELEN",
+   "de": "KREATIVITÄT ENTWICKELN"
+  },
+  {
+   "base": "Évolution du CA",
+   "fr": "Évolution du CA",
+   "he": "שינוי במחזור",
+   "en": "Revenue growth",
+   "es": "Evolución de la facturación",
+   "nl": "Omzetontwikkeling",
+   "de": "Umsatzentwicklung"
+  },
+  {
+   "base": "NOTORIÉTÉ",
+   "fr": "NOTORIÉTÉ",
+   "he": "מוניטין",
+   "en": "REPUTATION",
+   "es": "NOTORIEDAD",
+   "nl": "NAAMSBEKENDHEID",
+   "de": "BEKANNTHEIT"
+  },
+  {
+   "base": "Nombre d’avis Google ≥ 300",
+   "fr": "Nombre d’avis Google ≥ 300",
+   "he": "מספר ביקורות גוגל ≥ 300",
+   "en": "Number of Google reviews ≥ 300",
+   "es": "Número de reseñas de Google ≥ 300",
+   "nl": "Aantal Google-reviews ≥ 300",
+   "de": "Anzahl Google-Bewertungen ≥ 300"
+  },
+  {
+   "base": "COMMUNIQUER EFFICACEMENT",
+   "fr": "COMMUNIQUER EFFICACEMENT",
+   "he": "תקשורת אפקטיבית",
+   "en": "COMMUNICATING EFFECTIVELY",
+   "es": "COMUNICAR EFICAZMENTE",
+   "nl": "EFFECTIEF COMMUNICEREN",
+   "de": "EFFEKTIV KOMMUNIZIEREN"
+  },
+  {
+   "base": "Ophta / ORL / CE",
+   "fr": "Ophta / ORL / CE",
+   "he": "רופאי עיניים / אא״ג / ועדי עובדים",
+   "en": "Ophthalmologists / ENT / works councils",
+   "es": "Oftalmólogos / ORL / comités de empresa",
+   "nl": "Oogartsen / KNO / ondernemingsraden",
+   "de": "Augenärzte / HNO / Betriebsräte"
+  },
+  {
+   "base": "COMMERCE",
+   "fr": "COMMERCE",
+   "he": "מסחר",
+   "en": "SALES",
+   "es": "COMERCIO",
+   "nl": "VERKOOP",
+   "de": "VERKAUF"
+  },
+  {
+   "base": "CA ≥ 2 M€",
+   "fr": "CA ≥ 2 M€",
+   "he": "מחזור ≥ 2 מיליון €",
+   "en": "Revenue ≥ €2M",
+   "es": "Facturación ≥ 2 M€",
+   "nl": "Omzet ≥ € 2 mln",
+   "de": "Umsatz ≥ 2 Mio. €"
+  },
+  {
+   "base": "LEADERSHIP",
+   "fr": "LEADERSHIP",
+   "he": "מנהיגות",
+   "en": "LEADERSHIP",
+   "es": "LIDERAZGO",
+   "nl": "LEIDERSCHAP",
+   "de": "FÜHRUNG"
+  },
+  {
+   "base": "7/10 à l’évaluation Manager Leader",
+   "fr": "7/10 à l’évaluation Manager Leader",
+   "he": "7/10 בהערכת המנהל המוביל",
+   "en": "7/10 in the Leader Manager assessment",
+   "es": "7/10 en la evaluación Encargado Líder",
+   "nl": "7/10 bij de beoordeling Leidinggevende Manager",
+   "de": "7/10 in der Bewertung Führungsstarker Manager"
+  },
+  {
+   "base": "Note Google ≥ 4,5",
+   "fr": "Note Google ≥ 4,5",
+   "he": "דירוג גוגל ≥ 4.5",
+   "en": "Google rating ≥ 4.5",
+   "es": "Nota de Google ≥ 4,5",
+   "nl": "Google-score ≥ 4,5",
+   "de": "Google-Bewertung ≥ 4,5"
+  },
+  {
+   "base": "RESSOURCES HUMAINES",
+   "fr": "RESSOURCES HUMAINES",
+   "he": "משאבי אנוש",
+   "en": "HUMAN RESOURCES",
+   "es": "RECURSOS HUMANOS",
+   "nl": "PERSONEELSZAKEN",
+   "de": "PERSONALWESEN"
+  },
+  {
+   "base": "Niveau de l’équipe ≥ 8 / Équilibre H/F / 3 jours de formation",
+   "fr": "Niveau de l’équipe ≥ 8 / Équilibre H/F / 3 jours de formation",
+   "he": "רמת הצוות ≥ 8 / איזון מגדרי / 3 ימי הדרכה",
+   "en": "Team level ≥ 8 / Gender balance / 3 training days",
+   "es": "Nivel del equipo ≥ 8 / Equilibrio H/M / 3 días de formación",
+   "nl": "Teamniveau ≥ 8 / M/V-evenwicht / 3 opleidingsdagen",
+   "de": "Teamniveau ≥ 8 / Ausgewogenheit M/F / 3 Schulungstage"
+  },
+  {
+   "base": "GESTION",
+   "fr": "GESTION",
+   "he": "ניהול כספי",
+   "en": "MANAGEMENT",
+   "es": "GESTIÓN",
+   "nl": "BEDRIJFSVOERING",
+   "de": "BETRIEBSFÜHRUNG"
+  },
+  {
+   "base": "Taux d’indus ≤ 1 %",
+   "fr": "Taux d’indus ≤ 1 %",
+   "he": "שיעור חובות ≤ 1 %",
+   "en": "Overdue rate ≤ 1 %",
+   "es": "Tasa de impagados ≤ 1 %",
+   "nl": "Achterstandspercentage ≤ 1 %",
+   "de": "Überfälligkeitsquote ≤ 1 %"
+  },
+  {
+   "base": "FIDÉLISATION",
+   "fr": "FIDÉLISATION",
+   "he": "נאמנות לקוחות",
+   "en": "CUSTOMER LOYALTY",
+   "es": "FIDELIZACIÓN",
+   "nl": "KLANTENBINDING",
+   "de": "KUNDENBINDUNG"
+  },
+  {
+   "base": "Audit 5S à jour",
+   "fr": "Audit 5S à jour",
+   "he": "ביקורת 5S מעודכנת",
+   "en": "5S audit up to date",
+   "es": "Auditoría 5S al día",
+   "nl": "5S-audit up-to-date",
+   "de": "5S-Audit aktuell"
+  },
+  {
+   "base": "PERFORMANCE",
+   "fr": "PERFORMANCE",
+   "he": "ביצועים",
+   "en": "PERFORMANCE",
+   "es": "RENDIMIENTO",
+   "nl": "PRESTATIES",
+   "de": "LEISTUNG"
+  },
+  {
+   "base": "TC / SOP / PM / MdC / Test audio",
+   "fr": "TC / SOP / PM / MdC / Test audio",
+   "he": "סגירות / SOP / מחיר ממוצע / MdC / בדיקת שמיעה",
+   "en": "CR / SOP / AP / MdC / Hearing test",
+   "es": "TC / SOP / PM / MdC / Prueba auditiva",
+   "nl": "OP / SOP / GP / MdC / Gehoortest",
+   "de": "AQ / SOP / DP / MdC / Hörtest"
+  },
+  {
+   "base": "VALEUR OC",
+   "fr": "VALEUR OC",
+   "he": "ערכי OC",
+   "en": "OC VALUES",
+   "es": "VALORES OC",
+   "nl": "OC-WAARDEN",
+   "de": "OC-WERTE"
+  },
+  {
+   "base": "Dress code / Vocabulaire / Savoir-être",
+   "fr": "Dress code / Vocabulaire / Savoir-être",
+   "he": "קוד לבוש / אוצר מילים / התנהגות",
+   "en": "Dress code / Vocabulary / Soft skills",
+   "es": "Código de vestimenta / Vocabulario / Saber estar",
+   "nl": "Dresscode / Woordenschat / Houding",
+   "de": "Dresscode / Wortwahl / Auftreten"
+  },
+  {
+   "base": "Marge brute",
+   "fr": "Marge brute",
+   "he": "רווח גולמי",
+   "en": "Gross margin",
+   "es": "Margen bruto",
+   "nl": "Brutomarge",
+   "de": "Bruttomarge"
+  },
+  {
+   "base": "Loyers chargés",
+   "fr": "Loyers chargés",
+   "he": "שכירות כולל אחזקה",
+   "en": "Rent incl. charges",
+   "es": "Alquiler con gastos",
+   "nl": "Huur incl. lasten",
+   "de": "Miete inkl. Nebenkosten"
+  },
+  {
+   "base": "Publicité",
+   "fr": "Publicité",
+   "he": "פרסום",
+   "en": "Advertising",
+   "es": "Publicidad",
+   "nl": "Reclame",
+   "de": "Werbung"
+  },
+  {
+   "base": "Personnel",
+   "fr": "Personnel",
+   "he": "כוח אדם",
+   "en": "Staff costs",
+   "es": "Personal",
+   "nl": "Personeel",
+   "de": "Personalkosten"
+  },
+  {
+   "base": "Résultat expl.",
+   "fr": "Résultat expl.",
+   "he": "רווח תפעולי",
+   "en": "Operating result",
+   "es": "Resultado explot.",
+   "nl": "Bedrijfsresultaat",
+   "de": "Betriebsergebnis"
+  },
+  {
+   "base": "obj.",
+   "fr": "obj.",
+   "he": "יעד",
+   "en": "target",
+   "es": "obj.",
+   "nl": "doel",
+   "de": "Ziel"
+  },
+  {
+   "base": "Rappel Devis Optique",
+   "fr": "Rappel Devis Optique",
+   "he": "תזכורת הצעות מחיר אופטיקה",
+   "en": "Optical quote reminder",
+   "es": "Recordatorio presupuesto óptica",
+   "nl": "Herinnering offerte optiek",
+   "de": "Erinnerung Kostenvoranschlag Optik"
+  },
+  {
+   "base": "Rappel Optique N+1",
+   "fr": "Rappel Optique N+1",
+   "he": "תזכורת אופטיקה שנה +1",
+   "en": "Optical reminder Y+1",
+   "es": "Recordatorio óptica N+1",
+   "nl": "Herinnering optiek J+1",
+   "de": "Erinnerung Optik J+1"
+  },
+  {
+   "base": "Rappel Audio N+4",
+   "fr": "Rappel Audio N+4",
+   "he": "תזכורת שמיעה שנה +4",
+   "en": "Hearing reminder Y+4",
+   "es": "Recordatorio audio N+4",
+   "nl": "Herinnering audio J+4",
+   "de": "Erinnerung Hören J+4"
+  },
+  {
+   "base": "Global",
+   "fr": "Global",
+   "he": "כולל",
+   "en": "Overall",
+   "es": "Global",
+   "nl": "Totaal",
+   "de": "Gesamt"
   }
  ],
  "mois": [
@@ -907,8 +1618,8 @@
    "he": "ינואר",
    "en": "January",
    "es": "Enero",
-   "nl": null,
-   "de": null
+   "nl": "januari",
+   "de": "Januar"
   },
   {
    "base": "Février",
@@ -916,8 +1627,8 @@
    "he": "פברואר",
    "en": "February",
    "es": "Febrero",
-   "nl": null,
-   "de": null
+   "nl": "februari",
+   "de": "Februar"
   },
   {
    "base": "Mars",
@@ -925,8 +1636,8 @@
    "he": "מרץ",
    "en": "March",
    "es": "Marzo",
-   "nl": null,
-   "de": null
+   "nl": "maart",
+   "de": "März"
   },
   {
    "base": "Avril",
@@ -934,8 +1645,8 @@
    "he": "אפריל",
    "en": "April",
    "es": "Abril",
-   "nl": null,
-   "de": null
+   "nl": "april",
+   "de": "April"
   },
   {
    "base": "Mai",
@@ -943,8 +1654,8 @@
    "he": "מאי",
    "en": "May",
    "es": "Mayo",
-   "nl": null,
-   "de": null
+   "nl": "mei",
+   "de": "Mai"
   },
   {
    "base": "Juin",
@@ -952,8 +1663,8 @@
    "he": "יוני",
    "en": "June",
    "es": "Junio",
-   "nl": null,
-   "de": null
+   "nl": "juni",
+   "de": "Juni"
   },
   {
    "base": "Juillet",
@@ -961,8 +1672,8 @@
    "he": "יולי",
    "en": "July",
    "es": "Julio",
-   "nl": null,
-   "de": null
+   "nl": "juli",
+   "de": "Juli"
   },
   {
    "base": "Aout",
@@ -970,8 +1681,8 @@
    "he": "אוגוסט",
    "en": "August",
    "es": "Agosto",
-   "nl": null,
-   "de": null
+   "nl": "augustus",
+   "de": "August"
   },
   {
    "base": "Septembre",
@@ -979,8 +1690,8 @@
    "he": "ספטמבר",
    "en": "September",
    "es": "Septiembre",
-   "nl": null,
-   "de": null
+   "nl": "september",
+   "de": "September"
   },
   {
    "base": "Octobre",
@@ -988,8 +1699,8 @@
    "he": "אוקטובר",
    "en": "October",
    "es": "Octubre",
-   "nl": null,
-   "de": null
+   "nl": "oktober",
+   "de": "Oktober"
   },
   {
    "base": "Novembre",
@@ -997,8 +1708,8 @@
    "he": "נובמבר",
    "en": "November",
    "es": "Noviembre",
-   "nl": null,
-   "de": null
+   "nl": "november",
+   "de": "November"
   },
   {
    "base": "Décembre",
@@ -1006,8 +1717,8 @@
    "he": "דצמבר",
    "en": "December",
    "es": "Diciembre",
-   "nl": null,
-   "de": null
+   "nl": "december",
+   "de": "Dezember"
   }
  ]
 }
