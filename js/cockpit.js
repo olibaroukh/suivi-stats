@@ -314,6 +314,12 @@
       ${md.sous.map(s => ligneSyn(s, '')).join('')}${ligneSyn(md.total, 'tot', 'TOTAL ' + (md.perim.lib.split(' – ')[1] || md.perim.lib))}</tbody></table>`;
     const tops = md.top.filter(t => t.liste.length).map(t => `<div class="ck-top"><div class="l">Top 3 · ${esc(t.lib)}</div>${t.liste.map((x, i) => `<div class="r"><span>${['🥇', '🥈', '🥉'][i]}</span><b>${esc(x[0])}</b><em>${f(x[1], t.fmt, md.devTotal)}</em></div>`).join('') || '<div class="r muted">–</div>'}</div>`).join('');
     const compteurs = md.compteurs.map(([l, v]) => `<div class="ck-cpt"><div class="v">${nb(v)}</div><div class="l">${esc(l)}</div></div>`).join('');
+    // Positionnement du périmètre mois par mois (petite courbe à côté des compteurs)
+    const spark = (() => { const s = md.serie; if (!s || s.length < 2) return '';
+      const W = 230, H = 62, ps = s.map(x => x.posit), mn = Math.min(0.6, ...ps), mx = Math.max(1.15, ...ps);
+      const X = i => 8 + i * (W - 16) / (s.length - 1), Y = v => H - 12 - (v - mn) / (mx - mn) * (H - 24);
+      const pts = s.map((x, i) => `${X(i).toFixed(1)},${Y(x.posit).toFixed(1)}`).join(' '), der = s[s.length - 1];
+      return `<div class="ck-cpt ck-spark"><div class="l">Positionnement mois par mois</div><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><line x1="8" x2="${W - 8}" y1="${Y(1).toFixed(1)}" y2="${Y(1).toFixed(1)}" stroke="#1E8A52" stroke-dasharray="3 3"/><polyline points="${pts}" fill="none" stroke="#E22F2A" stroke-width="2"/>${s.map((x, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(x.posit).toFixed(1)}" r="2.2" fill="${x.posit >= 1 ? '#1E8A52' : '#E22F2A'}"/>`).join('')}<text x="8" y="${H - 1}" class="sp-m">janv.</text><text x="${W - 8}" y="${H - 1}" text-anchor="end" class="sp-m">${esc(MOIS[der.mois - 1])} ${nb(der.posit * 100)} %</text></svg></div>`; })();
 
     if (md.type === 'multi') {
       // Colonnes sans aucune donnée sur le périmètre (ex. reporting pour les franchises) : retirées
@@ -340,7 +346,7 @@
         const piedP = nP > 1 ? pied.replace('</footer>', `<span><b>Page ${pI + 1} / ${nP}</b></span></footer>`) : pied;
         pages.push(`<div class="cockpit multi${pI ? ' suite' : ''}" data-blocs="1">
         ${entete(md.perim.lib + (pI ? ' (suite)' : ''), md.theme.lib)}
-        ${pI ? '' : `<div class="ck-haut"><div class="ck-cpts">${compteurs}</div><div class="ck-tops quatre">${tops}</div></div>`}
+        ${pI ? '' : `<div class="ck-haut"><div class="ck-cpts">${compteurs}${spark}</div><div class="ck-tops quatre">${tops}</div></div>`}
         <div class="ck-corps ck-blocs">${secs}</div>
         ${piedP}</div>`);
       }
@@ -348,7 +354,7 @@
     }
     return `<div class="cockpit" data-blocs="${blocs}">
       ${entete(md.perim.lib, md.theme.lib)}
-      <div class="ck-haut"><div class="ck-cpts">${compteurs}</div><div class="ck-tops">${tops}</div></div>
+      <div class="ck-haut"><div class="ck-cpts">${compteurs}${spark}</div><div class="ck-tops">${tops}</div></div>
       <section class="ck-sec"><h2><span>Synthèse</span></h2>${synthese}</section>
       <section class="ck-sec ck-corps"><h2><span>Détail par ${md.perim.regrouper ? 'franchisé' : 'magasin'}</span><small>${n} ${md.perim.regrouper ? 'franchisés' : 'magasins'} · tri : ${esc(opts.triLib || 'code')}</small></h2><div class="ck-blocs" style="--blocs:${blocs}">${tables}</div></section>
       ${pied}</div>`;
