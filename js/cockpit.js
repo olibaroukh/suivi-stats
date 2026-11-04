@@ -255,10 +255,28 @@
       }
     };
     const logo = opts.logo || 'assets/logo-optical-center.png';
-    const titreMois = `À fin ${MOIS[md.photo.mois - 1]} ${md.photo.annee}`;
-    // Restes dus : période propre au fichier reçu (sa date de fin diffère souvent du mois traité)
-    const pR = md.themeId === 'restes' && md.photo.sources && md.photo.sources.restes_dus && md.photo.sources.restes_dus.periode;
-    const periode = pR ? `restes dus du ${pR.du.split('-').reverse().join('/')} au ${pR.au.split('-').reverse().join('/')}` : `cumul du 1er janvier au ${new Date(md.photo.annee, md.photo.mois, 0).toLocaleDateString('fr-FR')}`;
+    // Périodes : le cumul Cosium suit le mois traité ; les restes dus et le reporting trimestriel ont leur propre date de fin.
+    const finMoisFr = (a, m) => new Date(a, m, 0).toLocaleDateString('fr-FR');
+    const isoFr = iso => iso.split('-').reverse().join('/');
+    const perSrc = s => { const x = md.photo.sources && md.photo.sources[s]; if (!x) return null; if (x.periode) return x.periode;
+      // Photos plus anciennes : période seulement dans le libellé (« FIN 2026-06 – 120 magasins »)
+      const m = String(x.detail || '').match(/FIN\s*(\d{4})-(\d{2})/i); if (m) return { du: `${m[1]}-01-01`, au: `${m[1]}-${m[2]}-${String(new Date(+m[1], +m[2], 0).getDate()).padStart(2, '0')}` };
+      return null; };
+    const finLib = iso => { const [a, m] = iso.split('-').map(Number); return `fin ${MOIS[m - 1]} ${a}`; };
+    const pR = perSrc('restes_dus'), pT = perSrc('rentabilites');
+    const colsMd = md.cols || [];
+    const utiliseRestes = md.type === 'siege' || colsMd.some(k => ['rdus', 'avoirs', 'gel', 'indus', 'evolIndus', 'recup'].includes(k));
+    const utiliseReporting = md.type === 'siege' || colsMd.some(k => ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel'].includes(k));
+    let titreMois, periode;
+    if (md.themeId === 'restes' && pR) { titreMois = `À ${finLib(pR.au)}`; periode = `restes dus du ${isoFr(pR.du)} au ${isoFr(pR.au)}`; }
+    else {
+      titreMois = `À fin ${MOIS[md.photo.mois - 1]} ${md.photo.annee}`;
+      periode = `cumul du 1er janvier au ${finMoisFr(md.photo.annee, md.photo.mois)}`;
+      const autres = [];
+      if (utiliseReporting && pT && pT.au) autres.push(`reporting trimestriel à ${finLib(pT.au)}`);
+      if (utiliseRestes && pR && pR.au) autres.push(`restes dus au ${isoFr(pR.au)}`);
+      if (autres.length) periode += ' · ' + autres.join(' · ');
+    }
     const entete = (perimLib, themeLib) => `<header class="ck-head"><img src="${logo}" alt=""><div class="ck-t"><div class="ck-label">${esc(titreMois)} · ${esc(periode)}</div><h1>${esc(perimLib)}</h1></div><div class="ck-theme">${esc(themeLib)}</div></header>`;
     const pied = `<footer class="ck-pied"><span>Optical Center · Suivi statistique · généré le ${new Date().toLocaleDateString('fr-FR')}</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span><span>N-1 : même période de l’année précédente${md.multi || md.type === 'siege' ? ' · totaux multi-devises convertis en € (taux en Réglages)' : ''}</span></footer>`;
 

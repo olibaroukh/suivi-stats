@@ -144,7 +144,9 @@
       poser('restes_dus', Sources.restesDus(XLSX, un('restes_dus').wb).out, per ? `du ${fr(per.du)} au ${fr(per.au)}` : un('restes_dus').nom);
       if (per) sources.restes_dus.periode = per; else alertes.push('Restes dus : période introuvable dans l’en-tête des onglets Secteurs (« Taux d’indus du … au … »).');
     }
-    if (autres.rentabilites) { const o = {}; let per = ''; autres.rentabilites.forEach(x => { const r = Sources.rentabilites(XLSX, x.wb); Object.assign(o, r.out); per = r.periode; }); poser('rentabilites', o, per); }
+    if (autres.rentabilites) { const o = {}; let per = ''; autres.rentabilites.forEach(x => { const r = Sources.rentabilites(XLSX, x.wb); Object.assign(o, r.out); per = r.periode; }); poser('rentabilites', o, per);
+      // « FIN 2026-06 » → reporting arrêté à fin juin 2026
+      const mP = String(per || '').match(/(\d{4})\D(\d{1,2})/); if (mP) { const a = +mP[1], mm = +mP[2]; sources.rentabilites.periode = { du: `${a}-01-01`, au: `${a}-${String(mm).padStart(2, '0')}-${String(new Date(a, mm, 0).getDate()).padStart(2, '0')}` }; } }
     if (un('visites_presc')) { for (const c in mag) Object.assign(mag[c].N, { DV: 0, DW: 0, DX: 0, DY: 0 }); poser('visites_presc', Sources.visites(XLSX, un('visites_presc').wb).out); }
     if (un('mr_qualite')) poser('mr_qualite', Sources.mrQualite(XLSX, un('mr_qualite').wb).out, un('mr_qualite').nom);
     if (un('visites_ce')) { for (const c in mag) mag[c].N.DZ = 0; poser('visites_ce', Sources.visites(XLSX, un('visites_ce').wb).out); }
