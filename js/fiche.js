@@ -199,6 +199,11 @@
     const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[x]));
     const logo = opts.logo || 'assets/logo-optical-center.png';
     const titreMois = `${t('Statistiques A Fin')} ${t.mois(c.mois)} ${photo.annee}`;
+    // Sources à période propre (restes dus, reporting trimestriel) : dates affichées sans texte, lisibles dans toutes les langues
+    const perSrc = s => { const x = photo.sources && photo.sources[s]; if (!x) return null; if (x.periode) return x.periode;
+      const m = String(x.detail || '').match(/FIN\s*(\d{4})-(\d{2})/i); return m ? { du: `${m[1]}-01-01`, au: `${m[1]}-${m[2]}-${String(new Date(+m[1], +m[2], 0).getDate()).padStart(2, '0')}` } : null; };
+    const plage = p => { if (!p) return ''; const d = p.du.split('-').reverse(), a = p.au.split('-').reverse(); return `${d[0]}/${d[1]} → ${a.join('/')}`; };
+    const perRestes = plage(perSrc('restes_dus')), perReporting = plage(perSrc('rentabilites'));
     const nd = `<div class="nd">${esc(lang === 'fr' ? 'Non disponible pour ce magasin' : '–')}</div>`;
 
     const evo = (d, dp, f) => d == null && dp == null ? '' : `<span class="evo ${cls(d != null ? d : dp)}">${d == null ? '' : sg(d, f)}${dp == null ? '' : ` (${sg(dp, pc)})`} <i>N-1</i></span>`;
@@ -310,7 +315,7 @@
     ${tuile(t('Seuil de Performance'), pc(c.renta.seuil), etatPct(c.renta.seuil, 1))}
     ${tuile(t('Total des Avoirs'), eur(c.renta.avoirs))}
     ${tuile(t('Tx de Récupération'), pc(c.renta.recup))}
-    ${tuile(t('Taux d’Indus'), pc(c.renta.indus, 2), etatPct(c.renta.indus, 0.01, true))}
+    ${tuile(t('Taux d’Indus'), pc(c.renta.indus, 2), etatPct(c.renta.indus, 0.01, true), perRestes)}
   </div>`)}
   <div class="grille2">
     ${section(t('Marges'), Object.values(c.marges).every(x => x == null) ? nd : `<div class="mini cinq">
@@ -320,7 +325,7 @@
   <div class="grille2 large-g">
     ${section('Reporting trimestriel', c.reporting.ca == null ? nd : `<div class="mini six">
       <div><div class="v">${c.reporting.ca == null ? '–' : nb(c.reporting.ca / 1000) + ' k' + dev}</div><div class="l">CA HT</div></div>
-      ${c.reporting.lignes.map(([l, x, ob, k]) => `<div><div class="v ${x == null ? '' : (k === 'CS' || k === 'CQ' ? x >= ob : x <= ob) ? 'ok' : 'ko'}">${pc(x)}</div><div class="l">${esc(l)}</div><div class="s">obj. ${pc(ob, 0)}</div></div>`).join('')}</div>`, '', (photo.sources.rentabilites && photo.sources.rentabilites.detail || '').split(' – ')[0])}
+      ${c.reporting.lignes.map(([l, x, ob, k]) => `<div><div class="v ${x == null ? '' : (k === 'CS' || k === 'CQ' ? x >= ob : x <= ob) ? 'ok' : 'ko'}">${pc(x)}</div><div class="l">${esc(l)}</div><div class="s">obj. ${pc(ob, 0)}</div></div>`).join('')}</div>`, '', perReporting || (photo.sources.rentabilites && photo.sources.rentabilites.detail || '').split(' – ')[0])}
     ${section(t('Renta Salariale'), `<div class="mini un"><div><div class="v ${c.rentaSal == null ? '' : c.rentaSal <= (mag.pays === 'FRANCE' ? 0.28 : 0.35) ? 'ok' : 'ko'}">${pc(c.rentaSal)}</div><div class="l">cumul de l’année</div></div></div>`)}
   </div>
   ${blocSante()}
