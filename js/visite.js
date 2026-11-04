@@ -61,7 +61,9 @@
     const lignes = INDICATEURS.map(([id, lib, lire, f, sens, objF]) => {
       const v = lire(c), ob = objF ? objF(c) : null;
       const vals = calcs.map(x => ({ code: String(x.r.code), v: lire(x.c) })).filter(x => x.v != null && isFinite(x.v));
-      const moy = vals.length ? vals.reduce((a, x) => a + x.v, 0) / vals.length : null;
+      // Évolutions : médiane (une poignée de petits magasins à +800 % fausserait la moyenne) ; autres indicateurs : moyenne
+      const tri = vals.map(x => x.v).sort((a, b) => a - b), med = tri.length ? (tri.length % 2 ? tri[(tri.length - 1) / 2] : (tri[tri.length / 2 - 1] + tri[tri.length / 2]) / 2) : null;
+      const moy = f === 'evol' ? med : vals.length ? vals.reduce((a, x) => a + x.v, 0) / vals.length : null;
       vals.sort((a, b) => sens * (b.v - a.v));
       const rang = v == null ? null : vals.findIndex(x => x.code === String(mag.code)) + 1 || null;
       const pctile = rang && vals.length > 1 ? 1 - (rang - 1) / (vals.length - 1) : null; // 1 = meilleur du groupe
@@ -91,10 +93,10 @@
       return `<span class="${bon ? 'ok' : 'ko'}">${d > 0 ? '▲' : '▼'}</span>`;
     };
     const barreRang = l => l.pctile == null ? '' : `<span class="v-rang"><i style="left:${((1 - l.pctile) * 100).toFixed(0)}%"></i></span>`;
-    const tableau = `<table class="v-comp"><thead><tr><th>Indicateur</th><th>Magasin</th><th>Objectif</th><th>Moyenne ${esc(grp.lib)}</th><th>Écart</th><th>Rang</th><th></th><th>Mois</th></tr></thead><tbody>
+    const tableau = `<table class="v-comp"><thead><tr><th>Indicateur</th><th>Magasin</th><th>Objectif</th><th>Moyenne ${esc(grp.lib)}<small style="text-transform:none;letter-spacing:0"> (médiane pour les évolutions)</small></th><th>Écart</th><th>Rang</th><th></th><th>Mois</th></tr></thead><tbody>
       ${lignes.map(l => `<tr><td><b>${esc(l.lib)}</b></td><td class="fort ${l.atteint == null ? '' : l.atteint ? 'ok' : 'ko'}">${fmt(l.v, l.f, dev)}</td><td class="muted">${l.ob == null ? '–' : fmt(l.ob, l.f === 'evol' ? 'pct0' : l.f, dev)}</td><td>${fmt(l.moy, l.f, dev)}</td><td>${ecart(l)}</td><td>${l.rang ? `<b>${l.rang}</b><small> / ${l.n}</small>` : '–'}</td><td>${barreRang(l)}</td><td>${evolMois(l)}</td></tr>`).join('')}
     </tbody></table>`;
-    const puces = (ls, vide) => ls.length ? ls.map(l => `<li><b>${esc(l.lib)}</b> ${fmt(l.v, l.f, dev)} <small>· ${l.rang}${l.rang === 1 ? 'er' : 'e'} sur ${l.n} · moy. ${fmt(l.moy, l.f, dev)}</small></li>`).join('') : `<li class="muted">${vide}</li>`;
+    const puces = (ls, vide) => ls.length ? ls.map(l => `<li><b>${esc(l.lib)}</b> ${fmt(l.v, l.f, dev)} <small>· ${l.rang}${l.rang === 1 ? 'er' : 'e'} sur ${l.n} · ${l.f === 'evol' ? 'médiane' : 'moy.'} ${fmt(l.moy, l.f, dev)}</small></li>`).join('') : `<li class="muted">${vide}</li>`;
 
     // Score santé et bilan de passage (mêmes sources que la fiche)
     const sa = photo.sante && photo.sante.magasins && photo.sante.magasins[String(mag.code)];
