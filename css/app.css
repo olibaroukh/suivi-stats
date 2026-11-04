@@ -510,3 +510,39 @@ body.non-connecte .recherche-globale{display:none}
 .cockpit .ck-spark{min-width:250px}
 .cockpit .ck-spark svg{display:block;margin-top:4px}
 .cockpit .ck-spark .sp-m{font-size:9px;fill:#8C8C8C}
+
+/* ---------- Téléphone et petites tablettes ---------- */
+.sources-mois .pastille{flex:none;min-width:9px}
+@media (max-width: 820px){
+  body{font-size:14px}
+  .app-head{flex-wrap:wrap;gap:8px 10px;padding:calc(8px + env(safe-area-inset-top)) 12px 0}
+  .app-head .logo{height:30px}
+  .app-head h1{font-size:13px;flex:1}
+  .app-head h1 small{font-size:8px;letter-spacing:1.6px}
+  .app-head .dossier{order:2;margin-left:0;font-size:11px;padding:5px 9px;max-width:55vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .recherche-globale{order:3;flex-basis:100%;margin:0}
+  .recherche-globale input{width:100%;font-size:16px}
+  #rg-res{left:0;right:0;width:auto}
+  .app-head nav{order:4;flex-basis:100%;margin:0 -12px;padding:0 6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;white-space:nowrap}
+  .app-head nav::-webkit-scrollbar{display:none}
+  .app-head nav button{padding:11px 10px;font-size:11px;letter-spacing:.8px;flex:none}
+  main{padding:12px 10px calc(10px + env(safe-area-inset-bottom))}
+  .carte{padding:14px 14px;border-radius:14px}
+  .grille2,.grille3{grid-template-columns:1fr !important}
+  .ligne-outils{flex-wrap:wrap}
+  .ligne-outils select,.ligne-outils input{flex:1 1 140px;min-width:0 !important;font-size:16px}
+  .sources-mois{grid-template-columns:1fr}
+  .zone-fiche{grid-template-columns:1fr}
+  .zone-fiche #liste-mag{max-height:34vh}
+  #apercu,#ck-apercu{overflow:hidden}
+  #bandeau-maj{bottom:calc(12px + env(safe-area-inset-bottom));font-size:12.5px}
+  #ecran-connexion{padding:24px 12px}
+  .cb-ligne{font-size:12.5px;flex-wrap:wrap}
+}
+
+@media (max-width: 820px){
+  .sources-mois .pastille{width:9px !important;height:9px !important;padding:0 !important;border-radius:50% !important}
+  #fi-recherche{flex-basis:100% !important;order:-1}
+}
+
+@media (max-width: 820px){ #apercu{scroll-margin-top:150px} }
