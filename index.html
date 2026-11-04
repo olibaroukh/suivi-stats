@@ -160,9 +160,14 @@
         <select id="ck-theme"></select>
         <select id="ck-tri"><option value="code">Tri : code</option><option value="nom">Tri : nom</option><option value="__theme">Tri : indicateur principal</option></select>
         <button id="ck-sel-btn" hidden>Magasins affichés</button>
+        <button id="ck-conf-btn" hidden>Listes Confidence</button>
         <span style="flex:1"></span>
         <button id="ck-print">Imprimer (A3 paysage)</button>
         <button class="primaire" id="ck-pdf">PDF</button>
+      </div>
+      <div id="ck-conf" class="ck-sel" hidden>
+        <p class="aide">Choisissez les listes Confidence à afficher (6 au maximum) ; le taux « Global » est calculé sur les listes choisies. <span id="ck-conf-portee"></span></p>
+        <div class="chk" id="ck-conf-liste"></div>
       </div>
       <div id="ck-sel" class="ck-sel" hidden>
         <p class="aide">Décochez les magasins (ou un pays / un groupe entier) à retirer de ce cockpit. Le choix est mémorisé pour ce périmètre, sur cet ordinateur. <a href="#" id="ck-sel-tout">Tout réafficher</a></p>

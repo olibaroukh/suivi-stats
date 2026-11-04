@@ -17,7 +17,7 @@
     $('#imp-mois').innerHTML = MOIS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join(''); $('#imp-mois').value = prev.getMonth() + 1;
     $('#imp-annee').innerHTML = [0, 1, 2].map(k => `<option>${now.getFullYear() - k}</option>`).join(''); $('#imp-annee').value = prev.getFullYear();
     document.querySelectorAll('.app-head nav button').forEach(b => b.onclick = () => vue(b.dataset.vue));
-    brancherImport(); brancherFiches(); brancherReglages(); brancherCockpits(); brancherSelCockpit();
+    brancherImport(); brancherFiches(); brancherReglages(); brancherCockpits(); brancherSelCockpit(); brancherConfCockpit();
     $('#w-url').value = localStorage.getItem('workerUrl') || 'https://zimbra-relay.oli-baroukh.workers.dev';
     $('#w-cle').value = localStorage.getItem('workerCle') || '';
     $('#btn-dossier').onclick = async () => { await Store.choisirDossier(); await dossierPret(); };
@@ -453,7 +453,9 @@
     majBoutonSel(p, exclus);
     const precedente = th === 'restes' ? await photoMois(moisPrec(CK.cle)) : null;
     const tx = await tauxChange();
-    const md = Cockpit.construire(CK.photo, S.ref, pAff, th, { tri, objectifs: S.objectifs, taux: tx, siege, precedente });
+    const listesConf = th === 'confidence' ? await listesConfChoisies() : null;
+    $('#ck-conf-btn').hidden = th !== 'confidence'; if (th !== 'confidence') $('#ck-conf').hidden = true;
+    const md = Cockpit.construire(CK.photo, S.ref, pAff, th, { tri, objectifs: S.objectifs, taux: tx, siege, precedente, listesConf });
     md.serie = await seriePerimetre(pAff, tx);
     const triLib = $('#ck-tri').selectedOptions[0].textContent.replace('Tri : ', '');
     const poser = (h, pages) => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h, pages })}</div>`; return [...$('#ck-apercu').querySelectorAll('.cockpit')]; };
@@ -585,6 +587,36 @@
 
 
 
+
+
+  // ---------- Cockpit Confidence : listes affichées ----------
+  // Choix commun (enregistré par un administrateur pour toute l'équipe) ; un lecteur peut garder son propre choix sur son appareil.
+  async function listesConfChoisies() {
+    try { const perso = JSON.parse(localStorage.getItem('confListes') || 'null'); if (perso && perso.length && !Store.estAdmin()) return perso; } catch (e) {}
+    const c = await Store.lireJSON('config/confidence-listes.json');
+    return (c && c.listes && c.listes.length) ? c.listes : Cockpit.LISTES_CONF_DEFAUT;
+  }
+  function listesDisponibles() {
+    const s = new Set(Cockpit.LISTES_CONF_DEFAUT);
+    for (const c in (CK.photo || {}).magasins || {}) { const L = (CK.photo.magasins[c].N || {})._listes; if (L) Object.keys(L).forEach(k => { if (k !== 'Global') s.add(k); }); }
+    return [...s].sort((a, b) => a.localeCompare(b));
+  }
+  function brancherConfCockpit() {
+    $('#ck-conf-btn').onclick = async () => {
+      $('#ck-conf').hidden = !$('#ck-conf').hidden; if ($('#ck-conf').hidden) return;
+      const choix = await listesConfChoisies(), dispo = listesDisponibles();
+      $('#ck-conf-portee').textContent = Store.estAdmin() ? 'Choix enregistré pour toute l’équipe.' : 'Choix mémorisé sur cet appareil.';
+      $('#ck-conf-liste').innerHTML = dispo.map(l => `<label><input type="checkbox" value="${esc(l)}"${choix.includes(l) ? ' checked' : ''}> ${esc(l)}</label>`).join('');
+      $('#ck-conf-liste').onchange = async e => {
+        const sel = [...document.querySelectorAll('#ck-conf-liste input:checked')].map(i => i.value);
+        if (sel.length > 6) { e.target.checked = false; alert('6 listes au maximum.'); return; }
+        if (!sel.length) return;
+        if (Store.estAdmin()) await Store.ecrireJSON('config/confidence-listes.json', { listes: sel, maj: new Date().toISOString().slice(0, 10) });
+        else localStorage.setItem('confListes', JSON.stringify(sel));
+        afficherCockpit();
+      };
+    };
+  }
 
   // ---------- Cockpit : magasins affichés (mémorisé par périmètre, sur cet ordinateur) ----------
   const cleSel = id => 'ckSel:' + ((Store.cloud() && Store.profil() && Store.profil().email) || 'local') + ':' + id;
