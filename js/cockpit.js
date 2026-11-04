@@ -351,45 +351,76 @@
 
   function rendreSiege(md, { esc, f, nb, entete, pied }) {
     const c = (v, ok) => v == null ? '' : ok ? 'ok' : 'ko';
-    const L = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b></td><td class="fort">${f(l.ca, 'kn')}</td><td class="${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'kn')}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td><td>${f(l.prev, 'kn')}</td><td>${nb(l.succ)}</td><td>${nb(l.fr)}</td><td>${nb(l.sup12)}</td>
-      <td class="${c(l.evolOpt, l.evolOpt >= 0)}">${f(l.evolOpt, 'evol')}</td><td class="${c(l.evolAud, l.evolAud >= 0)}">${f(l.evolAud, 'evol')}</td><td>${nb(l.ndv)}</td><td class="${c(l.evolNdv, l.evolNdv >= 0)}">${f(l.evolNdv, 'evol')}</td><td>${nb(l.ndvA)}</td><td class="${c(l.evolNdvA, l.evolNdvA >= 0)}">${f(l.evolNdvA, 'evol')}</td></tr>`;
-    const head = `<thead><tr><th class="nm"></th><th>CA généré (k€)</th><th>Évol. CA</th><th>Objectif (k€)</th><th>Position.</th><th>Prévisionnel (k€)</th><th>Succ.</th><th>Franch.</th><th>≥ 1,2 M€</th><th>Évol. CA optique</th><th>Évol. CA audio</th><th>Ventes optique</th><th>Évol.</th><th>Ventes audio</th><th>Évol.</th></tr></thead>`;
     const t = md.total, g = md.groupe;
-    const R = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b><small>${l.succ} succ.</small></td><td>${f(l.ca, 'kn')}</td><td class="${c(l.re, l.re >= 0.2)}">${f(l.re, 'pct1')}</td><td class="${c(l.marge, l.marge >= 0.7)}">${f(l.marge, 'pct1')}</td><td>${f(l.loyers, 'pct1')}</td><td>${f(l.pub, 'pct1')}</td><td class="${c(l.rentaSal, l.rentaSal <= 0.28)}">${f(l.rentaSal, 'pct1')}</td><td>${l.note == null ? '–' : '★ ' + nb(l.note, 1)}</td><td>${nb(l.avis)}</td></tr>`;
-    const tuile = (lib, v, s = '', cls = '') => `<div class="ck-cpt ${cls}"><div class="v">${v}</div><div class="l">${esc(lib)}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
-    const DS = { 'Euro': '€', 'Shekel': '₪', 'Livre Sterling': '£', 'Dollars Canadien': '$' };
-    const site = !md.site ? '<div class="nd">Données du site internet non chargées (copier-coller du mail de fin de mois).</div>' : `<table class="ck-syn"><thead><tr><th class="nm"></th><th>CA TTC (k devise)</th><th>Évol.</th><th>Objectif (k devise)</th><th>Position.</th></tr></thead><tbody>
-      ${md.site.lignes.map(l => `<tr><td class="nm"><b>${esc(l.nom)}</b><small>${DS[l.dev]}</small></td><td class="fort">${f(l.ca, 'kn')}</td><td class="${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'kn')}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td></tr>`).join('')}
-      <tr class="tot"><td class="nm"><b>${esc(md.site.total.nom)}</b></td><td>${f(md.site.total.ca, 'kn')}</td><td></td><td>${f(md.site.total.obj, 'kn')}</td><td>${f(md.site.total.posit, 'pct0')}</td></tr></tbody></table>
-      <div class="ck-mini"><span>Lunettes de vue (OC.fr) <b>${nb(md.site.nbLunettes)}</b></span><span>Panier moyen <b>${f(md.site.panier, 'eur')}</b></span>${md.site.manquants.length ? `<span class="ko">mois manquants : ${md.site.manquants.join(', ')}</span>` : ''}</div>`;
-    const mobile = `<table class="ck-syn"><thead><tr><th class="nm"></th><th>Camions</th><th>CA TTC (k€)</th><th>Objectif (k€)</th><th>Position.</th><th>Ventes optique</th><th>Prothèses</th></tr></thead><tbody>
-      ${md.mobile.map(l => `<tr class="${l.tot ? 'tot' : ''}"><td class="nm"><b>${esc(l.nom)}</b></td><td>${nb(l.nb)}</td><td class="fort">${f(l.ca, 'kn')}</td><td>${f(l.obj, 'kn')}</td><td class="${c(l.posit, l.posit >= 1)}">${f(l.posit, 'pct0')}</td><td>${nb(l.ndv)}</td><td>${nb(l.prot)}</td></tr>`).join('')}</tbody></table>`;
-    const conf = `<table class="ck-syn"><thead><tr><th class="nm"></th><th>Rappel devis optique</th><th>Rappel optique N+1</th><th>Rappel audio N+4</th><th>Global</th><th>Magasins utilisateurs</th></tr></thead><tbody>
-      ${md.confidence.map(l => `<tr class="${l.tot ? 'tot' : ''}"><td class="nm"><b>${esc(l.nom)}</b></td><td>${f(l.devis, 'pct0')}</td><td>${f(l.n1, 'pct0')}</td><td>${f(l.audio, 'pct0')}</td><td class="fort">${f(l.global, 'pct0')}</td><td>${nb(l.utilisent)} / ${nb(l.nb)}</td></tr>`).join('')}</tbody></table>`;
-    const mdc = `<div class="ck-mdc">${md.mdc.map(x => `<div class="ck-cpt ${c(x.v, x.v >= md.mdcObj)}"><div class="v">${f(x.v, 'pct1')}</div><div class="l">${esc(x.nom)}</div><div class="s">objectif ${f(md.mdcObj, 'pct0')}</div></div>`).join('')}</div>`;
-    const vis = `<table class="ck-syn"><thead><tr><th class="nm"></th><th>Ophta</th><th>ORL</th><th>CE</th></tr></thead><tbody>
-      ${md.visites.map(l => `<tr><td class="nm"><b>${esc(l.nom)}</b></td><td>${nb(l.ophta)}</td><td>${nb(l.orl)}</td><td>${nb(l.ce)}</td></tr>`).join('')}
-      <tr class="tot"><td class="nm"><b>Total</b></td><td>${nb(md.visites.reduce((a, l) => a + l.ophta, 0))}</td><td>${nb(md.visites.reduce((a, l) => a + l.orl, 0))}</td><td>${nb(md.visites.reduce((a, l) => a + l.ce, 0))}</td></tr></tbody></table>`;
-    return `<div class="cockpit siege">
-      ${entete('Réseau Optical Center', 'Vue Siège')}
-      <div class="ck-cpts large">
-        ${tuile('CA généré groupe', f(t.ca, 'k'), `<span class="${t.evol >= 0 ? 'ok' : 'ko'}">${f(t.evol, 'evol')} vs N-1</span>`, 'noir')}
-        ${tuile('Objectif groupe', f(g.obj, 'k'), `objectifs magasins : ${f(t.obj, 'k')}`)}
-        ${tuile('Positionnement groupe', f(g.posit, 'pct1'), 'prévisionnel / objectif groupe', g.posit >= 1 ? 'ok' : 'ko')}
-        ${tuile('Prévisionnel', f(t.prev, 'k'))}
-        ${tuile('Magasins', nb(t.succ + t.fr), `${t.succ} succursales · ${t.fr} franchises · hors camions`)}
-        ${tuile('Prévisionnel ≥ 1,2 M€', nb(t.sup12), `${nb(t.sup12 / Math.max(1, t.succ + t.fr) * 100)} % du réseau`)}
+    const VERT = '#1E8A52', ROUGE = '#E22F2A', ORANGE = '#D9822B', GRIS = '#ECE7E6';
+    const coulPosit = v => v == null ? '#8C8C8C' : v >= 1 ? VERT : v >= 0.95 ? ORANGE : ROUGE;
+    // Anneau de progression (SVG) : v = ratio, plafonné visuellement à 100 %
+    const anneau = (v, taille, epais, coul, txt, sous) => {
+      const r = (taille - epais) / 2, circ = 2 * Math.PI * r, p = Math.max(0, Math.min(1, v || 0));
+      return `<svg class="sg-anneau" width="${taille}" height="${taille}" viewBox="0 0 ${taille} ${taille}"><circle cx="${taille / 2}" cy="${taille / 2}" r="${r}" fill="none" stroke="${GRIS}" stroke-width="${epais}"/>
+        <circle cx="${taille / 2}" cy="${taille / 2}" r="${r}" fill="none" stroke="${coul}" stroke-width="${epais}" stroke-linecap="round" stroke-dasharray="${(circ * p).toFixed(1)} ${circ.toFixed(1)}" transform="rotate(-90 ${taille / 2} ${taille / 2})"/>
+        <text x="50%" y="${sous ? '47%' : '53%'}" text-anchor="middle" dominant-baseline="middle" class="sg-a-v" style="font-size:${(taille * 0.2).toFixed(0)}px;fill:${coul}">${txt}</text>${sous ? `<text x="50%" y="66%" text-anchor="middle" class="sg-a-s" style="font-size:${(taille * 0.085).toFixed(0)}px">${sous}</text>` : ''}</svg>`;
+    };
+    // Barre de positionnement : échelle 0 → 120 %, repère à 100 %
+    const barre = v => v == null ? '<span class="sg-barre vide"></span>' : `<span class="sg-barre"><i style="width:${(Math.min(1.2, Math.max(0, v)) / 1.2 * 100).toFixed(1)}%;background:${coulPosit(v)}"></i><b></b></span>`;
+    const posCell = v => `<td class="sg-pos"><span class="sg-pos-l">${barre(v)}<em style="color:${coulPosit(v)}">${f(v, 'pct0')}</em></span></td>`;
+    // Part du CA du réseau (mini barre)
+    const part = v => `<span class="sg-part"><i style="width:${t.ca ? Math.min(100, v / t.ca * 100).toFixed(1) : 0}%"></i></span>`;
+
+    // Donut de répartition du CA par segment
+    const segs = md.segments.map((s, i) => ({ nom: s.nom, v: s.ca || 0, coul: ['#231F20', '#E22F2A', '#C9B8B6'][i] }));
+    const somme = segs.reduce((a, s) => a + s.v, 0) || 1;
+    let ang = -Math.PI / 2; const R0 = 46, R1 = 30, cx = 52, cy = 52;
+    const arcs = segs.map(s => { const a = s.v / somme * Math.PI * 2, a2 = ang + a, grand = a > Math.PI ? 1 : 0;
+      const p = (r, x) => `${(cx + r * Math.cos(x)).toFixed(2)} ${(cy + r * Math.sin(x)).toFixed(2)}`;
+      const d = `M ${p(R0, ang)} A ${R0} ${R0} 0 ${grand} 1 ${p(R0, a2 - 0.0001)} L ${p(R1, a2 - 0.0001)} A ${R1} ${R1} 0 ${grand} 0 ${p(R1, ang)} Z`; ang = a2; return `<path d="${d}" fill="${s.coul}"/>`; }).join('');
+    const donut = `<div class="sg-donut"><svg width="104" height="104" viewBox="0 0 104 104">${arcs}</svg><div class="sg-leg">${segs.map(s => `<div><i style="background:${s.coul}"></i>${esc(s.nom)}<b>${nb(s.v / somme * 100)} %</b></div>`).join('')}</div></div>`;
+
+    // Bandeau de tête
+    const progCA = g.obj ? Math.min(1, (t.ca || 0) / g.obj) : 0, attendu = g.obj ? md.photo.mois / 12 : 0;
+    const heros = `<div class="sg-heros">
+      <div class="sg-ca"><div class="l">CA généré groupe · cumul</div><div class="v">${f(t.ca, 'k')}</div>
+        <div class="evo ${t.evol >= 0 ? 'ok' : 'ko'}">${t.evol >= 0 ? '▲' : '▼'} ${f(t.evol, 'evol')} vs N-1</div>
+        <div class="sg-prog"><i style="width:${(progCA * 100).toFixed(1)}%"></i><b style="left:${(attendu * 100).toFixed(1)}%" title="rythme attendu"></b></div>
+        <div class="s">${nb(progCA * 100)} % de l’objectif groupe ${f(g.obj, 'k')} · repère : ${nb(attendu * 100)} % de l’année écoulée</div></div>
+      <div class="sg-ring">${anneau(g.posit, 112, 12, coulPosit(g.posit), f(g.posit, 'pct0'), 'positionnement')}<div class="s">prévisionnel ${f(t.prev, 'k')}<br>objectif groupe ${f(g.obj, 'k')}</div></div>
+      <div class="sg-kpis">
+        <div><div class="v">${nb(t.succ + t.fr)}</div><div class="l">magasins</div><div class="s">${t.succ} succ. · ${t.fr} franch.</div></div>
+        <div><div class="v">${nb(t.sup12)}</div><div class="l">prévisionnel ≥ 1,2 M€</div><div class="s">${nb(t.sup12 / Math.max(1, t.succ + t.fr) * 100)} % du réseau</div></div>
+        <div><div class="v ${c(t.evolNdv, t.evolNdv >= 0)}">${f(t.evolNdv, 'evol')}</div><div class="l">ventes optique</div><div class="s">${nb(t.ndv)} ventes</div></div>
+        <div><div class="v ${c(t.evolNdvA, t.evolNdvA >= 0)}">${f(t.evolNdvA, 'evol')}</div><div class="l">ventes audio</div><div class="s">${nb(t.ndvA)} ventes</div></div>
       </div>
-      <section class="ck-sec"><h2><span>Chiffre d’affaires par pays et par segment</span></h2><table class="ck-syn">${head}<tbody>${md.pays.map(l => L(l)).join('')}${L(t, 'tot')}${md.segments.map(l => L(l, 'seg')).join('')}</tbody></table></section>
+      <div class="sg-rep"><div class="l">Répartition du CA</div>${donut}</div>
+    </div>`;
+
+    const L = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b></td><td class="fort sg-ca-c">${f(l.ca, 'kn')}${cls === 'tot' ? '' : part(l.ca)}</td><td class="${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'kn')}</td>${posCell(l.posit)}<td>${f(l.prev, 'kn')}</td><td>${nb(l.succ)}</td><td>${nb(l.fr)}</td><td>${nb(l.sup12)}</td>
+      <td class="${c(l.evolOpt, l.evolOpt >= 0)}">${f(l.evolOpt, 'evol')}</td><td class="${c(l.evolAud, l.evolAud >= 0)}">${f(l.evolAud, 'evol')}</td><td>${nb(l.ndv)}</td><td class="${c(l.evolNdv, l.evolNdv >= 0)}">${f(l.evolNdv, 'evol')}</td><td>${nb(l.ndvA)}</td><td class="${c(l.evolNdvA, l.evolNdvA >= 0)}">${f(l.evolNdvA, 'evol')}</td></tr>`;
+    const head = `<thead><tr><th class="nm"></th><th>CA généré (k€)</th><th>Évol. CA</th><th>Objectif (k€)</th><th class="sg-pos">Positionnement</th><th>Prévisionnel (k€)</th><th>Succ.</th><th>Franch.</th><th>≥ 1,2 M€</th><th>Évol. CA optique</th><th>Évol. CA audio</th><th>Ventes optique</th><th>Évol.</th><th>Ventes audio</th><th>Évol.</th></tr></thead>`;
+    const R = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b><small>${l.succ} succ.</small></td><td>${f(l.ca, 'kn')}</td><td class="${c(l.re, l.re >= 0.2)}">${f(l.re, 'pct1')}</td><td class="${c(l.marge, l.marge >= 0.7)}">${f(l.marge, 'pct1')}</td><td class="${c(l.loyers, l.loyers <= 0.06)}">${f(l.loyers, 'pct1')}</td><td class="${c(l.pub, l.pub <= 0.07)}">${f(l.pub, 'pct1')}</td><td class="${c(l.rentaSal, l.rentaSal <= 0.28)}">${f(l.rentaSal, 'pct1')}</td><td>${l.note == null ? '–' : '<span class="sg-etoile">★</span> ' + nb(l.note, 1)}</td><td>${nb(l.avis)}</td></tr>`;
+    const DS = { 'Euro': '€', 'Shekel': '₪', 'Livre Sterling': '£', 'Dollars Canadien': '$' };
+    const site = !md.site ? '<div class="nd">Données du site internet non chargées (copier-coller du mail de fin de mois).</div>' : `<div class="sg-lignes">
+      ${md.site.lignes.map(l => `<div class="sg-ligne"><span class="n"><b>${esc(l.nom)}</b><small>${f(l.ca, 'kn')} k${DS[l.dev]} / ${f(l.obj, 'kn')}</small></span>${barre(l.posit)}<em style="color:${coulPosit(l.posit)}">${f(l.posit, 'pct0')}</em><span class="e ${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</span></div>`).join('')}
+      <div class="sg-ligne tot"><span class="n"><b>Total (€)</b><small>${f(md.site.total.ca, 'kn')} k€ / ${f(md.site.total.obj, 'kn')}</small></span>${barre(md.site.total.posit)}<em style="color:${coulPosit(md.site.total.posit)}">${f(md.site.total.posit, 'pct0')}</em><span class="e"></span></div></div>
+      <div class="ck-mini"><span>Lunettes de vue (OC.fr) <b>${nb(md.site.nbLunettes)}</b></span><span>Panier moyen <b>${f(md.site.panier, 'eur')}</b></span>${md.site.manquants.length ? `<span class="ko">mois manquants : ${md.site.manquants.join(', ')}</span>` : ''}</div>`;
+    const mobile = `<div class="sg-mobile">${md.mobile.map(l => `<div class="${l.tot ? 'tot' : ''}">${anneau(l.posit, 58, 6, coulPosit(l.posit), f(l.posit, 'pct0'))}<div><b>${esc(l.nom)}</b><span>${nb(l.nb)} camion${l.nb > 1 ? 's' : ''}</span><span>${f(l.ca, 'kn')} k€ / ${f(l.obj, 'kn')} k€</span><span>${nb(l.ndv)} ventes · ${nb(l.prot)} proth.</span></div></div>`).join('')}</div>`;
+    const conf = `<div class="sg-conf"><div class="sg-conf-t"><span></span><span>Devis optique</span><span>Optique N+1</span><span>Audio N+4</span><span>Global</span><span>Utilisateurs</span></div>
+      ${md.confidence.map(l => `<div class="sg-conf-l ${l.tot ? 'tot' : ''}"><b>${esc(l.nom)}</b>${[l.devis, l.n1, l.audio, l.global].map((v, i) => `<span class="${i === 3 ? 'fort' : ''}"><span class="sg-jauge"><i style="width:${Math.min(100, (v || 0) * 100).toFixed(0)}%"></i></span>${f(v, 'pct0')}</span>`).join('')}<span>${nb(l.utilisent)} / ${nb(l.nb)}</span></div>`).join('')}</div>`;
+    const mdc = `<div class="sg-mdc">${md.mdc.map(x => `<div>${anneau(x.v, 66, 7, x.v == null ? '#8C8C8C' : x.v >= md.mdcObj ? VERT : ROUGE, f(x.v, 'pct0'))}<div><b>${esc(x.nom)}</b><span>${f(x.v, 'pct1')} · objectif ${f(md.mdcObj, 'pct0')}</span></div></div>`).join('')}</div>`;
+    const vT = { ophta: md.visites.reduce((a, l) => a + l.ophta, 0), orl: md.visites.reduce((a, l) => a + l.orl, 0), ce: md.visites.reduce((a, l) => a + l.ce, 0) };
+    const vis = `<div class="sg-vis">${[['Ophta', 'ophta'], ['ORL', 'orl'], ['CE', 'ce']].map(([lib, k]) => `<div><div class="v">${nb(vT[k])}</div><div class="l">${lib}</div><div class="s">${md.visites.map(l => `${esc(l.nom.slice(0, 5))}. ${nb(l[k])}`).join(' · ')}</div></div>`).join('')}</div>`;
+    return `<div class="cockpit siege sg">
+      ${entete('Réseau Optical Center', 'Vue Siège')}
+      ${heros}
+      <section class="ck-sec"><h2><span>Chiffre d’affaires par pays et par segment</span><small>positionnement : vert ≥ 100 %, orange ≥ 95 %, rouge en dessous · barre grise = part du CA réseau</small></h2><table class="ck-syn sg-pays">${head}<tbody>${md.pays.map(l => L(l)).join('')}${L(t, 'tot')}${md.segments.map(l => L(l, 'seg')).join('')}</tbody></table></section>
       <div class="ck-g2">
         <section class="ck-sec"><h2><span>Rentabilité succursales par pays</span><small>reporting trimestriel · renta salariale cumul</small></h2><table class="ck-syn"><thead><tr><th class="nm"></th><th>CA généré (k€)</th><th>RE</th><th>Marge produits</th><th>Loyers chargés</th><th>Publicité</th><th>Renta salariale</th><th>Note Google</th><th>Avis</th></tr></thead><tbody>${md.succ.map(l => R(l)).join('')}${R(md.succTot, 'tot')}</tbody></table></section>
         <div class="ck-col">
-          <section class="ck-sec"><h2><span>Site internet</span></h2>${site}</section>
+          <section class="ck-sec"><h2><span>Site internet</span><small>CA TTC cumulé · positionnement vs objectif</small></h2>${site}</section>
           <section class="ck-sec"><h2><span>OC Mobile</span></h2>${mobile}</section>
         </div>
       </div>
       <div class="ck-g3">
-        <section class="ck-sec"><h2><span>Confidence</span></h2>${conf}</section>
+        <section class="ck-sec"><h2><span>Confidence</span><small>taux de contact par liste</small></h2>${conf}</section>
         <section class="ck-sec"><h2><span>Taux de MdC</span></h2>${mdc}</section>
         <section class="ck-sec"><h2><span>Visites externes</span></h2>${vis}</section>
       </div>
