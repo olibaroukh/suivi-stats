@@ -64,7 +64,7 @@
       if (!admin && v !== 'accueil' && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
       b.hidden = !ok;
     });
-    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherIddigital(); $('#zone-zimbra').hidden = !admin;
+    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherIddigital(); if (admin) brancherEcrans(); $('#zone-zimbra').hidden = !admin;
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
@@ -764,6 +764,47 @@
   }
 
 
+
+
+  // ---------- Écrans magasins IDdigital : envoi de la fiche (catégorie « Suivi des statistiques ») ----------
+  const ECR = { equipes: null };
+  async function magasinsEquipes() {
+    if (ECR.equipes) return ECR.equipes;
+    const r = await Store.api('/relais/iddigital/test'); const d = await r.json(); if (!d.ok) throw new Error(d.erreur || 'connexion IDdigital impossible');
+    ECR.equipes = new Set((d.magasins || []).map(m => String(m.code ?? m.storeCode ?? '').replace(/^0+(?=\d)/, '')).filter(Boolean));
+    return ECR.equipes;
+  }
+  const blobB64 = b => new Promise((ok, ko) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.onerror = ko; fr.readAsDataURL(b); });
+  async function envoyerEcran(m) {
+    const b = await pdfMagasin(m);
+    const r = await Store.api('/relais/iddigital/envoyer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: m.code, type: 'stats-tracking', pdf: await blobB64(b), nom: nomPdf(m) }) });
+    const d = await r.json(); if (!r.ok) throw new Error(d.erreur || 'HTTP ' + r.status); return d;
+  }
+  function brancherEcrans() {
+    if (!(Store.cloud() && Store.estAdmin())) return;
+    $('#zone-ecrans').hidden = false;
+    $('#btn-ecran-un').onclick = async () => {
+      const m = S.magSel; if (!m) return alert('Choisissez d’abord un magasin.');
+      try { const eq = await magasinsEquipes(); if (!eq.has(String(m.code))) return alert(`${m.magasin} n’a pas d’écran IDdigital.`);
+        if (!confirm(`Envoyer la fiche de ${m.magasin} (${MOIS[S.photo.mois - 1]} ${S.photo.annee}) sur l’écran du magasin, dans « Suivi des statistiques » ?`)) return;
+        $('#ecran-info').textContent = 'Envoi…'; const d = await envoyerEcran(m);
+        $('#ecran-info').textContent = d.ok ? `✓ Envoyé sur l’écran de ${m.magasin}` : `Échec : ${d.erreur || 'statut ' + d.statut + (d.reponse ? ' – ' + d.reponse : '')}`;
+      } catch (e) { $('#ecran-info').textContent = 'Erreur : ' + e.message; }
+    };
+    $('#btn-ecran-tous').onclick = async () => {
+      try {
+        const eq = await magasinsEquipes(); const l = selection().filter(m => eq.has(String(m.code)));
+        if (!l.length) return alert('Aucun magasin équipé d’un écran dans la sélection.');
+        if (!confirm(`Envoyer ${l.length} fiche(s) (${MOIS[S.photo.mois - 1]} ${S.photo.annee}) sur les écrans des magasins, dans « Suivi des statistiques » ?`)) return;
+        let ok = 0; const ko = [];
+        for (let i = 0; i < l.length; i++) {
+          $('#ecran-info').textContent = `${i + 1} / ${l.length} – ${l[i].magasin}…`;
+          try { const d = await envoyerEcran(l[i]); if (d.ok) ok++; else ko.push(`${l[i].magasin} (${d.erreur || d.statut})`); } catch (e) { ko.push(`${l[i].magasin} (${e.message})`); }
+        }
+        $('#ecran-info').textContent = `✓ ${ok} fiche(s) envoyée(s)` + (ko.length ? ` · ${ko.length} échec(s) : ${ko.join(', ')}` : '');
+      } catch (e) { $('#ecran-info').textContent = 'Erreur : ' + e.message; }
+    };
+  }
 
   // ---------- Réglages : écrans magasins IDdigital (test) ----------
   function brancherIddigital() {
