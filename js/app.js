@@ -683,14 +683,14 @@
     if (!(Store.cloud() && Store.estAdmin())) return;
     $('#carte-pins').hidden = false;
     const dessiner = () => {
-      const q = ($('#pin-filtre').value || '').toLowerCase(), sans = $('#pin-sans').checked;
-      const l = PIN.liste.filter(m => (!sans || !m.pin) && (!q || `${m.code} ${m.libelle} ${m.animateur}`.toLowerCase().includes(q)));
+      const q = ($('#pin-filtre').value || '').toLowerCase(), sans = $('#pin-sans').checked, sansPoste = $('#pin-sans-poste').checked;
+      const l = PIN.liste.filter(m => (!sans || !m.pin) && (!sansPoste || !(m.pin && m.pin.derniereConnexion)) && (!q || `${m.code} ${m.libelle} ${m.animateur}`.toLowerCase().includes(q)));
       PIN.affiches = l;
-      $('#pin-liste').innerHTML = `<table><thead><tr><th></th><th>Magasin</th><th>Animateur</th><th>Code PIN</th></tr></thead><tbody>${l.map(m => `<tr><td><input type="checkbox" data-c="${esc(m.code)}"${PIN.choix.has(m.code) ? ' checked' : ''}></td><td><b>${esc(m.code)}</b> ${esc(m.libelle)}<br><small class="muted">${esc(m.email || 'pas d’e-mail')}</small></td><td>${esc(m.animateur)}</td><td>${m.pin ? `envoyé le ${String(m.pin.creeLe || '').slice(0, 10).split('-').reverse().join('/')}${m.pin.envoyeA ? '' : ' (non envoyé)'}` : '<span class="muted">aucun</span>'}</td></tr>`).join('')}</tbody></table>`;
-      $('#pin-info').textContent = `${PIN.choix.size} magasin(s) coché(s) · ${PIN.liste.filter(m => m.pin).length} / ${PIN.liste.length} ont un code`;
+      $('#pin-liste').innerHTML = `<table><thead><tr><th></th><th>Magasin</th><th>Animateur</th><th>Code PIN</th><th>Postes enregistrés</th></tr></thead><tbody>${l.map(m => `<tr><td><input type="checkbox" data-c="${esc(m.code)}"${PIN.choix.has(m.code) ? ' checked' : ''}></td><td><b>${esc(m.code)}</b> ${esc(m.libelle)}<br><small class="muted">${esc(m.email || 'pas d’e-mail')}</small></td><td>${esc(m.animateur)}</td><td>${m.pin ? `envoyé le ${String(m.pin.creeLe || '').slice(0, 10).split('-').reverse().join('/')}${m.pin.envoyeA ? '' : ' (non envoyé)'}` : '<span class="muted">aucun</span>'}</td><td>${m.pin && m.pin.derniereConnexion ? `✓ ${m.pin.nbConnexions} poste(s), dernier le ${String(m.pin.derniereConnexion).slice(0, 10).split('-').reverse().join('/')}` : (m.pin ? '<span class="muted">aucun poste</span>' : '')}</td></tr>`).join('')}</tbody></table>`;
+      $('#pin-info').textContent = `${PIN.choix.size} magasin(s) coché(s) · ${PIN.liste.filter(m => m.pin).length} / ${PIN.liste.length} ont un code · ${PIN.liste.filter(m => m.pin && m.pin.derniereConnexion).length} avec au moins un poste enregistré`;
     };
     const charger = async () => { try { const r = await Store.api('/relais/pins'); const d = await r.json(); if (!r.ok) throw new Error(d.erreur); PIN.liste = d.magasins || []; dessiner(); } catch (e) { $('#pin-info').textContent = 'Erreur : ' + e.message; } };
-    $('#pin-filtre').oninput = dessiner; $('#pin-sans').onchange = dessiner;
+    $('#pin-filtre').oninput = dessiner; $('#pin-sans').onchange = dessiner; $('#pin-sans-poste').onchange = dessiner;
     $('#pin-liste').onchange = e => { const c = e.target.dataset.c; if (!c) return; e.target.checked ? PIN.choix.add(c) : PIN.choix.delete(c); dessiner(); };
     $('#pin-tout').onclick = () => { (PIN.affiches || []).forEach(m => PIN.choix.add(m.code)); dessiner(); };
     $('#pin-generer').onclick = async () => {
