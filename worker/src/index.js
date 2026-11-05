@@ -355,6 +355,14 @@ async function routes(request, env) {
     try { return json({ ok: true, cumul: await env.RELAIS.kaizenCumul(m) }, 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
   }
 
+  // Écrans magasins IDdigital : envoi d'un PDF sur l'écran d'un magasin (administrateur)
+  if (chemin === '/relais/iddigital/envoyer' && request.method === 'POST') {
+    if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
+    const b = await request.json().catch(() => ({}));
+    if (!b.code || !b.pdf || !b.type) return erreur('code, type et pdf requis', 400, h);
+    try { return json(await env.RELAIS.iddigitalEnvoyer(String(b.type), String(b.code), String(b.pdf), b.nom ? String(b.nom) : null), 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
+  }
+
   // Écrans magasins IDdigital : test de connexion et liste des magasins équipés (rien n'est envoyé)
   if (chemin === '/relais/iddigital/test') {
     if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
