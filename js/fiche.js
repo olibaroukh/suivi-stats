@@ -165,7 +165,9 @@
     const sml = score(ml);
     const devise = mag.devise || 'Euro', taux = (ctx.taux && ctx.taux[devise]) || 1, seuil = 2e6 / taux;
     const caAnnuel = n.P != null ? n.P * 12 / photo.mois : null;
-    const hf = n.XI ? n.XH / n.XI : null;
+    // Équilibre H/F : export RH du mois (Suivi Stats) sinon dernier import RH de bilan-passage (zimbra-relay)
+    const gr = photo.mlme && photo.mlme.genre && photo.mlme.genre.magasins && photo.mlme.genre.magasins[code];
+    const hf = n.XI ? n.XH / n.XI : (gr && (gr.femmes + gr.hommes) > 0 ? gr.femmes / (gr.femmes + gr.hommes) : null);
     const perf = [[n.AF, c.o.tc], [n.AC, c.o.sop], [n.V, c.o.panier, 1], [n.AN, c.o.mdc], [n.BE, c.o.depistage]].filter(([x, o]) => x != null && o != null);
     const perfOk = perf.filter(([x, o, abs]) => (abs ? x : x / 100) >= o).length;
     const kz = photo.mlme && photo.mlme.kaizen ? (photo.mlme.kaizen[code] != null ? photo.mlme.kaizen[code] : 0) : null;

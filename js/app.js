@@ -153,6 +153,10 @@
     } catch (e) { return { erreur: String(e) }; }
   }
   // Cumul des points Kaizen de l'année par magasin (Magasin d'Excellence › KAIZEN), lu dans zimbra-relay
+  async function genreWorker(annee, mois) {
+    if (!viaServeur()) return null;
+    try { const r = await Store.api('/relais/genre?mois=' + annee + '-' + pad(mois)); const d = await r.json(); return d && d.ok ? { mois: d.mois, magasins: d.magasins || {} } : null; } catch (e) { return null; }
+  }
   async function kaizenWorker(annee, mois) {
     if (!viaServeur()) return null;
     try { const r = await Store.api('/relais/kaizen?mois=' + annee + '-' + pad(mois)); const d = await r.json(); return d && d.ok ? d.cumul || {} : null; } catch (e) { return null; }
@@ -216,7 +220,7 @@
         res.photo.sante = sa; const n = Object.values(sa.magasins).filter(x => x.score != null).length;
         res.rapport.sources.sante = { statut: 'recu', detail: `${n} magasins notés – ${sa.apercu ? 'aperçu indicatif (mois pas encore calculé dans le dashboard)' : 'mois ' + (sa.statut === 'valide' ? 'validé' : 'calculé') + ', version ' + sa.version}` };
         if (sa.apercu) res.rapport.alertes.push('Score santé : le mois n’est pas encore calculé dans le dashboard, les scores affichés sont indicatifs.');
-        const kz = await kaizenWorker(annee, mois); if (kz) res.photo.mlme = { ...(res.photo.mlme || {}), kaizen: kz, kaizenMaj: new Date().toISOString() };
+        const kz = await kaizenWorker(annee, mois); if (kz) res.photo.mlme = { ...(res.photo.mlme || {}), kaizen: kz, kaizenMaj: new Date().toISOString() }; const hf = await genreWorker(annee, mois); if (hf) res.photo.mlme = { ...(res.photo.mlme || {}), genre: hf };
         const bp = await bilansWorker(annee, mois);
         if (bp && !bp.erreur) { res.photo.bilans = bp; res.rapport.sources.bilans = { statut: 'recu', detail: `${Object.keys(bp.magasins).length} magasins (dernier passage avant le ${bp.fin.split('-').reverse().join('/')})` }; }
         else res.rapport.sources.bilans = { statut: 'absent', detail: bp ? bp.erreur : 'worker non configuré' };
@@ -575,7 +579,7 @@
       if (!sa) { $('#s-maj-info').textContent = 'Clé du worker manquante : saisis-la dans le cadre « Avis Google – Worker » et clique sur Enregistrer.'; return; }
       if (sa.erreur) { $('#s-maj-info').textContent = sa.erreur === 'session' ? 'Connecte-toi d’abord (ci-dessus).' : 'Erreur : ' + sa.erreur; return; }
       ph.sante = sa; ph.sources = ph.sources || {}; ph.sources.sante = { statut: 'recu', detail: `${Object.values(sa.magasins).filter(x => x.score != null).length} magasins notés${sa.apercu ? ' – aperçu indicatif' : ''}` };
-      const kz = await kaizenWorker(a, m); if (kz) ph.mlme = { ...(ph.mlme || {}), kaizen: kz, kaizenMaj: new Date().toISOString() };
+      const kz = await kaizenWorker(a, m); if (kz) ph.mlme = { ...(ph.mlme || {}), kaizen: kz, kaizenMaj: new Date().toISOString() }; const hf = await genreWorker(a, m); if (hf) ph.mlme = { ...(ph.mlme || {}), genre: hf };
       const bp = await bilansWorker(a, m);
       if (bp && !bp.erreur) { ph.bilans = bp; ph.sources.bilans = { statut: 'recu', detail: `${Object.keys(bp.magasins).length} magasins` }; }
       await Store.ecrireJSON(`donnees/${k}/photo.json`, ph); CK.cle = null; if (S.photo && S.photo.annee === a && S.photo.mois === m) S.photo = ph;
