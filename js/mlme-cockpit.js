@@ -5,6 +5,7 @@
 (function (root) {
   'use strict';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[x]));
+  const SEUIL = 7; // qualifié à partir de 7 critères sur 10 (consigne d'Olivier, 05/11)
   const pct = (a, b) => b ? Math.round(a * 1000 / b) / 10 : 0;
   const court = s => String(s).replace(/^L[’']/, '').replace(/^LA |^LE /, '').toLowerCase().replace(/(^|\s)\S/g, x => x.toUpperCase());
 
@@ -24,23 +25,23 @@
     const l = ls.slice().sort((a, b) => b.ch[sc].ok - a.ch[sc].ok || String(a.r.magasin).localeCompare(String(b.r.magasin))).slice(0, 10);
     if (!l.length) return '<p class="mc-vide">Aucune succursale.</p>';
     return `<table class="mc-l"><tbody>${l.map(x => { const manque = x.ch[cle].filter(c => c[2].s !== 'ok').map(c => court(c[0]));
-      return `<tr class="${x.ch[sc].ok === 10 ? 'q' : ''}"><td class="s">${x.ch[sc].ok}<small>/10</small></td><td class="n"><b>${esc(x.r.magasin)}</b>${avecManager && x.r.manager ? ` <small>· ${esc(x.r.manager)}</small>` : ''}</td>
-        <td class="m">${x.ch[sc].ok === 10 ? '<span class="ok">Qualifié</span>' : 'Manque : ' + esc(manque.join(', '))}</td></tr>`; }).join('')}</tbody></table>`;
+      return `<tr class="${x.ch[sc].ok >= SEUIL ? 'q' : ''}"><td class="s">${x.ch[sc].ok}<small>/10</small></td><td class="n"><b>${esc(x.r.magasin)}</b>${avecManager && x.r.manager ? ` <small>· ${esc(x.r.manager)}</small>` : ''}</td>
+        <td class="m">${(x.ch[sc].ok >= SEUIL ? '<span class="ok">Qualifié</span>' + (manque.length ? ' · reste : ' + esc(manque.join(', ')) : '') : 'Manque : ' + esc(manque.join(', ')))}</td></tr>`; }).join('')}</tbody></table>`;
   }
   function parAr(ls) {
     const g = {}; ls.forEach(x => { const k = x.r.ar || '—'; (g[k] = g[k] || []).push(x); });
     const moy = (l, sc) => l.length ? (l.reduce((a, x) => a + x.ch[sc].ok, 0) / l.length).toFixed(1).replace('.', ',') : '–';
     return `<table class="mc-ar"><thead><tr><th>AR</th><th>Succ.</th><th>Mag. d’Excellence</th><th>Moy. /10</th><th>Managers Leaders</th><th>Moy. /10</th></tr></thead><tbody>
-      ${Object.keys(g).sort().map(k => { const l = g[k]; return `<tr><td>${esc(k)}</td><td>${l.length}</td><td><b>${l.filter(x => x.ch.sme.ok === 10).length}</b></td><td>${moy(l, 'sme')}</td><td><b>${l.filter(x => x.ch.sml.ok === 10).length}</b></td><td>${moy(l, 'sml')}</td></tr>`; }).join('')}
-      <tr class="t"><td>Total</td><td>${ls.length}</td><td><b>${ls.filter(x => x.ch.sme.ok === 10).length}</b></td><td>${moy(ls, 'sme')}</td><td><b>${ls.filter(x => x.ch.sml.ok === 10).length}</b></td><td>${moy(ls, 'sml')}</td></tr></tbody></table>`;
+      ${Object.keys(g).sort().map(k => { const l = g[k]; return `<tr><td>${esc(k)}</td><td>${l.length}</td><td><b>${l.filter(x => x.ch.sme.ok >= SEUIL).length}</b></td><td>${moy(l, 'sme')}</td><td><b>${l.filter(x => x.ch.sml.ok >= SEUIL).length}</b></td><td>${moy(l, 'sml')}</td></tr>`; }).join('')}
+      <tr class="t"><td>Total</td><td>${ls.length}</td><td><b>${ls.filter(x => x.ch.sme.ok >= SEUIL).length}</b></td><td>${moy(ls, 'sme')}</td><td><b>${ls.filter(x => x.ch.sml.ok >= SEUIL).length}</b></td><td>${moy(ls, 'sml')}</td></tr></tbody></table>`;
   }
   function rendre(ls, opts = {}) {
     const n = ls.length, OR = '#C9A227', BL = '#3F63C7';
-    const cpt = sc => ({ q: ls.filter(x => x.ch[sc].ok === 10).length, n9: ls.filter(x => x.ch[sc].ok === 9).length, n8: ls.filter(x => x.ch[sc].ok === 8).length });
+    const cpt = sc => ({ q: ls.filter(x => x.ch[sc].ok >= SEUIL).length, n9: ls.filter(x => x.ch[sc].ok === SEUIL - 1).length, n8: ls.filter(x => x.ch[sc].ok === SEUIL - 2).length });
     const me = cpt('sme'), ml = cpt('sml');
     const d = k => ls.map(x => x.ch.details || {}).map(x => x[k] || {});
     const compte = (k, s) => d(k).filter(x => x[s] === true).length;
-    const hero = (titre, k, couleur, sous) => `<div class="mc-hero" style="--c:${couleur};background:${couleur}1F"><div class="mc-n">${k.q}</div><div><div class="mc-t">${esc(titre)}</div><div class="mc-s">qualifiés (10/10) sur ${n} succursales · ${k.n9} à 9/10 · ${k.n8} à 8/10</div>${sous ? `<div class="mc-s">${esc(sous)}</div>` : ''}</div></div>`;
+    const hero = (titre, k, couleur, sous) => `<div class="mc-hero" style="--c:${couleur};background:${couleur}1F"><div class="mc-n">${k.q}</div><div><div class="mc-t">${esc(titre)}</div><div class="mc-s">qualifiés (7/10 ou plus) sur ${n} succursales · ${k.n9} à 6/10 · ${k.n8} à 5/10</div>${sous ? `<div class="mc-s">${esc(sous)}</div>` : ''}</div></div>`;
     return `<div class="mlme-page">
       <header class="mc-head"><img src="assets/logo-optical-center.png" alt=""><div><div class="mc-sur">${esc(opts.periode || '')}</div><h1>Managers Leaders et Magasins d’Excellence</h1><div class="mc-per">${esc(opts.perimetre || '')}</div></div></header>
       <div class="mc-cols">

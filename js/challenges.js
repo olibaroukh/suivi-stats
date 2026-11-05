@@ -23,15 +23,15 @@
   }
   function rendre(ls, conf, opts = {}) {
     const admin = !!opts.admin, mags = (conf && conf.magasins) || {};
-    const k = { ml: ls.filter(x => x.ch.sml.ok === 10).length, me: ls.filter(x => x.ch.sme.ok === 10).length,
+    const k = { ml: ls.filter(x => x.ch.sml.ok >= 7).length, me: ls.filter(x => x.ch.sme.ok >= 7).length,
       tousOk: ls.filter(x => CHAMPS.every(([c]) => ((mags[x.r.code] || {}).saisies || {})[c] === true)).length };
     const cel = (code, champ) => { const v = ((mags[code] || {}).saisies || {})[champ];
       return `<td class="ms ${v === true ? 'ok' : 'ko'}" data-code="${esc(code)}" data-champ="${champ}" title="Clic : OK ↔ Non">${v === true ? 'OK' : 'Non'}</td>`; };
-    const sc = s => `<td class="sc ${s.ok === 10 ? 'top' : ''}">${s.ok}<small>/10</small></td>`;
+    const sc = s => `<td class="sc ${s.ok >= 7 ? 'top' : ''}">${s.ok}<small>/10</small></td>`;
     return `<div class="ch-page">
       <div class="ch-cpts">
-        <div><div class="v">${k.ml}</div><div class="l">Managers Leaders (10/10)</div></div>
-        <div><div class="v">${k.me}</div><div class="l">Magasins d’Excellence (10/10)</div></div>
+        <div><div class="v">${k.ml}</div><div class="l">Managers Leaders qualifiés (≥ 7/10)</div></div>
+        <div><div class="v">${k.me}</div><div class="l">Magasins d’Excellence qualifiés (≥ 7/10)</div></div>
         <div><div class="v">${k.tousOk}</div><div class="l">Magasins avec les 7 critères manuels à OK</div><div class="s">sur ${ls.length} succursales · ${esc(opts.periode || '')}</div></div>
       </div>
       <div class="ch-scroll"><table class="ch-t ms-t"><thead><tr><th class="g">Magasin</th><th class="g">AR</th>
