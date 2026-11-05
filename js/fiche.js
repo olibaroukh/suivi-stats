@@ -184,7 +184,14 @@
       ['PERFORMANCE', 'TC / SOP / PM / MdC / Test audio (3 sur 5)', v(perf.length < 3 && perfOk < 3 ? null : perfOk >= 3, perf.length ? perfOk + ' / ' + perf.length : null)],
       ['VALEUR OC', 'Dress code / Vocabulaire / Savoir-être', v(toutes([man('dressCode'), man('vocabulaire'), man('savoirEtre')]))],
     ];
-    return { ml, me, sml, sme: score(me) };
+    // Détail des critères composés (cockpit)
+    const details = {
+      equipe: { effectif: ecartEff == null ? null : Math.abs(ecartEff) < 0.5, entretiens: entOk, niveau: niveau == null ? null : niveau >= 8 },
+      perf: (() => { const o = c.o, r = {}; [['tc', n.AF, o.tc], ['sop', n.AC, o.sop], ['pm', n.V, o.panier, 1], ['mdc', n.AN, o.mdc], ['test', n.BE, o.depistage]]
+        .forEach(([k, x, ob, abs]) => { r[k] = x == null || ob == null ? null : (abs ? x : x / 100) >= ob; }); return r; })(),
+      rh: { niveau: niveau == null ? null : niveau >= 8, hf: hf == null ? null : hf >= 0.4 && hf <= 0.6, formation: man('formation') },
+    };
+    return { ml, me, sml, sme: score(me), details };
   }
 
   function rendre(photo, mag, objectifs, trad, opts = {}) {

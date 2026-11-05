@@ -616,3 +616,32 @@ body.mode-cloud .mode-cloud-seul{display:block}
 .ms-t td.ms{cursor:pointer;font-weight:700;min-width:46px}
 .ms-t td.ms:hover{outline:2px solid #E22F2A}
 .ms-t input.ms-num{width:60px;font-size:12px;padding:3px 4px;text-align:center}
+
+/* Cockpit Managers Leaders / Magasins d'Excellence (A3 paysage) */
+.seg-btn{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}.seg-btn button{border:0;border-radius:0;margin:0}.seg-btn button.actif{background:#231F20;color:#fff}
+#chg-apercu .mc-echelle{transform-origin:top left;width:1587px}
+.mlme-page{width:1587px;height:1123px;background:#fff;padding:26px 34px;display:flex;flex-direction:column;gap:10px;color:#231F20;box-shadow:0 2px 14px rgba(0,0,0,.08);overflow:hidden}
+.mlme-page .mc-head{display:flex;align-items:center;gap:16px;border-bottom:1px solid #eee;padding-bottom:8px}.mlme-page .mc-head img{height:48px}
+.mlme-page .mc-sur{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#E22F2A;font-weight:700}.mlme-page h1{margin:0;font-size:28px}.mlme-page .mc-per{font-size:12px;color:#777}
+.mlme-page .mc-cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;flex:1;min-height:0}
+.mlme-page section{display:flex;flex-direction:column;gap:6px;min-height:0}
+.mlme-page h3{margin:10px 0 4px;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#777}
+.mlme-page .mc-hero{display:flex;gap:18px;align-items:center;border-radius:14px;padding:12px 18px}
+.mlme-page .mc-n{width:78px;height:78px;border-radius:50%;background:var(--c);color:#fff;font-size:40px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.18)}
+.mlme-page .mc-t{font-size:20px;font-weight:800}.mlme-page .mc-s{font-size:12px;color:#555}
+.mlme-page .mc-b{display:grid;grid-template-columns:300px 1fr 36px;gap:10px;align-items:center;font-size:13px;line-height:1.15;margin:2px 0}
+.mlme-page .mc-bl small{display:block;color:#888;font-size:10.5px}
+.mlme-page .mc-bt{position:relative;height:22px;background:#F2EEEC;border-radius:5px}.mlme-page .mc-bf{height:100%;border-radius:4px}
+.mlme-page .mc-bt span{position:absolute;right:8px;top:0;font-size:12px;font-weight:700;line-height:22px}.mlme-page .mc-bn{font-size:10.5px;color:#777;text-align:right}
+.mlme-page .mc-minis{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px}
+.mlme-page .mc-mini h4{margin:0 0 6px;font-size:13.5px}
+.mlme-page .mc-mr{display:grid;grid-template-columns:170px 1fr 48px;gap:8px;align-items:center;font-size:12px;margin:4px 0}
+.mlme-page .mc-mt{height:13px;background:#F2EEEC;border-radius:3px}.mlme-page .mc-mt div{height:100%;border-radius:3px}.mlme-page .mc-mr em{font-style:normal;font-weight:700;text-align:right}
+.mlme-page .mc-l{width:100%;border-collapse:collapse;font-size:11.5px}.mlme-page .mc-l td{border-bottom:1px solid #f0eceb;padding:2px 4px;vertical-align:top}
+.mlme-page .mc-l td.s{font-weight:800;font-size:13px;width:40px}.mlme-page .mc-l td.s small{font-weight:400;color:#999}.mlme-page .mc-l td.m{color:#666;font-size:9.5px}
+.mlme-page .mc-l tr.q td{background:#EAF6EF}.mlme-page .mc-l .ok{color:#1E8A52;font-weight:700}
+.mlme-page .mc-ar{width:100%;border-collapse:collapse;font-size:11px}.mlme-page .mc-ar th{font-size:8.5px;color:#888;text-align:right}.mlme-page .mc-ar th:first-child,.mlme-page .mc-ar td:first-child{text-align:left}
+.mlme-page .mc-ar td{text-align:right;padding:1px 3px;border-bottom:1px solid #f3f0ef}.mlme-page .mc-ar tr.t td{font-weight:700;border-top:1px solid #231F20}
+.mlme-page .mc-vide{font-size:11px;color:#888}
+.mlme-page .mc-pied{display:flex;justify-content:space-between;font-size:10px;color:#888;border-top:1px solid #eee;padding-top:6px}.mlme-page .mc-pied .slogan b{color:#E22F2A}
+.mlme-page .mc-l td.n{white-space:nowrap;max-width:330px;overflow:hidden;text-overflow:ellipsis}.mlme-page .mc-l td.m{white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis}

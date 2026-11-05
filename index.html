@@ -90,6 +90,8 @@
         <select id="chg-pays"><option value="FRANCE">France</option><option value="">Toutes les succursales</option></select>
         <select id="chg-ar"><option value="">Tous les AR</option></select>
         <input id="chg-q" type="search" placeholder="Rechercher un magasin…" style="flex:1;min-width:160px">
+        <span class="seg-btn"><button id="chg-v-saisie" class="actif">Saisie</button><button id="chg-v-cockpit">Cockpit</button></span>
+        <button class="primaire" id="chg-pdf" hidden>PDF (A3 paysage)</button>
       </div>
       <p class="aide" id="chg-info"></p>
     </div>
@@ -321,7 +323,7 @@
  * ce qui force le navigateur à prendre les nouveaux fichiers dès qu'une version est publiée.
  * Toutes les 3 minutes et au retour sur l'onglet, l'appli revérifie version.json et propose « Mettre à jour ». */
 (function () {
-  var FICHIERS = ['lib/xlsx.full.min.js', 'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'js/engine/cosium.js', 'js/engine/hub.js', 'js/engine/sources.js', 'js/engine/lyleoo.js', 'js/engine/ocm.js', 'js/engine/site.js', 'js/engine/equipe.js', 'js/pipeline.js', 'js/fiche.js', 'js/visite.js', 'js/cockpit.js', 'js/actions.js', 'js/challenges.js', 'js/store.js', 'js/app.js'];
+  var FICHIERS = ['lib/xlsx.full.min.js', 'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'js/engine/cosium.js', 'js/engine/hub.js', 'js/engine/sources.js', 'js/engine/lyleoo.js', 'js/engine/ocm.js', 'js/engine/site.js', 'js/engine/equipe.js', 'js/pipeline.js', 'js/fiche.js', 'js/visite.js', 'js/cockpit.js', 'js/actions.js', 'js/challenges.js', 'js/mlme-cockpit.js', 'js/store.js', 'js/app.js'];
   function charger(v) {
     window.APP_VERSION = v;
     var q = v ? '?v=' + encodeURIComponent(v) : '';
