@@ -822,6 +822,7 @@
           const ref = S.ref.find(r => code && String(r.code) === code) || S.ref.find(r => nrm(r.magasin) && nrm(nom).includes(nrm(r.magasin).split(' ')[0]) && nrm(nom) === nrm(r.magasin));
           return `<tr><td>${esc(id)}</td><td>${esc(nom)}</td><td>${esc(code)}</td><td>${ref ? '✓ ' + esc(ref.code + ' ' + ref.magasin) : '<span class="muted">à rapprocher</span>'}</td></tr>`; });
         $('#idd-info').textContent = `✓ Connecté (${d.base}, ${d.variante}) · ${d.nb} magasin(s) accessible(s)`;
+        if (d.sections) $('#idd-info').textContent += ' · Sections du Bilan AR : ' + JSON.stringify(d.sections).slice(0, 600);
         $('#idd-resultat').innerHTML = `<table class="tableau-acces"><thead><tr><th>Id IDdigital</th><th>Nom</th><th>Code</th><th>Magasin Suivi Stats</th></tr></thead><tbody>${lignes.join('')}</tbody></table>` + (d.brut ? '<pre style="font-size:11px">' + esc(JSON.stringify(d.brut).slice(0, 1500)) + '</pre>' : '') + (d.magasins && d.magasins[0] ? '<p class="aide">Exemple brut : ' + esc(JSON.stringify(d.magasins[0]).slice(0, 300)) + '</p>' : '');
       } catch (e) { $('#idd-info').textContent = 'Erreur : ' + e.message; }
     };
