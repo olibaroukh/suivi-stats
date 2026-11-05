@@ -64,7 +64,7 @@
       if (!admin && v !== 'accueil' && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
       b.hidden = !ok;
     });
-    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); $('#zone-zimbra').hidden = !admin;
+    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); $('#zone-zimbra').hidden = !admin;
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
@@ -675,6 +675,36 @@
     const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', logging: false }); hote.remove();
     doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 420, 297);
     telecharger(doc.output('blob'), `Actions ${ACT.annee} - ${$('#ac-mois').value}.pdf`);
+  }
+
+  // ---------- Accès magasins : codes PIN ----------
+  const PIN = { liste: [], choix: new Set() };
+  async function brancherPins() {
+    if (!(Store.cloud() && Store.estAdmin())) return;
+    $('#carte-pins').hidden = false;
+    const dessiner = () => {
+      const q = ($('#pin-filtre').value || '').toLowerCase(), sans = $('#pin-sans').checked;
+      const l = PIN.liste.filter(m => (!sans || !m.pin) && (!q || `${m.code} ${m.libelle} ${m.animateur}`.toLowerCase().includes(q)));
+      PIN.affiches = l;
+      $('#pin-liste').innerHTML = `<table><thead><tr><th></th><th>Magasin</th><th>Animateur</th><th>Code PIN</th></tr></thead><tbody>${l.map(m => `<tr><td><input type="checkbox" data-c="${esc(m.code)}"${PIN.choix.has(m.code) ? ' checked' : ''}></td><td><b>${esc(m.code)}</b> ${esc(m.libelle)}<br><small class="muted">${esc(m.email || 'pas d’e-mail')}</small></td><td>${esc(m.animateur)}</td><td>${m.pin ? `envoyé le ${String(m.pin.creeLe || '').slice(0, 10).split('-').reverse().join('/')}${m.pin.envoyeA ? '' : ' (non envoyé)'}` : '<span class="muted">aucun</span>'}</td></tr>`).join('')}</tbody></table>`;
+      $('#pin-info').textContent = `${PIN.choix.size} magasin(s) coché(s) · ${PIN.liste.filter(m => m.pin).length} / ${PIN.liste.length} ont un code`;
+    };
+    const charger = async () => { try { const r = await Store.api('/relais/pins'); const d = await r.json(); if (!r.ok) throw new Error(d.erreur); PIN.liste = d.magasins || []; dessiner(); } catch (e) { $('#pin-info').textContent = 'Erreur : ' + e.message; } };
+    $('#pin-filtre').oninput = dessiner; $('#pin-sans').onchange = dessiner;
+    $('#pin-liste').onchange = e => { const c = e.target.dataset.c; if (!c) return; e.target.checked ? PIN.choix.add(c) : PIN.choix.delete(c); dessiner(); };
+    $('#pin-tout').onclick = () => { (PIN.affiches || []).forEach(m => PIN.choix.add(m.code)); dessiner(); };
+    $('#pin-generer').onclick = async () => {
+      const codes = [...PIN.choix]; if (!codes.length) return alert('Cochez au moins un magasin.');
+      const deja = PIN.liste.filter(m => PIN.choix.has(m.code) && m.pin).length;
+      if (!confirm(`Générer un code pour ${codes.length} magasin(s) et l’envoyer par mail ?` + (deja ? `\n\n${deja} magasin(s) ont déjà un code : leurs postes devront ressaisir le nouveau.` : ''))) return;
+      $('#pin-info').textContent = 'Génération et envoi…';
+      try { const r = await Store.api('/relais/pins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ codes, envoyer: true }) }); const d = await r.json(); if (!r.ok) throw new Error(d.erreur);
+        const res = d.resultats || [], ko = res.filter(x => !x.envoye);
+        $('#pin-resultat').innerHTML = `<p>✓ ${res.filter(x => x.envoye).length} code(s) envoyé(s) par mail.</p>` + (ko.length ? `<p class="aide">Non envoyés : à transmettre vous-même (affichés une seule fois) :</p><table>${ko.map(x => `<tr><td><b>${esc(x.code)}</b> ${esc(x.libelle || '')}</td><td style="font-size:16px;letter-spacing:2px"><b>${esc(x.pin || '–')}</b></td><td class="muted">${esc(x.erreur || '')}</td></tr>`).join('')}</table>` : '');
+        PIN.choix.clear(); await charger();
+      } catch (e) { $('#pin-info').textContent = 'Erreur : ' + e.message; }
+    };
+    await charger();
   }
 
   // ---------- Cockpit Confidence : listes affichées ----------
