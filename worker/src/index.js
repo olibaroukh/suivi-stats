@@ -307,6 +307,18 @@ async function routes(request, env) {
     try { return json({ ok: true, taux: await majTaux(env, email) }, 200, h); } catch (e) { return erreur('Taux : ' + e.message, 502, h); }
   }
 
+  // Codes PIN des applis magasin (gérés par zimbra-relay) : liste et génération + envoi par mail (administrateurs)
+  if (chemin === '/relais/pins') {
+    if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
+    try {
+      if (request.method === 'GET') return json({ ok: true, magasins: await env.RELAIS.listePins() }, 200, h);
+      if (request.method === 'POST') { const b = await request.json().catch(() => ({})); const codes = Array.isArray(b.codes) ? b.codes.map(String).slice(0, 200) : [];
+        if (!codes.length) return erreur('Aucun magasin choisi', 400, h);
+        return json({ ok: true, resultats: await env.RELAIS.genererPins(codes, b.envoyer !== false) }, 200, h); }
+      return erreur('Méthode non prise en charge', 405, h);
+    } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
+  }
+
   // Données de zimbra-relay lues côté serveur par le lien interne RELAIS (administrateurs)
   if (chemin === '/relais/google' || chemin === '/relais/sante' || chemin === '/relais/bilans') {
     if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
