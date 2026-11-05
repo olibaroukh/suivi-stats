@@ -348,6 +348,35 @@ export class SuiviStatsInterne extends WorkerEntrypoint {
     await schema(this.env);
     return (await this.env.DB.prepare('SELECT cle FROM mois ORDER BY cle DESC').all()).results.map(r => r.cle);
   }
+  // Référentiel « terrain » pour les applis de zimbra-relay (remplace magasins.csv) :
+  // succursales France actives + magasins ayant un animateur terrain ; effectifs, effectif théorique
+  // et objectif annuel calculés à partir de la dernière photo enregistrée.
+  async referentielTerrain() {
+    await schema(this.env);
+    const ref = (await lireJSON(this.env, 'config/referentiel.json')) || [];
+    const m = (await this.moisDisponibles())[0];
+    const photo = m ? await lireJSON(this.env, `donnees/${m}/photo.json`) : null;
+    const oui = v => /^(oui|1|true|x)$/i.test(String(v || '').trim());
+    return {
+      mois: m || null,
+      magasins: ref.filter(r => r.actif === 'Oui' && ((r.pays === 'FRANCE' && r.type === 'Succursale') || (r.animateur && String(r.animateur).trim())))
+        .map(r => {
+          const c = String(r.code), d = photo && photo.magasins[c], N = (d && d.N) || {}, eq = (photo && photo.equipes && photo.equipes[c]) || null;
+          const part = p => p.part != null ? p.part : 1;
+          const effOpt = eq ? eq.filter(p => p.famille !== 'audio').reduce((a, p) => a + part(p), 0) : null;
+          const effAudio = eq ? eq.filter(p => p.famille === 'audio').reduce((a, p) => a + part(p), 0) : null;
+          const effTheo = N.P != null && photo ? Math.max(3.5, N.P * 12 / photo.mois / 250000) : null;
+          return {
+            code: c, libelle: r.libelleBilans || r.magasin || '', email: r.email || '', manager: r.manager || '',
+            effOpt, effAudio, effTheo: effTheo == null ? null : Math.round(effTheo * 10) / 10,
+            animateur: (r.animateur && String(r.animateur).trim()) || r.ar || '', animateurEmail: (r.animateurEmail && String(r.animateurEmail).trim()) || r.arEmail || '',
+            googlePlaceId: r.googlePlaceId || '', concept: r.concept || '', meubleVitrine: oui(r.meubleVitrine), presentoirVerres: oui(r.presentoirVerres),
+            statut: r.type === 'Franchise' ? 'franchise' : '', objectifAnnuel: N.O != null ? N.O : null, alsaceMoselle: oui(r.alsaceMoselle),
+            type: r.type || '', pays: r.pays || '', ar: r.ar || '',
+          };
+        }),
+    };
+  }
   async statsMagasin(code, mois) {
     await schema(this.env);
     const m = mois || (await this.moisDisponibles())[0];
