@@ -64,7 +64,7 @@
       if (!admin && v !== 'accueil' && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
       b.hidden = !ok;
     });
-    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); $('#zone-zimbra').hidden = !admin;
+    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); $('#zone-zimbra').hidden = !admin;
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
@@ -306,6 +306,7 @@
     S.photo = k ? await Store.lireJSON(`donnees/${k}/photo.json`) : null;
     S.chal = S.photo ? await Store.lireJSON(`config/challenges-${S.photo.annee}.json`).catch(() => null) : null;
     S.tauxCh = await tauxChange();
+    { const cp = await Store.lireJSON('config/cockpit-paris.json').catch(() => null); if (cp && cp.codes) { Cockpit.definirParis(cp.codes); try { remplirPerimetres(); } catch (e) {} } }
     const pays = [...new Set(S.ref.map(r => r.pays))].sort();
     $('#fi-filtre-pays').innerHTML = '<option value="">Tous les pays</option>' + pays.map(p => `<option>${p}</option>`).join('');
     listerMagasins();
@@ -760,6 +761,23 @@
     const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', logging: false }); hote.remove();
     doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 420, 297);
     telecharger(doc.output('blob'), `Actions ${ACT.annee} - ${$('#ac-mois').value}.pdf`);
+  }
+
+
+  // ---------- Réglages : composition du cockpit Paris ----------
+  async function brancherParis() {
+    if (!(Store.estAdmin() || !Store.cloud())) return;
+    $('#carte-paris').hidden = false;
+    const cp = await Store.lireJSON('config/cockpit-paris.json').catch(() => null); if (cp && cp.codes) Cockpit.definirParis(cp.codes);
+    const montrer = () => { const l = Cockpit.paris(); $('#paris-codes').value = l.join(', ');
+      $('#paris-info').textContent = l.length + ' magasins : ' + l.map(c => { const r = S.ref.find(x => String(x.code) === c); return r ? r.magasin : c + ' (inconnu)'; }).join(' · '); };
+    montrer();
+    $('#btn-paris').onclick = async () => {
+      const codes = $('#paris-codes').value.split(/[\s,;]+/).map(x => x.trim().replace(/^0+(?=\d)/, '')).filter(Boolean);
+      if (!codes.length) return alert('Indiquez au moins un code magasin.');
+      await Store.ecrireJSON('config/cockpit-paris.json', { codes, maj: new Date().toISOString().slice(0, 10) });
+      Cockpit.definirParis(codes); try { remplirPerimetres(); } catch (e) {} montrer(); $('#paris-info').textContent = '✓ Enregistré · ' + $('#paris-info').textContent;
+    };
   }
 
   // ---------- Accès magasins : codes PIN ----------

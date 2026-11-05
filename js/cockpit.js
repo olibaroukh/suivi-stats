@@ -111,6 +111,9 @@
   };
 
   // ---------- Périmètres ----------
+  // Cockpit Paris : liste de codes magasins (modifiable dans Réglages › Cockpit Paris ; config/cockpit-paris.json)
+  let PARIS = ['1033', '1026', '1020', '1021', '1022', '1046', '1101', '1103', '1108', '1109', '1110', '1112', '1115', '1116', '1118', '1117', '1119', '1120', '1121', '1122', '1124', '1128'];
+  function definirParis(codes) { if (Array.isArray(codes) && codes.length) PARIS = codes.map(x => String(x).trim().replace(/^0+(?=\d)/, '')).filter(Boolean); }
   function perimetres(ref) {
     const act = ref.filter(r => r.actif === 'Oui');
     const fr = r => r.pays === 'FRANCE';
@@ -121,6 +124,7 @@
     ];
     [...new Set(act.filter(succFr).map(r => r.ar))].filter(Boolean).sort().forEach(a =>
       out.push({ id: 'ar:' + a, lib: 'AR – ' + a, groupeLib: 'France', filtre: r => succFr(r) && r.ar === a, themes: ['complet', 'ca', 'optique', 'audio', 'restes', 'renta'] }));
+    out.push({ id: 'paris', lib: 'Paris', groupeLib: 'France', filtre: r => PARIS.includes(String(r.code)), sousTotal: r => r.ar, themes: ['complet', 'ca', 'optique', 'audio', 'restes', 'renta'] });
     out.push({ id: 'ocm', lib: 'OCM (camions succursales)', groupeLib: 'France', filtre: r => fr(r) && norm(r.ar) === 'OCM', themes: ['ca', 'optique', 'audio', 'restes'] });
     out.push({ id: 'franchises', lib: 'Franchises France – par franchisé', groupeLib: 'Franchises', filtre: r => fr(r) && r.type === 'Franchise', regrouper: r => r.groupe, multiPages: true, themes: ['complet', 'ca', 'optique', 'audio'] });
     const grp = {}; act.filter(r => fr(r) && r.type === 'Franchise').forEach(r => { grp[r.groupe] = (grp[r.groupe] || 0) + 1; });
@@ -464,6 +468,6 @@
   }
 
   const LISTES_CONF_DEFAUT = ['Rappel Devis Optique', 'Rappel Optique N+1', 'Rappel Audio N+4'];
-  const api = { LISTES_CONF_DEFAUT, SIEGE_DEFAUT, perimetres, construire, rendre, THEMES, COL, TAUX_DEFAUT, DEVISE_SYM, agreger, W_PAGE, H_PAGE };
+  const api = { definirParis, paris: () => PARIS.slice(), LISTES_CONF_DEFAUT, SIEGE_DEFAUT, perimetres, construire, rendre, THEMES, COL, TAUX_DEFAUT, DEVISE_SYM, agreger, W_PAGE, H_PAGE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Cockpit = api;
 })(typeof self !== 'undefined' ? self : this);
