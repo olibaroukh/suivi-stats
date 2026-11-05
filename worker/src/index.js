@@ -355,6 +355,12 @@ async function routes(request, env) {
     try { return json({ ok: true, cumul: await env.RELAIS.kaizenCumul(m) }, 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
   }
 
+  // Écrans magasins IDdigital : test de connexion et liste des magasins équipés (rien n'est envoyé)
+  if (chemin === '/relais/iddigital/test') {
+    if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
+    try { return json(await env.RELAIS.iddigitalTest(), 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
+  }
+
   // Codes PIN des applis magasin (gérés par zimbra-relay) : liste et génération + envoi par mail (administrateurs)
   if (chemin === '/relais/pins') {
     if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);

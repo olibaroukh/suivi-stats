@@ -262,6 +262,12 @@
         </div>
         <div style="margin-top:8px"><button id="btn-s-maj">Mettre à jour le score santé et les bilans de passage du mois traité</button> <span class="muted" id="s-maj-info"></span></div>
       </div>
+      <div class="carte" id="carte-iddigital" hidden>
+        <h2>Écrans magasins (IDdigital)</h2>
+        <p class="aide">Connexion à IDdigital avec la clé rangée dans Cloudflare. Le test ne fait que lire la liste des magasins équipés : rien n'est envoyé aux écrans.</p>
+        <button id="btn-idd-test">Tester la connexion</button> <span class="muted" id="idd-info"></span>
+        <div id="idd-resultat" style="margin-top:8px;max-height:320px;overflow:auto"></div>
+      </div>
       <div class="carte" id="carte-paris" hidden>
         <h2>Cockpit Paris</h2>
         <p class="aide">Codes des magasins du cockpit « Paris » (même contenu que les cockpits par AR). Séparez les codes par des virgules.</p>

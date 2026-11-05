@@ -64,7 +64,7 @@
       if (!admin && v !== 'accueil' && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
       b.hidden = !ok;
     });
-    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); $('#zone-zimbra').hidden = !admin;
+    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherIddigital(); $('#zone-zimbra').hidden = !admin;
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
@@ -763,6 +763,28 @@
     telecharger(doc.output('blob'), `Actions ${ACT.annee} - ${$('#ac-mois').value}.pdf`);
   }
 
+
+
+  // ---------- Réglages : écrans magasins IDdigital (test) ----------
+  function brancherIddigital() {
+    if (!(Store.cloud() && Store.estAdmin())) return;
+    $('#carte-iddigital').hidden = false;
+    $('#btn-idd-test').onclick = async () => {
+      $('#idd-info').textContent = 'Connexion à IDdigital…'; $('#idd-resultat').innerHTML = '';
+      try {
+        const r = await Store.api('/relais/iddigital/test'); const d = await r.json();
+        if (!d.ok) { $('#idd-info').textContent = 'Échec : ' + (d.erreur || d.error || 'inconnu'); $('#idd-resultat').innerHTML = d.essais ? '<pre style="font-size:11px;white-space:pre-wrap">' + esc(d.essais.join('\n')) + '</pre>' : ''; return; }
+        const nrm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+        const lignes = (d.magasins || []).map(m => {
+          const id = m.id ?? m.storeId ?? m.ID ?? '', nom = m.name ?? m.nom ?? m.label ?? m.libelle ?? JSON.stringify(m).slice(0, 80);
+          const code = String(m.code ?? m.storeCode ?? m.codeSite ?? '').replace(/^0+(?=\d)/, '');
+          const ref = S.ref.find(r => code && String(r.code) === code) || S.ref.find(r => nrm(r.magasin) && nrm(nom).includes(nrm(r.magasin).split(' ')[0]) && nrm(nom) === nrm(r.magasin));
+          return `<tr><td>${esc(id)}</td><td>${esc(nom)}</td><td>${esc(code)}</td><td>${ref ? '✓ ' + esc(ref.code + ' ' + ref.magasin) : '<span class="muted">à rapprocher</span>'}</td></tr>`; });
+        $('#idd-info').textContent = `✓ Connecté (${d.base}, ${d.variante}) · ${d.nb} magasin(s) accessible(s)`;
+        $('#idd-resultat').innerHTML = `<table class="tableau-acces"><thead><tr><th>Id IDdigital</th><th>Nom</th><th>Code</th><th>Magasin Suivi Stats</th></tr></thead><tbody>${lignes.join('')}</tbody></table>` + (d.brut ? '<pre style="font-size:11px">' + esc(JSON.stringify(d.brut).slice(0, 1500)) + '</pre>' : '') + (d.magasins && d.magasins[0] ? '<p class="aide">Exemple brut : ' + esc(JSON.stringify(d.magasins[0]).slice(0, 300)) + '</p>' : '');
+      } catch (e) { $('#idd-info').textContent = 'Erreur : ' + e.message; }
+    };
+  }
 
   // ---------- Réglages : composition du cockpit Paris ----------
   async function brancherParis() {
