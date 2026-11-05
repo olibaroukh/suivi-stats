@@ -132,7 +132,7 @@
     const cm = (conf && conf.magasins && conf.magasins[code]) || {}, sai = cm.saisies || {};
     const v = (ok, val) => ({ s: ok == null ? 'na' : ok ? 'ok' : 'ko', val });
     const pc = x => x == null ? null : Math.round(x * 1000) / 10 + ' %';
-    const man = k => sai[k] === true ? true : sai[k] === false ? false : null;
+    const man = k => sai[k] === true; // critère manuel : « Non » tant qu'il n'est pas validé (consigne d'Olivier, 05/11)
     // Plusieurs conditions obligatoires : non atteint dès qu'une est fausse, à renseigner tant qu'une manque
     const toutes = l => l.some(x => x === false) ? false : l.every(x => x === true) ? true : null;
     const sante = (photo.sante && photo.sante.magasins && photo.sante.magasins[code]) || {}, ent = sante.entrees || {};

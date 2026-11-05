@@ -216,6 +216,7 @@
         res.photo.sante = sa; const n = Object.values(sa.magasins).filter(x => x.score != null).length;
         res.rapport.sources.sante = { statut: 'recu', detail: `${n} magasins notés – ${sa.apercu ? 'aperçu indicatif (mois pas encore calculé dans le dashboard)' : 'mois ' + (sa.statut === 'valide' ? 'validé' : 'calculé') + ', version ' + sa.version}` };
         if (sa.apercu) res.rapport.alertes.push('Score santé : le mois n’est pas encore calculé dans le dashboard, les scores affichés sont indicatifs.');
+        const kz = await kaizenWorker(annee, mois); if (kz) res.photo.mlme = { ...(res.photo.mlme || {}), kaizen: kz, kaizenMaj: new Date().toISOString() };
         const bp = await bilansWorker(annee, mois);
         if (bp && !bp.erreur) { res.photo.bilans = bp; res.rapport.sources.bilans = { statut: 'recu', detail: `${Object.keys(bp.magasins).length} magasins (dernier passage avant le ${bp.fin.split('-').reverse().join('/')})` }; }
         else res.rapport.sources.bilans = { statut: 'absent', detail: bp ? bp.erreur : 'worker non configuré' };
@@ -654,7 +655,7 @@
     $('#chg-apercu').onclick = async e => {
       const td = e.target.closest('td.ms'); if (!td) return;
       const code = td.dataset.code, champ = td.dataset.champ, v = ((conf.magasins[code] || {}).saisies || {})[champ];
-      const nv = v === true ? false : v === false ? null : true;
+      const nv = v !== true; // par défaut « Non » ; un clic bascule OK ↔ Non
       const y = $('#chg-apercu .ch-scroll').scrollTop;
       await enregistrer(code, champ, nv); await afficherChallenges(); const s2 = $('#chg-apercu .ch-scroll'); if (s2) s2.scrollTop = y;
     };
