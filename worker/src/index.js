@@ -250,7 +250,7 @@ async function routes(request, env) {
   // Réglages communs non sensibles (objectifs, taux de change) : nécessaires aux fiches et cockpits
   if (chemin === '/donnees/config') {
     const nom = url.searchParams.get('nom') || '';
-    if (!/^(objectifs(-\d{4})?|objectifs-siege-\d{4}|taux-change|confidence-listes|actions-\d{4})$/.test(nom)) return erreur('Réglage non disponible', 403, h);
+    if (!/^(objectifs(-\d{4})?|objectifs-siege-\d{4}|taux-change|confidence-listes|actions-\d{4}|challenges-\d{4})$/.test(nom)) return erreur('Réglage non disponible', 403, h);
     return json({ ok: true, valeur: await lireJSON(env, `config/${nom}.json`) }, 200, h);
   }
 

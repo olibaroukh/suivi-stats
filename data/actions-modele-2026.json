@@ -208,12 +208,15 @@
    "libelle": "Nb de magasins d’excellence succ",
    "objectif": {
     "texte": "15",
-    "valeur": null,
+    "valeur": 15,
     "sens": ">=",
     "projection": false
    },
-   "mode": "manuel",
-   "indicateur": {},
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "nbME",
+    "perimetre": "france_succ"
+   },
    "manuel": {
     "valeur": "4",
     "statut": "ko"
@@ -225,12 +228,15 @@
    "libelle": "Nb de managers Leaders succ",
    "objectif": {
     "texte": "30",
-    "valeur": null,
+    "valeur": 30,
     "sens": ">=",
     "projection": false
    },
-   "mode": "manuel",
-   "indicateur": {},
+   "mode": "auto",
+   "indicateur": {
+    "mesure": "nbML",
+    "perimetre": "france_succ"
+   },
    "manuel": {
     "valeur": "2",
     "statut": "ko"

@@ -125,7 +125,8 @@
   }
 
   // Challenges « Manager Leader » et « Magasin d'excellence » : statut calculé quand la donnée existe, sinon « à renseigner »
-  function challenges(photo, mag, c) {
+  // saisies : config/challenges-AAAA.json › magasins[code] = { ml: { index: true|false }, me: { … } } (critères manuels, saisis dans l'écran Challenges)
+  function challenges(photo, mag, c, saisies) {
     const n = (photo.magasins[String(mag.code)] || {}).N || {}, p = (photo.magasins[String(mag.code)] || {}).N1 || {};
     const v = (ok, val) => ({ s: ok == null ? 'na' : ok ? 'ok' : 'ko', val });
     const re = n.CQ != null ? n.CQ / 100 : null, pc = x => x == null ? null : Math.round(x * 1000) / 10 + ' %';
@@ -158,6 +159,14 @@
       ['VALEUR OC', 'Dress code / Vocabulaire / Savoir-être', v(null)],
     ];
     const score = l => ({ ok: l.filter(x => x[2].s === 'ok').length, connus: l.filter(x => x[2].s !== 'na').length });
+    // Critères manuels : une saisie explicite (atteint / non atteint) remplace « à renseigner » ; marque « saisi »
+    const s = (saisies && saisies.magasins && saisies.magasins[String(mag.code)]) || {};
+    const appliquer = (liste, k) => liste.forEach((x, i) => { const v0 = s[k] && s[k][i]; if ((v0 === true || v0 === false) && x[2].s === 'na') { x[2] = { s: v0 ? 'ok' : 'ko', val: x[2].val, saisi: true }; } });
+    appliquer(ml, 'ml');
+    // Magasin d'excellence › LEADERSHIP = au moins 7 / 10 au Manager Leader (automatique dès que les 10 critères sont connus)
+    const sml0 = score(ml);
+    if (me[1][2].s === 'na' && !(s.me && (s.me[1] === true || s.me[1] === false)) && sml0.connus === 10) me[1][2] = { s: sml0.ok >= 7 ? 'ok' : 'ko', val: sml0.ok + ' / 10' };
+    appliquer(me, 'me');
     return { ml, me, sml: score(ml), sme: score(me) };
   }
 
@@ -166,7 +175,7 @@
     const t = traducteur(trad, lang);
     const dev = DEVISES[mag.devise] || '€';
     const c = calculer(photo, mag, objectifs);
-    const ch = challenges(photo, mag, c);
+    const ch = challenges(photo, mag, c, opts.challenges);
     const eq = equipe(photo, mag, c.o);
     const sa = photo.sante && photo.sante.magasins && photo.sante.magasins[String(mag.code)];
     const santeOk = sa && sa.score != null;

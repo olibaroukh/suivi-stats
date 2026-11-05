@@ -46,9 +46,11 @@
     visOphta: { lib: 'Visites ophtalmologistes / orthoptistes (cumul)', fmt: 'nb' },
     visOrl: { lib: 'Visites ORL / généralistes (cumul)', fmt: 'nb' },
     mag100: { lib: 'Nombre de magasins à 100 %', fmt: 'nb' },
+    nbML: { lib: 'Nombre de Managers Leader (10/10)', fmt: 'nb' },
+    nbME: { lib: 'Nombre de Magasins d’excellence (10/10)', fmt: 'nb' },
   };
 
-  function calculer(a, photo, ref, taux) {
+  function calculer(a, photo, ref, taux, ctx = {}) {
     const Cockpit = root.Cockpit, ind = a.indicateur || {}, mes = MESURES[ind.mesure];
     if (!mes || !photo) return { valeur: null, texte: '–' };
     const f = filtrePerimetre(ind.perimetre || 'reseau', ref); if (!f) return { valeur: null, texte: 'périmètre inconnu' };
@@ -82,6 +84,13 @@
       case 'confUtil': { const u = actifs.filter(r => { const n = (photo.magasins[String(r.code)] || {}).N || {}; return (n.DO || 0) > 0; }).length; v = actifs.length ? u / actifs.length : null; extra = `avec ${nb(u)} / ${nb(actifs.length)} mag.`; break; }
       case 'visOphta': v = (agg.N.DW || 0) + (agg.N.DX || 0); break;
       case 'visOrl': v = (agg.N.DV || 0) + (agg.N.DY || 0); break;
+      case 'nbML': case 'nbME': {
+        const Fiche = root.Fiche; if (!Fiche) { v = null; break; }
+        v = actifs.filter(r => r.type === 'Succursale' && r.nature !== 'Camion' && photo.magasins[String(r.code)]).filter(r => {
+          const ch = Fiche.challenges(photo, r, Fiche.calculer(photo, r, ctx.objectifs || {}), ctx.challenges || null);
+          return (ind.mesure === 'nbML' ? ch.sml.ok : ch.sme.ok) === 10; }).length;
+        break;
+      }
       case 'mag100': v = actifs.filter(r => { const d = photo.magasins[String(r.code)]; const p = d ? Cockpit.COL.posit.f(d.N || {}, d.N1 || {}, m) : null; return p != null && p >= 1; }).length; break;
     }
     // Période propre à la source
@@ -119,7 +128,7 @@
   function rendre(conf, photo, ref, taux, opts = {}) {
     const acts = (conf.actions || []).slice().sort((a, b) => (+a.num || 0) - (+b.num || 0));
     const lignes = acts.map(a => {
-      const r = a.mode === 'auto' ? calculer(a, photo, ref, taux) : { texte: (a.manuel && a.manuel.valeur) || '', extra: '' };
+      const r = a.mode === 'auto' ? calculer(a, photo, ref, taux, opts) : { texte: (a.manuel && a.manuel.valeur) || '', extra: '' };
       return { a, r, st: statut(a, r) };
     });
     const moitie = Math.ceil(lignes.length / 2);
