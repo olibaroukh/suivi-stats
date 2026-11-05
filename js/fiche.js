@@ -124,50 +124,65 @@
     };
   }
 
-  // Challenges « Manager Leader » et « Magasin d'excellence » : statut calculé quand la donnée existe, sinon « à renseigner »
-  // saisies : config/challenges-AAAA.json › magasins[code] = { ml: { index: true|false }, me: { … } } (critères manuels, saisis dans l'écran Challenges)
-  function challenges(photo, mag, c, saisies) {
-    const n = (photo.magasins[String(mag.code)] || {}).N || {}, p = (photo.magasins[String(mag.code)] || {}).N1 || {};
+  // Managers Leaders et Magasins d'Excellence : règles validées le 05/11/2026 (voir regles-managers-leaders-magasins-excellence.md).
+  // conf = config/challenges-AAAA.json { magasins: { code: { saisies: { formation, intelligence, planning, retours, dressCode, vocabulaire, savoirEtre }, fid, objCe } }, objectifsAtteints: { code: { 2022: 0|1, … } } }
+  // ctx = { taux } (conversion du seuil de CA en devise locale). Statut : ok / ko / na (à renseigner).
+  function challenges(photo, mag, c, conf, ctx = {}) {
+    const code = String(mag.code), d = photo.magasins[code] || {}, n = d.N || {}, p = d.N1 || {};
+    const cm = (conf && conf.magasins && conf.magasins[code]) || {}, sai = cm.saisies || {};
     const v = (ok, val) => ({ s: ok == null ? 'na' : ok ? 'ok' : 'ko', val });
-    const re = n.CQ != null ? n.CQ / 100 : null, pc = x => x == null ? null : Math.round(x * 1000) / 10 + ' %';
-    const visites = [n.DX || n.DW, n.DV, n.DZ].filter(x => x > 0).length;
-    const perf = [[n.AF, c.o.tc], [n.AC, c.o.sop], [n.V, c.o.panier, 1], [n.AN, c.o.mdc], [n.BE, c.o.depistage]].filter(([x, o]) => x != null && o != null);
-    const perfOk = perf.filter(([x, o, abs]) => (abs ? x : x / 100) >= o).length;
-    const caAnnuel = n.P != null ? n.P * 12 / photo.mois : null;
+    const pc = x => x == null ? null : Math.round(x * 1000) / 10 + ' %';
+    const man = k => sai[k] === true ? true : sai[k] === false ? false : null;
+    // Plusieurs conditions obligatoires : non atteint dès qu'une est fausse, à renseigner tant qu'une manque
+    const toutes = l => l.some(x => x === false) ? false : l.every(x => x === true) ? true : null;
+    const sante = (photo.sante && photo.sante.magasins && photo.sante.magasins[code]) || {}, ent = sante.entrees || {};
+    const re = n.CQ != null ? n.CQ / 100 : null;
+    const eqp = equipe(photo, mag, c.o);
+    const ecartEff = eqp.connu && eqp.effTheo != null ? eqp.effOpt + eqp.effAud - eqp.effTheo : null;
+    const entr = ent.entretiens || null, niveau = ent.equipe ? ent.equipe.niveau : null;
+    const entOk = entr && entr.eligibles != null ? (entr.eligibles > 0 ? entr.vus >= entr.eligibles : null) : null;
+    const indus = n.BV != null ? n.BV : null;
+    // Objectif annuel atteint ≥ 3 fois sur les 5 dernières années (historique + année en cours en projection)
+    const histo = (conf && conf.objectifsAtteints && conf.objectifsAtteints[code]) || null;
+    const positAn = c.ca.posit;
+    const anneesOk = histo ? Object.entries(histo).filter(([a, x]) => +a >= photo.annee - 4 && +a < photo.annee && +x === 1).length + (positAn != null && positAn >= 1 ? 1 : 0) : null;
+    const ophta = (n.DX || 0) + (n.DW || 0), orl = (n.DV || 0) + (n.DY || 0), ce = n.DZ, objCe = cm.objCe != null ? cm.objCe : (n.EA != null ? n.EA : 50);
     const ml = [
       ['LA PRISE DE DECISION', 'RE ≥ 20 %', v(re == null ? null : re >= 0.2, pc(re))],
-      ['CONSTRUIRE EQUIPE GAGNANTE', 'Entretiens / Niveau de l’équipe ≥ 8 / Effectif', v(null)],
-      ['FORMATION', '3 jours de formation par collaborateur', v(null)],
-      ['L’INTELLIGENCE ORGANISATIONNELLE', 'Retour terrain AR + Siège', v(null)],
-      ['GESTIONNAIRE', 'Planning / Retours / Taux d’indus', v(null, n.BV != null ? 'indus ' + pc(n.BV) : null)],
-      ['LA COMPÉTENCE ÉMOTIONNELLE', 'CA fait 3 fois les 5 dernières années', v(null)],
+      ['CONSTRUIRE EQUIPE GAGNANTE', 'Effectif / 1 entretien par collaborateur et par mois / Niveau de l’équipe ≥ 8',
+        v(toutes([ecartEff == null ? null : Math.abs(ecartEff) < 0.5, entOk, niveau == null ? null : niveau >= 8]),
+          [ecartEff == null ? null : 'eff. ' + (ecartEff > 0 ? '+' : '') + (Math.round(ecartEff * 10) / 10), entr && entr.eligibles != null ? 'entr. ' + entr.vus + '/' + entr.eligibles : null, niveau != null ? 'niv. ' + niveau : null].filter(Boolean).join(' · ') || null)],
+      ['FORMATION', '3 jours de formation par collaborateur', v(man('formation'))],
+      ['L’INTELLIGENCE ORGANISATIONNELLE', 'Retour terrain AR + Siège', v(man('intelligence'))],
+      ['GESTIONNAIRE', 'Planning / Retours / Taux d’indus ≤ 1 %', v(toutes([man('planning'), man('retours'), indus == null ? null : indus <= 0.01]), indus != null ? 'indus ' + pc(indus) : null)],
+      ['LA COMPÉTENCE ÉMOTIONNELLE', 'Objectif annuel atteint 3 fois sur les 5 dernières années', v(anneesOk == null ? null : anneesOk >= 3, anneesOk != null ? anneesOk + ' / 5' : null)],
       ['LA NÉGOCIATION GAGNANTE', 'Taux de concrétisation ≥ 95 %', v(n.AF == null ? null : n.AF >= 95, n.AF != null ? n.AF.toFixed(1) + ' %' : null)],
       ['DÉVELOPPER SA CRÉATIVITÉ', 'Évolution du CA', v(n.P == null || !p.P ? null : n.P > p.P, c.ca.evol != null ? (c.ca.evol > 0 ? '+' : '') + pc(c.ca.evol) : null)],
       ['NOTORIÉTÉ', 'Nombre d’avis Google ≥ 300', v(n.BL == null ? null : n.BL >= 300, n.BL != null ? String(n.BL) : null)],
-      ['COMMUNIQUER EFFICACEMENT', 'Ophta / ORL / CE', v(n.DZ == null ? null : visites === 3, n.DZ != null ? visites + ' / 3' : null)],
-    ];
-    const me = [
-      ['COMMERCE', 'CA ≥ 2 M€', v(caAnnuel == null ? null : caAnnuel >= 2e6, caAnnuel != null ? Math.round(caAnnuel / 1000).toLocaleString('fr-FR') + ' k€ (proj.)' : null)],
-      ['LEADERSHIP', '7/10 à l’évaluation Manager Leader', v(null)],
-      ['NOTORIÉTÉ', 'Note Google ≥ 4,5', v(n.BK == null || !n.BL ? null : n.BK >= 4.5, n.BL ? (Math.round(n.BK * 10) / 10).toString().replace('.', ',') : null)],
-      ['RESSOURCES HUMAINES', 'Niveau de l’équipe ≥ 8 / Équilibre H/F / 3 jours de formation', v(null)],
-      ['GESTION', 'Taux d’indus ≤ 1 %', v(n.BV == null ? null : n.BV <= 0.01, pc(n.BV))],
-      ['FIDÉLISATION', '60 %', v(null)],
-      ['KAIZEN', 'Audit 5S à jour', v(null)],
-      ['RENTABILITÉ', 'RE ≥ 20 %', v(re == null ? null : re >= 0.2, pc(re))],
-      ['PERFORMANCE', 'TC / SOP / PM / MdC / Test audio', v(perf.length < 5 ? null : perfOk === 5, perf.length ? perfOk + ' / ' + perf.length : null)],
-      ['VALEUR OC', 'Dress code / Vocabulaire / Savoir-être', v(null)],
+      ['COMMUNIQUER EFFICACEMENT', 'Ophta ≥ 10 / ORL ≥ 10 / CE ≥ objectif', v(ce == null ? null : ophta >= 10 && orl >= 10 && ce >= objCe, ce != null ? `${ophta} / ${orl} / ${ce} (obj. ${objCe})` : null)],
     ];
     const score = l => ({ ok: l.filter(x => x[2].s === 'ok').length, connus: l.filter(x => x[2].s !== 'na').length });
-    // Critères manuels : une saisie explicite (atteint / non atteint) remplace « à renseigner » ; marque « saisi »
-    const s = (saisies && saisies.magasins && saisies.magasins[String(mag.code)]) || {};
-    const appliquer = (liste, k) => liste.forEach((x, i) => { const v0 = s[k] && s[k][i]; if ((v0 === true || v0 === false) && x[2].s === 'na') { x[2] = { s: v0 ? 'ok' : 'ko', val: x[2].val, saisi: true }; } });
-    appliquer(ml, 'ml');
-    // Magasin d'excellence › LEADERSHIP = au moins 7 / 10 au Manager Leader (automatique dès que les 10 critères sont connus)
-    const sml0 = score(ml);
-    if (me[1][2].s === 'na' && !(s.me && (s.me[1] === true || s.me[1] === false)) && sml0.connus === 10) me[1][2] = { s: sml0.ok >= 7 ? 'ok' : 'ko', val: sml0.ok + ' / 10' };
-    appliquer(me, 'me');
-    return { ml, me, sml: score(ml), sme: score(me) };
+    const sml = score(ml);
+    const devise = mag.devise || 'Euro', taux = (ctx.taux && ctx.taux[devise]) || 1, seuil = 2e6 / taux;
+    const caAnnuel = n.P != null ? n.P * 12 / photo.mois : null;
+    const hf = n.XI ? n.XH / n.XI : null;
+    const perf = [[n.AF, c.o.tc], [n.AC, c.o.sop], [n.V, c.o.panier, 1], [n.AN, c.o.mdc], [n.BE, c.o.depistage]].filter(([x, o]) => x != null && o != null);
+    const perfOk = perf.filter(([x, o, abs]) => (abs ? x : x / 100) >= o).length;
+    const kz = photo.mlme && photo.mlme.kaizen ? (photo.mlme.kaizen[code] != null ? photo.mlme.kaizen[code] : 0) : null;
+    const fid = cm.fid != null ? cm.fid : null;
+    const me = [
+      ['COMMERCE', 'CA TTC ≥ 2 M€ (projection)', v(caAnnuel == null ? null : caAnnuel >= seuil, caAnnuel != null ? Math.round(caAnnuel / 1000).toLocaleString('fr-FR') + ' k' + (DEVISES[devise] || '€') + ' (proj.)' : null)],
+      ['LEADERSHIP', '7/10 à l’évaluation Manager Leader', v(sml.ok >= 7 ? true : sml.connus === 10 ? false : null, sml.ok + ' / 10')],
+      ['NOTORIÉTÉ', 'Note Google ≥ 4,5', v(n.BK == null || !n.BL ? null : n.BK >= 4.5, n.BL ? (Math.round(n.BK * 10) / 10).toString().replace('.', ',') : null)],
+      ['RESSOURCES HUMAINES', 'Niveau de l’équipe ≥ 8 / Équilibre H/F / 3 jours de formation', v(toutes([niveau == null ? null : niveau >= 8, hf == null ? null : hf >= 0.4 && hf <= 0.6, man('formation')]), [niveau != null ? 'niv. ' + niveau : null, hf != null ? Math.round(hf * 100) + ' % F' : null].filter(Boolean).join(' · ') || null)],
+      ['GESTION', 'Taux d’indus ≤ 1 %', v(indus == null ? null : indus <= 0.01, pc(indus))],
+      ['FIDÉLISATION', '60 %', v(fid == null ? null : fid >= 0.6, fid != null ? Math.round(fid * 100) + ' %' : null)],
+      ['KAIZEN', '400 points cumulés sur l’année', v(kz == null ? null : kz >= 400, kz != null ? String(Math.round(kz)) + ' pts' : null)],
+      ['RENTABILITÉ', 'RE ≥ 20 %', v(re == null ? null : re >= 0.2, pc(re))],
+      ['PERFORMANCE', 'TC / SOP / PM / MdC / Test audio (3 sur 5)', v(perf.length < 3 && perfOk < 3 ? null : perfOk >= 3, perf.length ? perfOk + ' / ' + perf.length : null)],
+      ['VALEUR OC', 'Dress code / Vocabulaire / Savoir-être', v(toutes([man('dressCode'), man('vocabulaire'), man('savoirEtre')]))],
+    ];
+    return { ml, me, sml, sme: score(me) };
   }
 
   function rendre(photo, mag, objectifs, trad, opts = {}) {
@@ -175,7 +190,7 @@
     const t = traducteur(trad, lang);
     const dev = DEVISES[mag.devise] || '€';
     const c = calculer(photo, mag, objectifs);
-    const ch = challenges(photo, mag, c, opts.challenges);
+    const ch = challenges(photo, mag, c, opts.challenges, { taux: opts.taux });
     const eq = equipe(photo, mag, c.o);
     const sa = photo.sante && photo.sante.magasins && photo.sante.magasins[String(mag.code)];
     const santeOk = sa && sa.score != null;

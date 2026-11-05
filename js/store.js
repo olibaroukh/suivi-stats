@@ -108,6 +108,7 @@
     let racineCopie = '';
     const enfants = []; for await (const [n2, x] of d.entries()) if (!n2.startsWith('.')) enfants.push([n2, x.kind]);
     if (d.name === 'donnees' || (enfants.length && enfants.every(([n2, k]) => k === 'directory' && /^\d{4}(-\d{2})?$/.test(n2)))) racineCopie = 'donnees/';
+    else if (d.name === 'config') racineCopie = 'config/'; // dossier « config » choisi directement
     await parcourir(d, racineCopie);
     if (confirmer && !confirmer(fichiers.length, d.name, fichiers.map(f => f[0]))) return null;
     let n = 0, echecs = [];

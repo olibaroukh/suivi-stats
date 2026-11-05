@@ -68,6 +68,7 @@
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
+    if (location.hash === '#mlme') vue('challenges'); // lien du mail mensuel aux AR
   }
   async function modeLocal() {
     document.body.classList.remove('non-connecte'); $('#ecran-connexion').hidden = true;
@@ -86,6 +87,8 @@
     majInfosReglages(); await listerPhotos(); remplirPerimetres(); brancherTaux(); brancherObjSiege();
     await apresChargement();
   }
+  // Lien direct (mail mensuel aux AR) : …/suivi-stats/#mlme ouvre l'écran de saisie
+  window.addEventListener('hashchange', () => { if (location.hash === '#mlme') vue('challenges'); });
   function vue(v) { if (v === 'cockpits' && !$('#ck-apercu .cockpit')) setTimeout(afficherCockpit, 0); if (v === 'actions') setTimeout(afficherActions, 0); if (v === 'challenges') setTimeout(afficherChallenges, 0); document.querySelectorAll('.vue').forEach(x => x.classList.toggle('actif', x.id === 'vue-' + v)); document.querySelectorAll('.app-head nav button').forEach(b => b.classList.toggle('actif', b.dataset.vue === v)); }
 
   // ---------- Import ----------
@@ -145,9 +148,14 @@
         r = await fetch(url.replace(/\/$/, '') + '/sante-mensuel?mois=' + annee + '-' + pad(mois), { headers: { 'X-Store-Token': cle, 'X-AR-Session': ses.token } });
       }
       const d = await r.json(); if (!d.ok) return { erreur: d.error || ('HTTP ' + r.status) };
-      const out = {}; (d.magasins || []).forEach(m => { out[String(m.code)] = { score: m.score, precedent: m.scorePrecedent, couverture: m.couverture, sous: m.sous || {}, exclusions: m.exclusions || {}, neutralisations: m.neutralisations || {} }; });
+      const out = {}; (d.magasins || []).forEach(m => { out[String(m.code)] = { score: m.score, precedent: m.scorePrecedent, couverture: m.couverture, sous: m.sous || {}, exclusions: m.exclusions || {}, neutralisations: m.neutralisations || {}, entrees: m.entrees || {} }; });
       return { magasins: out, apercu: !!d.apercu, statut: d.statut, version: d.version, dims: d.dims };
     } catch (e) { return { erreur: String(e) }; }
+  }
+  // Cumul des points Kaizen de l'année par magasin (Magasin d'Excellence › KAIZEN), lu dans zimbra-relay
+  async function kaizenWorker(annee, mois) {
+    if (!viaServeur()) return null;
+    try { const r = await Store.api('/relais/kaizen?mois=' + annee + '-' + pad(mois)); const d = await r.json(); return d && d.ok ? d.cumul || {} : null; } catch (e) { return null; }
   }
   // Dernier bilan de passage de chaque magasin avant la fin du mois traité (actions à suivre)
   async function bilansWorker(annee, mois) {
@@ -292,6 +300,7 @@
   async function chargerPhoto(k) {
     S.photo = k ? await Store.lireJSON(`donnees/${k}/photo.json`) : null;
     S.chal = S.photo ? await Store.lireJSON(`config/challenges-${S.photo.annee}.json`).catch(() => null) : null;
+    S.tauxCh = await tauxChange();
     const pays = [...new Set(S.ref.map(r => r.pays))].sort();
     $('#fi-filtre-pays').innerHTML = '<option value="">Tous les pays</option>' + pays.map(p => `<option>${p}</option>`).join('');
     listerMagasins();
@@ -331,7 +340,7 @@
   async function afficherFiche(m) {
     const serie = await serieMagasin(m.code);
     const tel = window.innerWidth <= 820;
-    $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l, serie , challenges: S.chal })).join('');
+    $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l, serie , challenges: S.chal, taux: S.tauxCh })).join('');
     ajuster($('#apercu')); adapterEchelle();
     if (tel) $('#apercu').scrollIntoView({ behavior: 'smooth', block: 'start' }); // téléphone : on descend directement sur la fiche
   }
@@ -380,7 +389,7 @@
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
     let n = 0;
     for (let i = 0; i < ls.length; i++) {
-      hote.innerHTML = Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: ls[i], serie: await serieMagasin(m.code) , challenges: S.chal });
+      hote.innerHTML = Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: ls[i], serie: await serieMagasin(m.code) , challenges: S.chal, taux: S.tauxCh });
       ajuster(hote);
       await Promise.all([...hote.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
       for (const page of hote.querySelectorAll('.fiche')) {
@@ -395,7 +404,7 @@
   // Dossier de visite : page de préparation (comparaison au groupe, bilan, notes) + fiche magasin en français
   async function htmlVisite(m) {
     const prec = await photoMois(moisPrec(`${S.photo.annee}-${pad(S.photo.mois)}`));
-    return Visite.rendre(S.photo, prec, S.ref, m, S.objectifs) + Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: 'fr', serie: await serieMagasin(m.code), challenges: S.chal });
+    return Visite.rendre(S.photo, prec, S.ref, m, S.objectifs) + Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: 'fr', serie: await serieMagasin(m.code), challenges: S.chal, taux: S.tauxCh });
   }
   async function pdfVisite(m) {
     const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -565,6 +574,7 @@
       if (!sa) { $('#s-maj-info').textContent = 'Clé du worker manquante : saisis-la dans le cadre « Avis Google – Worker » et clique sur Enregistrer.'; return; }
       if (sa.erreur) { $('#s-maj-info').textContent = sa.erreur === 'session' ? 'Connecte-toi d’abord (ci-dessus).' : 'Erreur : ' + sa.erreur; return; }
       ph.sante = sa; ph.sources = ph.sources || {}; ph.sources.sante = { statut: 'recu', detail: `${Object.values(sa.magasins).filter(x => x.score != null).length} magasins notés${sa.apercu ? ' – aperçu indicatif' : ''}` };
+      const kz = await kaizenWorker(a, m); if (kz) ph.mlme = { ...(ph.mlme || {}), kaizen: kz, kaizenMaj: new Date().toISOString() };
       const bp = await bilansWorker(a, m);
       if (bp && !bp.erreur) { ph.bilans = bp; ph.sources.bilans = { statut: 'recu', detail: `${Object.keys(bp.magasins).length} magasins` }; }
       await Store.ecrireJSON(`donnees/${k}/photo.json`, ph); CK.cle = null; if (S.photo && S.photo.annee === a && S.photo.mois === m) S.photo = ph;
@@ -611,10 +621,10 @@
 
 
 
-  // ---------- Challenges (Manager Leader / Magasin d'excellence) ----------
-  const CHG = { conf: null, annee: null, tEnr: null };
-  async function confChallenges(annee) {
-    if (CHG.conf && CHG.annee === annee) return CHG.conf;
+  // ---------- Managers Leaders et Magasins d'Excellence : saisie des critères manuels ----------
+  const CHG = { conf: null, annee: null };
+  async function confChallenges(annee, recharger) {
+    if (!recharger && CHG.conf && CHG.annee === annee) return CHG.conf;
     CHG.conf = (await Store.lireJSON(`config/challenges-${annee}.json`).catch(() => null)) || { annee, magasins: {} }; CHG.annee = annee; return CHG.conf;
   }
   async function afficherChallenges() {
@@ -627,20 +637,31 @@
     if ($('#chg-ar').options.length !== ars.length + 1) $('#chg-ar').innerHTML = '<option value="">Tous les AR</option>' + ars.map(x => `<option>${esc(x)}</option>`).join('');
     const pays = $('#chg-pays').value, ar = $('#chg-ar').value, q = ($('#chg-q').value || '').toLowerCase();
     const filtre = r => (!pays || r.pays === pays) && (!ar || r.ar === ar) && (!q || `${r.code} ${r.magasin}`.toLowerCase().includes(q));
-    const ls = Challenges.lignes(photo, S.ref, S.objectifs, conf, filtre);
-    const edition = Store.estAdmin() || !Store.cloud();
-    $('#chg-info').textContent = `Critères automatiques à fin ${MOIS[photo.mois - 1]} ${photo.annee}. ` + (edition ? 'Les critères marqués ✎ se saisissent ici et apparaissent sur les fiches magasin.' : '');
-    $('#chg-apercu').innerHTML = Challenges.rendre(ls, { edition, periode: `à fin ${MOIS[photo.mois - 1]} ${photo.annee}` });
-    if (!edition) return;
-    $('#chg-apercu').onclick = e => {
-      const td = e.target.closest('td.modif'); if (!td) return;
-      const c = td.dataset.code, l = td.dataset.l, i = td.dataset.i;
-      const m = conf.magasins[c] = conf.magasins[c] || {}; m[l] = m[l] || {};
-      const v = m[l][i]; if (v === undefined || v === null) m[l][i] = true; else if (v === true) m[l][i] = false; else delete m[l][i];
-      conf.maj = new Date().toISOString(); S.chal = S.photo && S.photo.annee === conf.annee ? conf : S.chal;
-      clearTimeout(CHG.tEnr); CHG.tEnr = setTimeout(() => Store.ecrireJSON(`config/challenges-${conf.annee}.json`, conf).then(() => { $('#chg-info').textContent = '✓ Enregistré'; }).catch(err => { $('#chg-info').textContent = 'Erreur d’enregistrement : ' + err.message; }), 600);
-      const y = $('#chg-apercu .ch-scroll') ? $('#chg-apercu .ch-scroll').scrollTop : 0;
-      afficherChallenges().then(() => { const s2 = $('#chg-apercu .ch-scroll'); if (s2) s2.scrollTop = y; });
+    const taux = await tauxChange();
+    const ls = Challenges.lignes(photo, S.ref, S.objectifs, conf, filtre, taux);
+    const admin = Store.estAdmin() || !Store.cloud();
+    $('#chg-info').textContent = `Critères automatiques à fin ${MOIS[photo.mois - 1]} ${photo.annee}. Saisissez ici les critères manuels de vos succursales.`;
+    $('#chg-apercu').innerHTML = Challenges.rendre(ls, conf, { admin, periode: `à fin ${MOIS[photo.mois - 1]} ${photo.annee}`, objCeDefaut: r => { const n = (photo.magasins[String(r.code)] || {}).N || {}; return n.EA != null ? n.EA : 50; } });
+    const enregistrer = async (code, champ, valeur) => {
+      $('#chg-info').textContent = 'Enregistrement…';
+      try {
+        const r = await Store.api('/mlme/saisie', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ annee: conf.annee, code, champ, valeur }) });
+        const d = await r.json(); if (!r.ok) throw new Error(d.erreur || 'refusé');
+        conf.magasins[code] = d.magasin; if (S.photo && S.photo.annee === conf.annee) S.chal = conf;
+        $('#chg-info').textContent = '✓ Enregistré';
+      } catch (e) { $('#chg-info').textContent = 'Erreur : ' + e.message; }
+    };
+    $('#chg-apercu').onclick = async e => {
+      const td = e.target.closest('td.ms'); if (!td) return;
+      const code = td.dataset.code, champ = td.dataset.champ, v = ((conf.magasins[code] || {}).saisies || {})[champ];
+      const nv = v === true ? false : v === false ? null : true;
+      const y = $('#chg-apercu .ch-scroll').scrollTop;
+      await enregistrer(code, champ, nv); await afficherChallenges(); const s2 = $('#chg-apercu .ch-scroll'); if (s2) s2.scrollTop = y;
+    };
+    $('#chg-apercu').onchange = async e => {
+      const inp = e.target.closest('input.ms-num'); if (!inp) return;
+      const champ = inp.dataset.champ, x = inp.value.trim() === '' ? null : +inp.value;
+      await enregistrer(inp.dataset.code, champ, x == null ? null : champ === 'fid' ? x / 100 : x);
     };
   }
 

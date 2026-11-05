@@ -610,3 +610,9 @@ body.mode-cloud .mode-cloud-seul{display:block}
 .ch-leg{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;font-size:12px}
 .ch-leg h4{margin:0 0 4px}.ch-leg ol{margin:0;padding-left:0;list-style:none}.ch-leg li span{color:var(--muted)}
 @media (max-width:820px){.ch-cpts{grid-template-columns:1fr}.ch-leg{grid-template-columns:1fr}}
+
+/* Saisie Managers Leaders / Magasins d'Excellence */
+.ms-t th small{display:block;font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)}
+.ms-t td.ms{cursor:pointer;font-weight:700;min-width:46px}
+.ms-t td.ms:hover{outline:2px solid #E22F2A}
+.ms-t input.ms-num{width:60px;font-size:12px;padding:3px 4px;text-align:center}

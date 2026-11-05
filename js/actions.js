@@ -87,7 +87,7 @@
       case 'nbML': case 'nbME': {
         const Fiche = root.Fiche; if (!Fiche) { v = null; break; }
         v = actifs.filter(r => r.type === 'Succursale' && r.nature !== 'Camion' && photo.magasins[String(r.code)]).filter(r => {
-          const ch = Fiche.challenges(photo, r, Fiche.calculer(photo, r, ctx.objectifs || {}), ctx.challenges || null);
+          const ch = Fiche.challenges(photo, r, Fiche.calculer(photo, r, ctx.objectifs || {}), ctx.challenges || null, { taux });
           return (ind.mesure === 'nbML' ? ch.sml.ok : ch.sme.ok) === 10; }).length;
         break;
       }
