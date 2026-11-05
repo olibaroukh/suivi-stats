@@ -190,6 +190,7 @@
       perf: (() => { const o = c.o, r = {}; [['tc', n.AF, o.tc], ['sop', n.AC, o.sop], ['pm', n.V, o.panier, 1], ['mdc', n.AN, o.mdc], ['test', n.BE, o.depistage]]
         .forEach(([k, x, ob, abs]) => { r[k] = x == null || ob == null ? null : (abs ? x : x / 100) >= ob; }); return r; })(),
       rh: { niveau: niveau == null ? null : niveau >= 8, hf: hf == null ? null : hf >= 0.4 && hf <= 0.6, formation: man('formation') },
+      gest: { planning: man('planning'), retours: man('retours'), indus: indus == null ? null : indus <= 0.01 },
     };
     return { ml, me, sml, sme: score(me), details };
   }

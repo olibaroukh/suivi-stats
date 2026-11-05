@@ -125,8 +125,17 @@
     return (o.sens === '<=' ? v <= cible : v >= cible) ? 'ok' : 'ko';
   }
 
+  // Actions « Nb de magasins d'excellence » / « Nb de managers leaders » restées en saisie manuelle : remplies automatiquement
+  // avec les qualifiés (≥ 7/10) des succursales France (consigne d'Olivier, 05/11)
+  function avecMlme(x) {
+    if (x.mode === 'auto') return x;
+    const l = String(x.libelle || ''), mes = /excellence/i.test(l) ? 'nbME' : /managers?\s+leaders?/i.test(l) ? 'nbML' : null;
+    if (!mes) return x;
+    const val = (x.objectif && x.objectif.valeur != null) ? x.objectif.valeur : (parseFloat(String((x.objectif && x.objectif.texte) || '').replace(/\s/g, '').replace(',', '.')) || null);
+    return { ...x, mode: 'auto', indicateur: { mesure: mes, perimetre: 'france_succ' }, objectif: { ...(x.objectif || {}), valeur: val, sens: '>=' } };
+  }
   function rendre(conf, photo, ref, taux, opts = {}) {
-    const acts = (conf.actions || []).slice().sort((a, b) => (+a.num || 0) - (+b.num || 0));
+    const acts = (conf.actions || []).map(avecMlme).sort((a, b) => (+a.num || 0) - (+b.num || 0));
     const lignes = acts.map(a => {
       const r = a.mode === 'auto' ? calculer(a, photo, ref, taux, opts) : { texte: (a.manuel && a.manuel.valeur) || '', extra: '' };
       return { a, r, st: statut(a, r) };
