@@ -251,7 +251,39 @@ async function routes(request, env) {
   if (chemin === '/donnees/config') {
     const nom = url.searchParams.get('nom') || '';
     if (!/^(objectifs(-\d{4})?|objectifs-siege-\d{4}|taux-change|confidence-listes|actions-\d{4}|challenges-\d{4})$/.test(nom)) return erreur('Réglage non disponible', 403, h);
-    return json({ ok: true, valeur: await lireJSON(env, `config/${nom}.json`) }, 200, h);
+    let valeur = await lireJSON(env, `config/${nom}.json`);
+    // Managers Leaders et Magasins d'Excellence : un lecteur ne reçoit que les magasins de son périmètre
+    if (valeur && /^challenges-/.test(nom) && !admin) {
+      const codes = codesAutorises(p.perimetre, (await lireJSON(env, 'config/referentiel.json')) || []);
+      const garder = o => Object.fromEntries(Object.entries(o || {}).filter(([c]) => codes.has(String(c))));
+      valeur = { ...valeur, magasins: garder(valeur.magasins), objectifsAtteints: garder(valeur.objectifsAtteints) };
+    }
+    return json({ ok: true, valeur }, 200, h);
+  }
+
+  // Saisie des critères manuels Managers Leaders / Magasins d'Excellence : administrateur, ou lecteur sur son périmètre
+  if (chemin === '/mlme/saisie' && request.method === 'POST') {
+    const b = await request.json().catch(() => ({}));
+    const annee = +b.annee, code = String(b.code || ''), champ = String(b.champ || ''), v = b.valeur;
+    const BOOL = ['formation', 'intelligence', 'planning', 'retours', 'dressCode', 'vocabulaire', 'savoirEtre'];
+    if (!(annee >= 2024 && annee <= 2100) || !code || !(BOOL.includes(champ) || champ === 'fid' || champ === 'objCe')) return erreur('Saisie invalide', 400, h);
+    if ((champ === 'fid' || champ === 'objCe') && !admin) return erreur('Réservé aux administrateurs', 403, h);
+    if (BOOL.includes(champ) && !(v === true || v === false || v === null)) return erreur('Valeur invalide', 400, h);
+    if (champ === 'fid' && !(v === null || (typeof v === 'number' && v >= 0 && v <= 1))) return erreur('Taux de fidélisation entre 0 et 1', 400, h);
+    if (champ === 'objCe' && !(v === null || (typeof v === 'number' && v >= 0 && v <= 10000))) return erreur('Objectif CE invalide', 400, h);
+    if (!admin) {
+      if (Array.isArray(p.ecrans) && !p.ecrans.includes('challenges')) return erreur('Écran non autorisé', 403, h);
+      const codes = codesAutorises(p.perimetre, (await lireJSON(env, 'config/referentiel.json')) || []);
+      if (!codes.has(code)) return erreur('Magasin hors de votre périmètre', 403, h);
+    }
+    const cle = `config/challenges-${annee}.json`;
+    const conf = (await lireJSON(env, cle)) || { annee, magasins: {} };
+    const m = conf.magasins[code] = conf.magasins[code] || {};
+    if (BOOL.includes(champ)) { m.saisies = m.saisies || {}; if (v === null) delete m.saisies[champ]; else m.saisies[champ] = v; }
+    else if (v === null) delete m[champ]; else m[champ] = v;
+    m.maj = new Date().toISOString(); m.par = email;
+    await env.FICHIERS.put(cle, JSON.stringify(conf), { httpMetadata: { contentType: 'application/json' } });
+    return json({ ok: true, magasin: m }, 200, h);
   }
 
   if (!admin) return erreur('Réservé aux administrateurs', 403, h);
@@ -305,6 +337,14 @@ async function routes(request, env) {
 
   if (chemin === '/admin/taux' && request.method === 'POST') {
     try { return json({ ok: true, taux: await majTaux(env, email) }, 200, h); } catch (e) { return erreur('Taux : ' + e.message, 502, h); }
+  }
+
+  // Cumul annuel des points Kaizen par magasin (zimbra-relay), pour le Magasin d'Excellence
+  if (chemin === '/relais/kaizen') {
+    if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
+    const m = url.searchParams.get('mois') || '';
+    if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois (AAAA-MM) requis', 400, h);
+    try { return json({ ok: true, cumul: await env.RELAIS.kaizenCumul(m) }, 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
   }
 
   // Codes PIN des applis magasin (gérés par zimbra-relay) : liste et génération + envoi par mail (administrateurs)

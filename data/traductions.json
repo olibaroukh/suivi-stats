@@ -1672,6 +1672,69 @@
    "es": "Managers Líderes y Tiendas de Excelencia",
    "nl": "Leidinggevende managers en winkels van uitmuntendheid",
    "de": "Führungsmanager und Exzellenz-Filialen"
+  },
+  {
+   "base": "Effectif / 1 entretien par collaborateur et par mois / Niveau de l’équipe ≥ 8",
+   "fr": "Effectif / 1 entretien par collaborateur et par mois / Niveau de l’équipe ≥ 8",
+   "he": "כוח אדם / ראיון אחד לעובד בחודש / רמת הצוות ≥ 8",
+   "en": "Headcount / 1 review per team member per month / Team level ≥ 8",
+   "es": "Plantilla / 1 entrevista por colaborador al mes / Nivel del equipo ≥ 8",
+   "nl": "Bezetting / 1 gesprek per medewerker per maand / Teamniveau ≥ 8",
+   "de": "Personal / 1 Gespräch pro Mitarbeiter und Monat / Teamniveau ≥ 8"
+  },
+  {
+   "base": "Planning / Retours / Taux d’indus ≤ 1 %",
+   "fr": "Planning / Retours / Taux d’indus ≤ 1 %",
+   "he": "תכנון / החזרות / שיעור חובות ≤ 1%",
+   "en": "Schedule / Returns / Unpaid rate ≤ 1%",
+   "es": "Planificación / Devoluciones / Tasa de impagos ≤ 1 %",
+   "nl": "Planning / Retouren / Openstaand ≤ 1%",
+   "de": "Planung / Retouren / Offene Posten ≤ 1 %"
+  },
+  {
+   "base": "Objectif annuel atteint 3 fois sur les 5 dernières années",
+   "fr": "Objectif annuel atteint 3 fois sur les 5 dernières années",
+   "he": "היעד השנתי הושג 3 פעמים ב-5 השנים האחרונות",
+   "en": "Annual target met 3 times in the last 5 years",
+   "es": "Objetivo anual alcanzado 3 veces en los últimos 5 años",
+   "nl": "Jaardoel 3 keer gehaald in de laatste 5 jaar",
+   "de": "Jahresziel 3-mal in den letzten 5 Jahren erreicht"
+  },
+  {
+   "base": "Ophta ≥ 10 / ORL ≥ 10 / CE ≥ objectif",
+   "fr": "Ophta ≥ 10 / ORL ≥ 10 / CE ≥ objectif",
+   "he": "רופאי עיניים ≥ 10 / אא\"ג ≥ 10 / ועדי עובדים ≥ יעד",
+   "en": "Ophthalmologists ≥ 10 / ENT ≥ 10 / Works councils ≥ target",
+   "es": "Oftalmólogos ≥ 10 / ORL ≥ 10 / Comités ≥ objetivo",
+   "nl": "Oogartsen ≥ 10 / KNO ≥ 10 / OR ≥ doel",
+   "de": "Augenärzte ≥ 10 / HNO ≥ 10 / Betriebsräte ≥ Ziel"
+  },
+  {
+   "base": "CA TTC ≥ 2 M€ (projection)",
+   "fr": "CA TTC ≥ 2 M€ (projection)",
+   "he": "מחזור ≥ 2 מיליון אירו (תחזית)",
+   "en": "Revenue ≥ €2M (projection)",
+   "es": "Facturación ≥ 2 M€ (proyección)",
+   "nl": "Omzet ≥ 2 M€ (prognose)",
+   "de": "Umsatz ≥ 2 Mio. € (Prognose)"
+  },
+  {
+   "base": "400 points cumulés sur l’année",
+   "fr": "400 points cumulés sur l’année",
+   "he": "400 נקודות מצטברות בשנה",
+   "en": "400 points accumulated over the year",
+   "es": "400 puntos acumulados en el año",
+   "nl": "400 punten opgebouwd over het jaar",
+   "de": "400 Punkte im Jahr gesammelt"
+  },
+  {
+   "base": "TC / SOP / PM / MdC / Test audio (3 sur 5)",
+   "fr": "TC / SOP / PM / MdC / Test audio (3 sur 5)",
+   "he": "TC / SOP / PM / MdC / בדיקת שמיעה (3 מתוך 5)",
+   "en": "CR / SOP / Avg basket / MdC / Hearing test (3 of 5)",
+   "es": "TC / SOP / PM / MdC / Test auditivo (3 de 5)",
+   "nl": "TC / SOP / GB / MdC / Gehoortest (3 van 5)",
+   "de": "AQ / SOP / Ø Bon / MdC / Hörtest (3 von 5)"
   }
  ],
  "mois": [
