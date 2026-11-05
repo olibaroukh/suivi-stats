@@ -521,7 +521,10 @@
     };
   }
   function brancherReglages() {
-    $('#inp-ref').onchange = async e => { const f = e.target.files[0]; if (!f) return; S.ref = lireRefXlsx(await f.arrayBuffer()); await Store.ecrireJSON('config/referentiel.json', S.ref); await Store.ecrire('config/referentiel.xlsx', f); majInfosReglages(); listerMagasins(); };
+    $('#inp-ref').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('#ref-info-import').textContent = 'Import en cours…';
+      try { S.ref = lireRefXlsx(await f.arrayBuffer()); await Store.ecrireJSON('config/referentiel.json', S.ref); await Store.ecrire('config/referentiel.xlsx', f); majInfosReglages(); listerMagasins();
+        $('#ref-info-import').textContent = `✓ Enregistré : ${S.ref.length} magasins (${f.name}), le ${new Date().toLocaleString('fr-FR')}`; }
+      catch (err) { $('#ref-info-import').textContent = 'Erreur : ' + err.message; } finally { e.target.value = ''; } };
     $('#btn-export-ref').onclick = () => exporterXlsx('Magasins', S.ref, REF_COLS, 'referentiel.xlsx');
     $('#inp-obj').onchange = async e => { const f = e.target.files[0]; if (!f) return; S.objectifs = lireObjXlsx(await f.arrayBuffer()); await Store.ecrireJSON(`config/objectifs-${$('#imp-annee').value}.json`, S.objectifs); majInfosReglages(); };
     $('#btn-export-obj').onclick = () => exporterXlsx('Objectifs ' + $('#imp-annee').value, (S.objectifs.rows || []), OBJ_COLS, `objectifs_${$('#imp-annee').value}.xlsx`);

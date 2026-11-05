@@ -26,7 +26,7 @@
     <button data-vue="actions">Actions de l’année</button>
     <button data-vue="reglages">Réglages</button>
   </nav>
-  <div class="recherche-globale"><input id="rg-q" placeholder="🔍 Magasin, code, manager…" autocomplete="off"><div id="rg-res" hidden></div></div>
+  <div class="recherche-globale"><input id="rg-q" type="search" name="recherche-magasin" placeholder="🔍 Magasin, code, manager…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute('readonly')"><div id="rg-res" hidden></div></div>
   <div class="dossier"><span id="etat-dossier">Aucun dossier</span> <a href="#" id="lien-deconnexion" hidden>Déconnexion</a></div>
 </header>
 
@@ -202,7 +202,7 @@
         <p class="aide" id="ref-info">—</p>
         <div class="ligne-outils">
           <label class="muted">Importer (Excel)<input type="file" id="inp-ref" accept=".xlsx,.xls"></label>
-          <button id="btn-export-ref">Exporter en Excel</button>
+          <button id="btn-export-ref">Exporter en Excel</button> <span class="muted" id="ref-info-import"></span>
         </div>
       </div>
       <div class="carte">
