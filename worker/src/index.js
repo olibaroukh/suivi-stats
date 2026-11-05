@@ -390,6 +390,16 @@ export class SuiviStatsInterne extends WorkerEntrypoint {
         }),
     };
   }
+  // Stats par collaborateur (export Cosium par vendeur, cumul à fin du dernier mois enregistré), par matricule
+  async statsVendeurs(matricules) {
+    await schema(this.env);
+    const m = (await this.moisDisponibles())[0]; if (!m) return { mois: null, parMatricule: {} };
+    const photo = await lireJSON(this.env, `donnees/${m}/photo.json`);
+    const sv = (photo && photo.statsVendeurs) || {}, cle = x => String(x == null ? '' : x).trim().replace(/\.0+$/, '').replace(/^0+(?=\d)/, '');
+    const parMatricule = {};
+    for (const x of (matricules || [])) { const s = sv[cle(x)]; if (s) parMatricule[String(x)] = s; }
+    return { mois: m, parMatricule };
+  }
   async statsMagasin(code, mois) {
     await schema(this.env);
     const m = mois || (await this.moisDisponibles())[0];
