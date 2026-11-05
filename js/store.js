@@ -79,7 +79,7 @@
     // Lecteurs : seules la photo du mois et le référentiel sont servis (déjà filtrés par le Worker)
     let m = chemin.match(/^donnees\/(\d{4}-\d{2})\/photo\.json$/);
     if (m) { const r = await appel('/donnees/photo?mois=' + m[1]); if (!r.ok) return null; const d = await r.json(); return new Blob([JSON.stringify(d.photo)], { type: 'application/json' }); }
-    m = chemin.match(/^config\/((?:objectifs(?:-\d{4})?|objectifs-siege-\d{4}|taux-change|confidence-listes|actions-\d{4}))\.json$/);
+    m = chemin.match(/^config\/((?:objectifs(?:-\d{4})?|objectifs-siege-\d{4}|taux-change|confidence-listes|actions-\d{4}|challenges-\d{4}))\.json$/);
     if (m) { const r = await appel('/donnees/config?nom=' + m[1]); if (!r.ok) return null; const d = await r.json(); return d.valeur == null ? null : new Blob([JSON.stringify(d.valeur)], { type: 'application/json' }); }
     if (chemin === 'config/referentiel.json') { const r = await appel('/donnees/referentiel'); if (!r.ok) return null; const d = await r.json(); return new Blob([JSON.stringify(d.referentiel)], { type: 'application/json' }); }
     return null;

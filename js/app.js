@@ -21,7 +21,7 @@
     $('#imp-annee').innerHTML = [0, 1, 2].map(k => `<option>${now.getFullYear() - k}</option>`).join(''); $('#imp-annee').value = prev.getFullYear();
     document.querySelectorAll('.app-head nav button').forEach(b => b.onclick = () => vue(b.dataset.vue));
     brancherImport(); brancherFiches(); brancherReglages(); brancherCockpits(); brancherSelCockpit(); brancherConfCockpit();
-    $('#ac-mois').onchange = afficherActions; $('#ac-param').onclick = editeurActions; $('#ac-pdf').onclick = pdfActions;
+    $('#ac-mois').onchange = afficherActions; ['#chg-mois', '#chg-pays', '#chg-ar'].forEach(x => $(x).onchange = afficherChallenges); $('#chg-q').oninput = () => afficherChallenges(); $('#ac-param').onclick = editeurActions; $('#ac-pdf').onclick = pdfActions;
     $('#w-url').value = localStorage.getItem('workerUrl') || 'https://zimbra-relay.oli-baroukh.workers.dev';
     $('#w-cle').value = localStorage.getItem('workerCle') || '';
     $('#btn-dossier').onclick = async () => { await Store.choisirDossier(); await dossierPret(); };
@@ -86,7 +86,7 @@
     majInfosReglages(); await listerPhotos(); remplirPerimetres(); brancherTaux(); brancherObjSiege();
     await apresChargement();
   }
-  function vue(v) { if (v === 'cockpits' && !$('#ck-apercu .cockpit')) setTimeout(afficherCockpit, 0); if (v === 'actions') setTimeout(afficherActions, 0); document.querySelectorAll('.vue').forEach(x => x.classList.toggle('actif', x.id === 'vue-' + v)); document.querySelectorAll('.app-head nav button').forEach(b => b.classList.toggle('actif', b.dataset.vue === v)); }
+  function vue(v) { if (v === 'cockpits' && !$('#ck-apercu .cockpit')) setTimeout(afficherCockpit, 0); if (v === 'actions') setTimeout(afficherActions, 0); if (v === 'challenges') setTimeout(afficherChallenges, 0); document.querySelectorAll('.vue').forEach(x => x.classList.toggle('actif', x.id === 'vue-' + v)); document.querySelectorAll('.app-head nav button').forEach(b => b.classList.toggle('actif', b.dataset.vue === v)); }
 
   // ---------- Import ----------
   function brancherImport() {
@@ -291,6 +291,7 @@
   }
   async function chargerPhoto(k) {
     S.photo = k ? await Store.lireJSON(`donnees/${k}/photo.json`) : null;
+    S.chal = S.photo ? await Store.lireJSON(`config/challenges-${S.photo.annee}.json`).catch(() => null) : null;
     const pays = [...new Set(S.ref.map(r => r.pays))].sort();
     $('#fi-filtre-pays').innerHTML = '<option value="">Tous les pays</option>' + pays.map(p => `<option>${p}</option>`).join('');
     listerMagasins();
@@ -330,7 +331,7 @@
   async function afficherFiche(m) {
     const serie = await serieMagasin(m.code);
     const tel = window.innerWidth <= 820;
-    $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l, serie })).join('');
+    $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l, serie , challenges: S.chal })).join('');
     ajuster($('#apercu')); adapterEchelle();
     if (tel) $('#apercu').scrollIntoView({ behavior: 'smooth', block: 'start' }); // téléphone : on descend directement sur la fiche
   }
@@ -379,7 +380,7 @@
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
     let n = 0;
     for (let i = 0; i < ls.length; i++) {
-      hote.innerHTML = Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: ls[i], serie: await serieMagasin(m.code) });
+      hote.innerHTML = Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: ls[i], serie: await serieMagasin(m.code) , challenges: S.chal });
       ajuster(hote);
       await Promise.all([...hote.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
       for (const page of hote.querySelectorAll('.fiche')) {
@@ -394,7 +395,7 @@
   // Dossier de visite : page de préparation (comparaison au groupe, bilan, notes) + fiche magasin en français
   async function htmlVisite(m) {
     const prec = await photoMois(moisPrec(`${S.photo.annee}-${pad(S.photo.mois)}`));
-    return Visite.rendre(S.photo, prec, S.ref, m, S.objectifs) + Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: 'fr', serie: await serieMagasin(m.code) });
+    return Visite.rendre(S.photo, prec, S.ref, m, S.objectifs) + Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: 'fr', serie: await serieMagasin(m.code), challenges: S.chal });
   }
   async function pdfVisite(m) {
     const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -609,6 +610,40 @@
 
 
 
+
+  // ---------- Challenges (Manager Leader / Magasin d'excellence) ----------
+  const CHG = { conf: null, annee: null, tEnr: null };
+  async function confChallenges(annee) {
+    if (CHG.conf && CHG.annee === annee) return CHG.conf;
+    CHG.conf = (await Store.lireJSON(`config/challenges-${annee}.json`).catch(() => null)) || { annee, magasins: {} }; CHG.annee = annee; return CHG.conf;
+  }
+  async function afficherChallenges() {
+    const ks = S.moisDispo || [];
+    if ($('#chg-mois').options.length !== ks.length) $('#chg-mois').innerHTML = ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join('');
+    const k = $('#chg-mois').value || ks[0]; if (!k) { $('#chg-info').textContent = 'Aucun mois enregistré.'; return; }
+    const photo = (S.photo && k === `${S.photo.annee}-${pad(S.photo.mois)}`) ? S.photo : await photoMois(k);
+    const conf = await confChallenges(+k.slice(0, 4));
+    const ars = [...new Set(S.ref.filter(r => r.type === 'Succursale' && r.ar).map(r => r.ar))].sort();
+    if ($('#chg-ar').options.length !== ars.length + 1) $('#chg-ar').innerHTML = '<option value="">Tous les AR</option>' + ars.map(x => `<option>${esc(x)}</option>`).join('');
+    const pays = $('#chg-pays').value, ar = $('#chg-ar').value, q = ($('#chg-q').value || '').toLowerCase();
+    const filtre = r => (!pays || r.pays === pays) && (!ar || r.ar === ar) && (!q || `${r.code} ${r.magasin}`.toLowerCase().includes(q));
+    const ls = Challenges.lignes(photo, S.ref, S.objectifs, conf, filtre);
+    const edition = Store.estAdmin() || !Store.cloud();
+    $('#chg-info').textContent = `Critères automatiques à fin ${MOIS[photo.mois - 1]} ${photo.annee}. ` + (edition ? 'Les critères marqués ✎ se saisissent ici et apparaissent sur les fiches magasin.' : '');
+    $('#chg-apercu').innerHTML = Challenges.rendre(ls, { edition, periode: `à fin ${MOIS[photo.mois - 1]} ${photo.annee}` });
+    if (!edition) return;
+    $('#chg-apercu').onclick = e => {
+      const td = e.target.closest('td.modif'); if (!td) return;
+      const c = td.dataset.code, l = td.dataset.l, i = td.dataset.i;
+      const m = conf.magasins[c] = conf.magasins[c] || {}; m[l] = m[l] || {};
+      const v = m[l][i]; if (v === undefined || v === null) m[l][i] = true; else if (v === true) m[l][i] = false; else delete m[l][i];
+      conf.maj = new Date().toISOString(); S.chal = S.photo && S.photo.annee === conf.annee ? conf : S.chal;
+      clearTimeout(CHG.tEnr); CHG.tEnr = setTimeout(() => Store.ecrireJSON(`config/challenges-${conf.annee}.json`, conf).then(() => { $('#chg-info').textContent = '✓ Enregistré'; }).catch(err => { $('#chg-info').textContent = 'Erreur d’enregistrement : ' + err.message; }), 600);
+      const y = $('#chg-apercu .ch-scroll') ? $('#chg-apercu .ch-scroll').scrollTop : 0;
+      afficherChallenges().then(() => { const s2 = $('#chg-apercu .ch-scroll'); if (s2) s2.scrollTop = y; });
+    };
+  }
+
   // ---------- Les Actions de l'Année ----------
   const ACT = { conf: null, annee: null };
   async function confActions(annee) {
@@ -625,7 +660,7 @@
     const conf = await confActions(+k.slice(0, 4));
     $('#ac-param').hidden = !(Store.estAdmin() || !Store.cloud());
     $('#ac-info').textContent = conf._modele ? 'Modèle 2026 repris de votre tableau : vérifiez-le dans « Paramétrer les actions », puis enregistrez-le.' : `${(conf.actions || []).length} actions · les réalisés automatiques se mettent à jour à chaque mois enregistré.`;
-    $('#ac-apercu').innerHTML = `<div class="ac-echelle">${Actions.rendre(conf, photo, S.ref, await tauxChange())}</div>`;
+    $('#ac-apercu').innerHTML = `<div class="ac-echelle">${Actions.rendre(conf, photo, S.ref, await tauxChange(), { objectifs: S.objectifs, challenges: await confChallenges(photo.annee) })}</div>`;
     const e = $('#ac-apercu .ac-echelle'), sc = Math.min(1, ($('#ac-apercu').clientWidth - 4) / 1587);
     e.style.transform = `scale(${sc})`; e.style.height = (1123 * sc) + 'px';
   }
