@@ -64,7 +64,7 @@
       if (!admin && v !== 'accueil' && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
       b.hidden = !ok;
     });
-    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; $('#zone-zimbra').hidden = !admin;
+    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); $('#zone-zimbra').hidden = !admin;
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
@@ -117,7 +117,10 @@
     $('#liste-fichiers').innerHTML = `<b>${S.fichiers.length} fichier(s)</b> · ` + S.fichiers.map(f => f.name.replace(/^[0-9a-f]{8}-/, '')).join(' · ') + ' <a href="#" id="vider">vider</a>';
     $('#vider').onclick = e => { e.preventDefault(); S.fichiers = []; $('#liste-fichiers').innerHTML = ''; };
   }
+  // Mode Cloudflare (administrateur) : lecture côté serveur par le lien interne suivi-stats-api → zimbra-relay
+  const viaServeur = () => Store.cloud() && Store.estAdmin();
   async function workerRatings() {
+    if (viaServeur()) { try { const r = await Store.api('/relais/google'); const d = await r.json(); return d && d.ok ? { ratings: d.ratings } : { erreur: (d && (d.erreur || d.error)) || ('HTTP ' + r.status) }; } catch (e) { return { erreur: String(e) }; } }
     const { url, cle } = paramsWorker();
     if (!url || !cle) return null;
     try { const r = await fetch(url.replace(/\/$/, '') + '/google-ratings', { headers: { 'X-Store-Token': cle } }); const d = await r.json(); return d.ok ? { ratings: d.ratings } : null; }
@@ -133,11 +136,14 @@
     return { url, cle };
   }
   async function santeWorker(annee, mois) {
-    const { url, cle } = paramsWorker();
-    if (!url || !cle) return null;
-    const ses = sessionSante(); if (!ses) return { erreur: 'session' };
+    let r;
     try {
-      const r = await fetch(url.replace(/\/$/, '') + '/sante-mensuel?mois=' + annee + '-' + pad(mois), { headers: { 'X-Store-Token': cle, 'X-AR-Session': ses.token } });
+      if (viaServeur()) r = await Store.api('/relais/sante?mois=' + annee + '-' + pad(mois));
+      else {
+        const { url, cle } = paramsWorker(); if (!url || !cle) return null;
+        const ses = sessionSante(); if (!ses) return { erreur: 'session' };
+        r = await fetch(url.replace(/\/$/, '') + '/sante-mensuel?mois=' + annee + '-' + pad(mois), { headers: { 'X-Store-Token': cle, 'X-AR-Session': ses.token } });
+      }
       const d = await r.json(); if (!d.ok) return { erreur: d.error || ('HTTP ' + r.status) };
       const out = {}; (d.magasins || []).forEach(m => { out[String(m.code)] = { score: m.score, precedent: m.scorePrecedent, couverture: m.couverture, sous: m.sous || {}, exclusions: m.exclusions || {}, neutralisations: m.neutralisations || {} }; });
       return { magasins: out, apercu: !!d.apercu, statut: d.statut, version: d.version, dims: d.dims };
@@ -145,11 +151,15 @@
   }
   // Dernier bilan de passage de chaque magasin avant la fin du mois traité (actions à suivre)
   async function bilansWorker(annee, mois) {
-    const { url, cle } = paramsWorker(); if (!url || !cle) return null;
-    const ses = sessionSante(); if (!ses) return { erreur: 'session' };
     const fin = Pipeline.finMois(annee, mois), d = new Date(annee, mois - 7, 1), debut = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
     try {
-      const r = await fetch(url.replace(/\/$/, '') + `/bilans?light=1&from=${debut}&to=${fin}&limit=1000`, { headers: { 'X-Store-Token': cle, 'X-AR-Session': ses.token } });
+      let r;
+      if (viaServeur()) r = await Store.api(`/relais/bilans?du=${debut}&au=${fin}`);
+      else {
+        const { url, cle } = paramsWorker(); if (!url || !cle) return null;
+        const ses = sessionSante(); if (!ses) return { erreur: 'session' };
+        r = await fetch(url.replace(/\/$/, '') + `/bilans?light=1&from=${debut}&to=${fin}&limit=1000`, { headers: { 'X-Store-Token': cle, 'X-AR-Session': ses.token } });
+      }
       const j = await r.json(); if (!j.ok) return { erreur: j.error || ('HTTP ' + r.status) };
       const out = {};
       for (const b of j.results || []) {

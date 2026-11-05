@@ -582,3 +582,9 @@ body.non-connecte .recherche-globale{display:none}
 #ac-editeur th:nth-child(5){width:110px}
 #ac-editeur th:nth-child(8){width:44px}
 #ac-editeur td>input,#ac-editeur td>select{margin-bottom:3px}
+
+/* Mode Cloudflare : avis Google, score santé et bilans lus côté serveur (lien interne) → cartes de connexion inutiles */
+body.mode-cloud .carte.mode-local{display:none}
+body.mode-cloud .mode-local{display:none}
+.mode-cloud-seul{display:none}
+body.mode-cloud .mode-cloud-seul{display:block}

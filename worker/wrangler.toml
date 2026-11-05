@@ -18,6 +18,12 @@ database_id = "6d809980-bef1-4fbf-8a7a-9bc21ad2b506"
 binding = "FICHIERS"
 bucket_name = "suivi-stats-fichiers"
 
+# Lien interne vers zimbra-relay (avis Google, score santé, bilans) – jamais exposé sur internet
+[[services]]
+binding = "RELAIS"
+service = "zimbra-relay"
+entrypoint = "RelaisInterne"
+
 [observability]
 enabled = true
 

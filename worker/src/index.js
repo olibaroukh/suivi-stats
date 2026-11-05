@@ -307,6 +307,18 @@ async function routes(request, env) {
     try { return json({ ok: true, taux: await majTaux(env, email) }, 200, h); } catch (e) { return erreur('Taux : ' + e.message, 502, h); }
   }
 
+  // Données de zimbra-relay lues côté serveur par le lien interne RELAIS (administrateurs)
+  if (chemin === '/relais/google' || chemin === '/relais/sante' || chemin === '/relais/bilans') {
+    if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
+    try {
+      let d;
+      if (chemin === '/relais/google') d = await env.RELAIS.googleRatings();
+      else if (chemin === '/relais/sante') { const m = url.searchParams.get('mois') || ''; if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois (AAAA-MM) requis', 400, h); d = await env.RELAIS.santeMensuel(m); }
+      else { const du = url.searchParams.get('du') || '', au = url.searchParams.get('au') || ''; if (!/^\d{4}-\d{2}-\d{2}$/.test(du) || !/^\d{4}-\d{2}-\d{2}$/.test(au)) return erreur('Paramètres du / au (AAAA-MM-JJ) requis', 400, h); d = await env.RELAIS.bilans(du, au); }
+      return json(d, 200, h);
+    } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
+  }
+
   // Gestion des accès (administrateurs)
   if (chemin === '/admin/utilisateurs' && request.method === 'GET') {
     const r = await env.DB.prepare('SELECT * FROM utilisateurs ORDER BY nom, email').all();
