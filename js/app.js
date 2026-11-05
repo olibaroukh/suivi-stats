@@ -21,7 +21,7 @@
     $('#imp-annee').innerHTML = [0, 1, 2].map(k => `<option>${now.getFullYear() - k}</option>`).join(''); $('#imp-annee').value = prev.getFullYear();
     document.querySelectorAll('.app-head nav button').forEach(b => b.onclick = () => vue(b.dataset.vue));
     brancherImport(); brancherFiches(); brancherReglages(); brancherCockpits(); brancherSelCockpit(); brancherConfCockpit();
-    $('#ac-mois').onchange = afficherActions; ['#chg-mois', '#chg-pays', '#chg-ar'].forEach(x => $(x).onchange = afficherChallenges); $('#chg-q').oninput = () => afficherChallenges(); $('#ac-param').onclick = editeurActions; $('#ac-pdf').onclick = pdfActions;
+    $('#ac-mois').onchange = afficherActions; ['#chg-mois', '#chg-pays', '#chg-ar'].forEach(x => $(x).onchange = afficherChallenges); $('#chg-v-saisie').onclick = () => { CHG.vue = 'saisie'; $('#chg-v-saisie').classList.add('actif'); $('#chg-v-cockpit').classList.remove('actif'); afficherChallenges(); }; $('#chg-v-cockpit').onclick = () => { CHG.vue = 'cockpit'; $('#chg-v-cockpit').classList.add('actif'); $('#chg-v-saisie').classList.remove('actif'); afficherChallenges(); }; $('#chg-pdf').onclick = pdfMlme; $('#chg-q').oninput = () => afficherChallenges(); $('#ac-param').onclick = editeurActions; $('#ac-pdf').onclick = pdfActions;
     $('#w-url').value = localStorage.getItem('workerUrl') || 'https://zimbra-relay.oli-baroukh.workers.dev';
     $('#w-cle').value = localStorage.getItem('workerCle') || '';
     $('#btn-dossier').onclick = async () => { await Store.choisirDossier(); await dossierPret(); };
@@ -645,6 +645,14 @@
     const taux = await tauxChange();
     const ls = Challenges.lignes(photo, S.ref, S.objectifs, conf, filtre, taux);
     const admin = Store.estAdmin() || !Store.cloud();
+    $('#chg-pdf').hidden = CHG.vue !== 'cockpit';
+    if (CHG.vue === 'cockpit') {
+      const per = [pays ? (pays === 'FRANCE' ? 'France' : pays) : 'Toutes les succursales', ar ? 'AR ' + ar : '', q ? '« ' + q + ' »' : ''].filter(Boolean).join(' · ');
+      $('#chg-info').textContent = `${ls.length} succursales · critères à fin ${MOIS[photo.mois - 1]} ${photo.annee}.`;
+      $('#chg-apercu').innerHTML = `<div class="mc-echelle">${MlmeCockpit.rendre(ls, { periode: `À fin ${MOIS[photo.mois - 1]} ${photo.annee}`, perimetre: 'Succursales – ' + per })}</div>`;
+      const e = $('#chg-apercu .mc-echelle'), sc = Math.min(1, ($('#chg-apercu').clientWidth - 4) / 1587); e.style.transform = `scale(${sc})`; e.style.height = (1123 * sc) + 'px';
+      $('#chg-apercu').onclick = null; $('#chg-apercu').onchange = null; return;
+    }
     $('#chg-info').textContent = `Critères automatiques à fin ${MOIS[photo.mois - 1]} ${photo.annee}. Saisissez ici les critères manuels de vos succursales.`;
     $('#chg-apercu').innerHTML = Challenges.rendre(ls, conf, { admin, periode: `à fin ${MOIS[photo.mois - 1]} ${photo.annee}`, objCeDefaut: r => { const n = (photo.magasins[String(r.code)] || {}).N || {}; return n.EA != null ? n.EA : 50; } });
     const enregistrer = async (code, champ, valeur) => {
@@ -728,6 +736,14 @@
         await Store.ecrireJSON(`config/actions-${ACT.annee}.json`, conf); ACT.conf = conf; $('#ac-editeur').hidden = true; afficherActions(); };
     };
     dessiner(); $('#ac-editeur').hidden = false;
+  }
+  async function pdfMlme() {
+    const page = $('#chg-apercu .mlme-page'); if (!page) return;
+    const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' });
+    const clone = page.cloneNode(true), hote = document.createElement('div'); hote.style.cssText = 'position:fixed;left:-10000px;top:0'; hote.appendChild(clone); document.body.appendChild(hote);
+    const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', logging: false }); hote.remove();
+    doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 420, 297);
+    telecharger(doc.output('blob'), `Managers Leaders et Magasins d'Excellence - ${$('#chg-mois').value}.pdf`);
   }
   async function pdfActions() {
     const page = $('#ac-apercu .actions-page'); if (!page) return;
