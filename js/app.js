@@ -655,6 +655,9 @@
       const per = [pays ? pays.charAt(0) + pays.slice(1).toLowerCase() : 'Toutes les succursales', ar ? 'AR ' + ar : '', q ? '« ' + q + ' »' : ''].filter(Boolean).join(' · ');
       $('#chg-info').textContent = `${ls.length} succursales · critères à fin ${MOIS[photo.mois - 1]} ${photo.annee}.`;
       $('#chg-apercu').innerHTML = `<div class="mc-echelle">${MlmeCockpit.rendre(ls, { periode: `À fin ${MOIS[photo.mois - 1]} ${photo.annee}`, perimetre: 'Succursales – ' + per })}</div>`;
+      // Listes « qualifiés et plus proches » : on retire les lignes qui ne tiennent pas entièrement (jamais de ligne coupée)
+      $('#chg-apercu').querySelectorAll('.mc-liste').forEach(box => { const bas = box.getBoundingClientRect().bottom; const trs = [...box.querySelectorAll('tr')];
+        for (let i = trs.length - 1; i >= 0 && trs[i].getBoundingClientRect().bottom > bas + 0.5; i--) trs[i].remove(); });
       const e = $('#chg-apercu .mc-echelle'), sc = Math.min(1, ($('#chg-apercu').clientWidth - 4) / 1587); e.style.transform = `scale(${sc})`; e.style.height = (1123 * sc) + 'px';
       $('#chg-apercu').onclick = null; $('#chg-apercu').onchange = null; return;
     }
