@@ -22,7 +22,7 @@
       return `<div class="mc-mr"><span>${esc(l)}</span><div class="mc-mt"><div style="width:${Math.max(p, 0.5)}%;background:${couleur}"></div></div><em>${String(p).replace('.', ',')} %</em></div>`; }).join('')}</div>`;
   }
   function proches(ls, cle, sc, avecManager) {
-    const l = ls.slice().sort((a, b) => b.ch[sc].ok - a.ch[sc].ok || String(a.r.magasin).localeCompare(String(b.r.magasin))).slice(0, 10);
+    const l = ls.slice().sort((a, b) => b.ch[sc].ok - a.ch[sc].ok || String(a.r.magasin).localeCompare(String(b.r.magasin))).slice(0, 30); // affichés tant qu'il y a de la place (le reste est masqué proprement)
     if (!l.length) return '<p class="mc-vide">Aucune succursale.</p>';
     return `<table class="mc-l"><tbody>${l.map(x => { const manque = x.ch[cle].filter(c => c[2].s !== 'ok').map(c => court(c[0]));
       return `<tr class="${x.ch[sc].ok >= SEUIL ? 'q' : ''}"><td class="s">${x.ch[sc].ok}<small>/10</small></td><td class="n"><b>${esc(x.r.magasin)}</b>${avecManager && x.r.manager ? ` <small>· ${esc(x.r.manager)}</small>` : ''}</td>
@@ -31,9 +31,15 @@
   function parAr(ls) {
     const g = {}; ls.forEach(x => { const k = x.r.ar || '—'; (g[k] = g[k] || []).push(x); });
     const moy = (l, sc) => l.length ? (l.reduce((a, x) => a + x.ch[sc].ok, 0) / l.length).toFixed(1).replace('.', ',') : '–';
-    return `<table class="mc-ar"><thead><tr><th>AR</th><th>Succ.</th><th>Mag. d’Excellence</th><th>Moy. /10</th><th>Managers Leaders</th><th>Moy. /10</th></tr></thead><tbody>
-      ${Object.keys(g).sort().map(k => { const l = g[k]; return `<tr><td>${esc(k)}</td><td>${l.length}</td><td><b>${l.filter(x => x.ch.sme.ok >= SEUIL).length}</b></td><td>${moy(l, 'sme')}</td><td><b>${l.filter(x => x.ch.sml.ok >= SEUIL).length}</b></td><td>${moy(l, 'sml')}</td></tr>`; }).join('')}
-      <tr class="t"><td>Total</td><td>${ls.length}</td><td><b>${ls.filter(x => x.ch.sme.ok >= SEUIL).length}</b></td><td>${moy(ls, 'sme')}</td><td><b>${ls.filter(x => x.ch.sml.ok >= SEUIL).length}</b></td><td>${moy(ls, 'sml')}</td></tr></tbody></table>`;
+    const q = (l, sc) => l.filter(x => x.ch[sc].ok >= SEUIL).length;
+    const cols = Object.keys(g).sort().map(k => [k, g[k]]).concat([['Total', ls]]);
+    const prenomNom = s => esc(String(s)).replace(/^(\S+)\s+/, '$1<br>');
+    return `<table class="mc-ar"><tbody>
+      <tr class="h"><th>Par AR</th>${cols.map(([k]) => `<th class="${k === 'Total' ? 't' : ''}">${k === 'Total' ? 'Total' : prenomNom(k)}</th>`).join('')}</tr>
+      <tr><td>Succursales</td>${cols.map(([k, l]) => `<td class="${k === 'Total' ? 't' : ''}">${l.length}</td>`).join('')}</tr>
+      <tr><td><i class="or"></i>Magasins d’Excellence <small>qualifiés · moy. /10</small></td>${cols.map(([k, l]) => `<td class="${k === 'Total' ? 't' : ''}"><b>${q(l, 'sme')}</b> <small>· ${moy(l, 'sme')}</small></td>`).join('')}</tr>
+      <tr><td><i class="bl"></i>Managers Leaders <small>qualifiés · moy. /10</small></td>${cols.map(([k, l]) => `<td class="${k === 'Total' ? 't' : ''}"><b>${q(l, 'sml')}</b> <small>· ${moy(l, 'sml')}</small></td>`).join('')}</tr>
+    </tbody></table>`;
   }
   function rendre(ls, opts = {}) {
     const n = ls.length, OR = '#C9A227', BL = '#3F63C7';
@@ -49,13 +55,14 @@
           <h3>Part des succursales qui valident chaque critère</h3>${barres(ls, 'me', OR)}
           <div class="mc-minis">${mini('Performance (3 sur 5)', [['TC', compte('perf', 'tc')], ['SOP', compte('perf', 'sop')], ['Panier moyen', compte('perf', 'pm')], ['MdC', compte('perf', 'mdc')], ['Test audio', compte('perf', 'test')]], n, OR)}
             ${mini('Ressources humaines (les 3)', [['Niveau d’équipe ≥ 8', compte('rh', 'niveau')], ['Équilibre H/F', compte('rh', 'hf')], ['3 jours de formation', compte('rh', 'formation')]], n, OR)}</div>
-          <h3>Les plus proches de la qualification</h3>${proches(ls, 'me', 'sme', false)}</section>
+          <h3>Qualifiés et plus proches de la qualification</h3><div class="mc-liste">${proches(ls, 'me', 'sme', false)}</div></section>
         <section>${hero('Managers Leaders', ml, BL, 'Gain : une semaine de CP pour le manager')}
           <h3>Part des succursales qui valident chaque critère</h3>${barres(ls, 'ml', BL)}
           <div class="mc-minis">${mini('Construire une équipe gagnante (les 3)', [['Effectif (écart < 0,5)', compte('equipe', 'effectif')], ['1 entretien / collab. / mois', compte('equipe', 'entretiens')], ['Niveau d’équipe ≥ 8', compte('equipe', 'niveau')]], n, BL)}
-            <div class="mc-mini"><h4>Par AR</h4>${parAr(ls)}</div></div>
-          <h3>Les plus proches de la qualification</h3>${proches(ls, 'ml', 'sml', true)}</section>
+            ${mini('Gestionnaire (les 3)', [['Planning', compte('gest', 'planning')], ['Retours', compte('gest', 'retours')], ['Taux d’indus ≤ 1 %', compte('gest', 'indus')]], n, BL)}</div>
+          <h3>Qualifiés et plus proches de la qualification</h3><div class="mc-liste">${proches(ls, 'ml', 'sml', true)}</div></section>
       </div>
+      <div class="mc-bandeau">${parAr(ls)}</div>
       <footer class="mc-pied"><span>Critères à fin de mois : automatiques (Suivi Stats, zimbra-relay) et manuels (saisis par les AR)</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span></footer>
     </div>`;
   }

@@ -638,7 +638,12 @@
     const k = $('#chg-mois').value || ks[0]; if (!k) { $('#chg-info').textContent = 'Aucun mois enregistré.'; return; }
     const photo = (S.photo && k === `${S.photo.annee}-${pad(S.photo.mois)}`) ? S.photo : await photoMois(k);
     const conf = await confChallenges(+k.slice(0, 4));
-    const ars = [...new Set(S.ref.filter(r => r.type === 'Succursale' && r.ar).map(r => r.ar))].sort();
+    // Sélecteur de pays : tous les pays ayant des succursales (France par défaut)
+    const paysSucc = [...new Set(S.ref.filter(r => r.type === 'Succursale' && r.actif === 'Oui' && r.nature !== 'Camion' && r.pays).map(r => r.pays))].sort((x, y) => x === 'FRANCE' ? -1 : y === 'FRANCE' ? 1 : x.localeCompare(y));
+    if ($('#chg-pays').options.length !== paysSucc.length + 1) { const v0 = $('#chg-pays').value || 'FRANCE';
+      $('#chg-pays').innerHTML = paysSucc.map(x => `<option value="${esc(x)}">${esc(x.charAt(0) + x.slice(1).toLowerCase())}</option>`).join('') + '<option value="">Toutes les succursales</option>';
+      $('#chg-pays').value = paysSucc.includes(v0) || v0 === '' ? v0 : 'FRANCE'; }
+    const ars = [...new Set(S.ref.filter(r => r.type === 'Succursale' && r.ar && (!$('#chg-pays').value || r.pays === $('#chg-pays').value)).map(r => r.ar))].sort();
     if ($('#chg-ar').options.length !== ars.length + 1) $('#chg-ar').innerHTML = '<option value="">Tous les AR</option>' + ars.map(x => `<option>${esc(x)}</option>`).join('');
     const pays = $('#chg-pays').value, ar = $('#chg-ar').value, q = ($('#chg-q').value || '').toLowerCase();
     const filtre = r => (!pays || r.pays === pays) && (!ar || r.ar === ar) && (!q || `${r.code} ${r.magasin}`.toLowerCase().includes(q));
@@ -647,7 +652,7 @@
     const admin = Store.estAdmin() || !Store.cloud();
     $('#chg-pdf').hidden = CHG.vue !== 'cockpit';
     if (CHG.vue === 'cockpit') {
-      const per = [pays ? (pays === 'FRANCE' ? 'France' : pays) : 'Toutes les succursales', ar ? 'AR ' + ar : '', q ? '« ' + q + ' »' : ''].filter(Boolean).join(' · ');
+      const per = [pays ? pays.charAt(0) + pays.slice(1).toLowerCase() : 'Toutes les succursales', ar ? 'AR ' + ar : '', q ? '« ' + q + ' »' : ''].filter(Boolean).join(' · ');
       $('#chg-info').textContent = `${ls.length} succursales · critères à fin ${MOIS[photo.mois - 1]} ${photo.annee}.`;
       $('#chg-apercu').innerHTML = `<div class="mc-echelle">${MlmeCockpit.rendre(ls, { periode: `À fin ${MOIS[photo.mois - 1]} ${photo.annee}`, perimetre: 'Succursales – ' + per })}</div>`;
       const e = $('#chg-apercu .mc-echelle'), sc = Math.min(1, ($('#chg-apercu').clientWidth - 4) / 1587); e.style.transform = `scale(${sc})`; e.style.height = (1123 * sc) + 'px';

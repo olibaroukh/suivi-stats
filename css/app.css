@@ -646,3 +646,18 @@ body.mode-cloud .mode-cloud-seul{display:block}
 .mlme-page .mc-pied{display:flex;justify-content:space-between;font-size:10px;color:#888;border-top:1px solid #eee;padding-top:6px}.mlme-page .mc-pied .slogan b{color:#E22F2A}
 .mlme-page .mc-l td.n{white-space:nowrap;max-width:330px;overflow:hidden;text-overflow:ellipsis}.mlme-page .mc-l td.m{white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis}
 .fiche .chal-q{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:#1E8A52;font-weight:700;text-align:center}
+
+/* Cockpit MLME : listes contenues dans la page, bandeau par AR, pied de page dégagé */
+.mlme-page .mc-cols{overflow:hidden}
+.mlme-page section{overflow:hidden}
+.mlme-page .mc-liste{flex:1;min-height:0;overflow:hidden}
+.mlme-page .mc-minis{min-height:118px}
+.mlme-page .mc-bandeau{flex:none;border-top:1px solid #eee;padding-top:6px}
+.mlme-page .mc-ar{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+.mlme-page .mc-ar th{font-size:9.5px;color:#555;text-align:center;font-weight:700;line-height:1.1;padding:2px}
+.mlme-page .mc-ar th:first-child,.mlme-page .mc-ar td:first-child{text-align:left;width:230px}
+.mlme-page .mc-ar td{text-align:center;padding:2px 3px;border-bottom:1px solid #f3f0ef}
+.mlme-page .mc-ar td small{color:#888}
+.mlme-page .mc-ar .t{background:#F6F1EF;font-weight:700}
+.mlme-page .mc-ar i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}.mlme-page .mc-ar i.or{background:#C9A227}.mlme-page .mc-ar i.bl{background:#3F63C7}
+.mlme-page .mc-pied{flex:none}
