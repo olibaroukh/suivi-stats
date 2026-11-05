@@ -271,7 +271,7 @@
     };
     const challenge = (titre, gain, lignes, sc) => `
       <div class="chal">
-        <div class="chal-h"><div><div class="chal-t">« ${esc(t(titre))} »</div><div class="chal-g">${esc(t(gain))}</div></div><div class="chal-sc">${sc.ok}<small>/10</small></div></div>
+        <div class="chal-h"><div><div class="chal-t">« ${esc(t(titre))} »</div><div class="chal-g">${esc(t(gain))}</div></div><div class="chal-sc">${sc.ok}<small>/10</small>${sc.ok >= 7 ? `<div class="chal-q">${esc(t('Qualifié'))}</div>` : ''}</div></div>
         <ol>${lignes.map(([l, crit, st]) => `<li class="${st.s}"><span class="ic">${st.s === 'ok' ? '✓' : st.s === 'ko' ? '✕' : '•'}</span><div><b>${esc(t(l))}</b><small>${esc(t(crit))}</small></div><em>${st.val == null ? (st.s === 'na' ? esc(t('à renseigner')) : '') : esc(st.val)}</em></li>`).join('')}</ol>
       </div>`;
 

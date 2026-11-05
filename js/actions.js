@@ -46,8 +46,8 @@
     visOphta: { lib: 'Visites ophtalmologistes / orthoptistes (cumul)', fmt: 'nb' },
     visOrl: { lib: 'Visites ORL / généralistes (cumul)', fmt: 'nb' },
     mag100: { lib: 'Nombre de magasins à 100 %', fmt: 'nb' },
-    nbML: { lib: 'Nombre de Managers Leader (10/10)', fmt: 'nb' },
-    nbME: { lib: 'Nombre de Magasins d’excellence (10/10)', fmt: 'nb' },
+    nbML: { lib: 'Nombre de Managers Leaders qualifiés (≥ 7/10)', fmt: 'nb' },
+    nbME: { lib: 'Nombre de Magasins d’Excellence qualifiés (≥ 7/10)', fmt: 'nb' },
   };
 
   function calculer(a, photo, ref, taux, ctx = {}) {
@@ -88,7 +88,7 @@
         const Fiche = root.Fiche; if (!Fiche) { v = null; break; }
         v = actifs.filter(r => r.type === 'Succursale' && r.nature !== 'Camion' && photo.magasins[String(r.code)]).filter(r => {
           const ch = Fiche.challenges(photo, r, Fiche.calculer(photo, r, ctx.objectifs || {}), ctx.challenges || null, { taux });
-          return (ind.mesure === 'nbML' ? ch.sml.ok : ch.sme.ok) === 10; }).length;
+          return (ind.mesure === 'nbML' ? ch.sml.ok : ch.sme.ok) >= 7; }).length;
         break;
       }
       case 'mag100': v = actifs.filter(r => { const d = photo.magasins[String(r.code)]; const p = d ? Cockpit.COL.posit.f(d.N || {}, d.N1 || {}, m) : null; return p != null && p >= 1; }).length; break;

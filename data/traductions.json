@@ -1735,6 +1735,15 @@
    "es": "TC / SOP / PM / MdC / Test auditivo (3 de 5)",
    "nl": "TC / SOP / GB / MdC / Gehoortest (3 van 5)",
    "de": "AQ / SOP / Ø Bon / MdC / Hörtest (3 von 5)"
+  },
+  {
+   "base": "Qualifié",
+   "fr": "Qualifié",
+   "he": "עומד בתנאים",
+   "en": "Qualified",
+   "es": "Clasificado",
+   "nl": "Gekwalificeerd",
+   "de": "Qualifiziert"
   }
  ],
  "mois": [

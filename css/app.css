@@ -645,3 +645,4 @@ body.mode-cloud .mode-cloud-seul{display:block}
 .mlme-page .mc-vide{font-size:11px;color:#888}
 .mlme-page .mc-pied{display:flex;justify-content:space-between;font-size:10px;color:#888;border-top:1px solid #eee;padding-top:6px}.mlme-page .mc-pied .slogan b{color:#E22F2A}
 .mlme-page .mc-l td.n{white-space:nowrap;max-width:330px;overflow:hidden;text-overflow:ellipsis}.mlme-page .mc-l td.m{white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis}
+.fiche .chal-q{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:#1E8A52;font-weight:700;text-align:center}
