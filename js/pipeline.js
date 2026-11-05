@@ -242,7 +242,11 @@
     // 8. Équipes : export RH (repris du mois précédent s'il n'est pas fourni) + stats Cosium par vendeur
     const Eq = root.Equipe || (typeof require !== 'undefined' ? require('./engine/equipe.js') : null);
     let personnes = null;
-    if (un('rh')) { const r = Eq.rh(XLSX, un('rh').wb); personnes = r.personnes; sources.rh = { statut: 'recu', detail: `${r.personnes.length} personnes (${r.exclus} lignes écartées : postes non retenus ou sans site)` }; }
+    if (!un('rh') && p.rhDepot && Array.isArray(p.rhDepot.lignes) && p.rhDepot.lignes.length) {
+      const r = Eq.rhLignes(p.rhDepot.lignes); personnes = r.personnes;
+      sources.rh = { statut: 'recu', detail: `${r.personnes.length} personnes – export déposé dans bilan-passage le ${String(p.rhDepot.recuLe || '').slice(0, 10).split('-').reverse().join('/')} (${r.exclus} lignes écartées : postes non retenus ou sans code site)` };
+    }
+    else if (un('rh')) { const r = Eq.rh(XLSX, un('rh').wb); personnes = r.personnes; sources.rh = { statut: 'recu', detail: `${r.personnes.length} personnes (${r.exclus} lignes écartées : postes non retenus ou sans site)` }; }
     else if (photoPrecedente && photoPrecedente.rh) { personnes = photoPrecedente.rh; sources.rh = { statut: 'repris', detail: 'export RH du mois précédent' }; }
     let stats = null;
     if (vendeurs.length) { stats = Eq.indexVendeurs(vendeurs.map(v => ({ report: v.pr.report, rows: v.pr.rows }))); sources.stat_indiv = { statut: 'recu', detail: `${Object.keys(stats).length} matricules` }; }
@@ -255,6 +259,12 @@
     }
     if (!sources.rh) sources.rh = { statut: 'absent' };
 
+    // Part de femmes et âge moyen par magasin (agrégés) ; genre et date de naissance retirés des fiches personnes
+    if (personnes) {
+      const demo = Eq.demographie(personnes, ref, annee, mois);
+      for (const c in demo) if (mag[c] && mag[c].N) Object.assign(mag[c].N, demo[c]);
+      personnes = personnes.map(({ genre, naissance, ...reste }) => reste);
+    }
     const photo = { version: 2, annee, mois, genereLe: new Date().toISOString(), sources, magasins: mag, groupe, rh: personnes, statsVendeurs: stats, equipes };
     return { photo, etatAnnee: etat, rapport: { journal, alertes, ignores, listesConfidence: listesTrouvees, sources } };
   }

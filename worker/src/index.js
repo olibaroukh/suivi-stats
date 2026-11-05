@@ -400,6 +400,17 @@ export class SuiviStatsInterne extends WorkerEntrypoint {
     for (const x of (matricules || [])) { const s = sv[cle(x)]; if (s) parMatricule[String(x)] = s; }
     return { mois: m, parMatricule };
   }
+  // Export RH déposé par zimbra-relay quand Olivier l'importe dans bilan-passage (un seul dépôt par mois).
+  // Seules les colonnes utiles sont gardées ; fichier privé (administrateurs).
+  async deposerRh(mois, lignes) {
+    if (!/^\d{4}-\d{2}$/.test(String(mois || ''))) throw new Error('mois AAAA-MM requis');
+    if (!Array.isArray(lignes) || !lignes.length) throw new Error('aucune ligne');
+    const COLS = ['Matricule', 'Codes sites', "Date d'entrée", 'Genre', 'Nom', 'Prénom', 'Poste', 'Date de naissance'];
+    const cle = k => String(k).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[’']/g, "'").toLowerCase().trim();
+    const garde = lignes.map(r => { const o = {}; for (const c of COLS) { const k = Object.keys(r || {}).find(x => cle(x) === cle(c)); if (k !== undefined) o[c] = r[k]; } return o; }).filter(o => o.Matricule != null && o.Matricule !== '');
+    await this.env.FICHIERS.put(`donnees/rh/${mois}.json`, JSON.stringify({ mois, recuLe: new Date().toISOString(), source: 'bilan-passage', lignes: garde }), { httpMetadata: { contentType: 'application/json' } });
+    return { ok: true, mois, nb: garde.length };
+  }
   async statsMagasin(code, mois) {
     await schema(this.env);
     const m = mois || (await this.moisDisponibles())[0];

@@ -9,12 +9,15 @@
   const code = v => { const s = String(v == null ? '' : v).trim().toUpperCase(); return /^\d+A?$/.test(s) ? s.replace(/^0+(?=\d)/, '') : null; };
   const date = v => {
     if (v instanceof Date) return v.toISOString().slice(0, 10);
+    if (typeof v === 'number' && v > 1000) return new Date(Math.round((v - 25569) * 86400000)).toISOString().slice(0, 10); // date Excel
     const m = String(v || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : null;
   };
 
   // Export RH → liste filtrée (sans date de naissance ni genre : inutiles pour la fiche)
-  function rh(XLSX, wb) {
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: true });
+  function rh(XLSX, wb) { return rhLignes(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: true })); }
+  // Même lecture à partir de lignes déjà extraites (export déposé dans bilan-passage). Genre et date de naissance
+  // ne servent qu'aux indicateurs agrégés par magasin (part de femmes, âge moyen) et ne sont pas conservés par personne.
+  function rhLignes(rows) {
     const out = []; let exclus = 0;
     for (const r of rows) {
       const g = k => r[Object.keys(r).find(x => norm(x) === norm(k))];
@@ -22,7 +25,8 @@
       if (!m || !POSTES_RETENUS.includes(norm(poste))) { exclus++; continue; }
       const codes = String(g('Codes sites') || '').split(/[,;]/).map(code).filter(Boolean);
       if (!codes.length) { exclus++; continue; }
-      out.push({ matricule: m, prenom: String(g('Prénom') || '').trim(), nom: String(g('Nom') || '').trim(), poste, entree: date(g("Date d'entrée") || g('Date d’entrée')), codes });
+      out.push({ matricule: m, prenom: String(g('Prénom') || '').trim(), nom: String(g('Nom') || '').trim(), poste, entree: date(g("Date d'entrée") || g('Date d’entrée')), codes,
+        genre: String(g('Genre') || '').trim(), naissance: date(g('Date de naissance')) });
     }
     return { personnes: out, exclus };
   }
@@ -86,6 +90,23 @@
     return out;
   }
 
-  const api = { rh, indexVendeurs, parMagasin, POSTES_RETENUS };
+  // Indicateurs agrégés par magasin : XG âge moyen (pondéré), XH personnes femmes, XI personnes au genre connu, XJ personnes à l'âge connu
+  function demographie(personnes, ref, annee, mois) {
+    const refIdx = {}; ref.forEach(r => refIdx[String(r.code)] = r);
+    const fin = new Date(annee, mois, 0), out = {};
+    for (const p of personnes) {
+      const mags = [...new Set(p.codes.map(c => refIdx[c] ? c : (refIdx[c.replace(/A$/, '')] ? c.replace(/A$/, '') : null)).filter(Boolean))];
+      const part = mags.length ? 1 / mags.length : 0;
+      const g = norm(p.genre), femme = /^(f|femme|feminin|mme|madame)/.test(g), homme = /^(h|m|homme|masculin|m\.|monsieur)/.test(g) && !femme;
+      let age = null; if (p.naissance) { const d = new Date(p.naissance); age = (fin - d) / (365.25 * 86400000); if (!(age > 14 && age < 80)) age = null; }
+      for (const c of mags) { const o = out[c] = out[c] || { f: 0, g: 0, a: 0, na: 0 };
+        if (femme || homme) { o.g += part; if (femme) o.f += part; }
+        if (age != null) { o.a += age * part; o.na += part; } }
+    }
+    const res = {};
+    for (const c in out) { const o = out[c]; res[c] = { XG: o.na ? o.a / o.na : null, XH: o.g ? o.f : null, XI: o.g || null, XJ: o.na || null }; }
+    return res;
+  }
+  const api = { rh, rhLignes, demographie, indexVendeurs, parMagasin, POSTES_RETENUS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Equipe = api;
 })(typeof self !== 'undefined' ? self : this);

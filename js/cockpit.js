@@ -11,7 +11,7 @@
   // ---------- Agrégation : montants additionnés, ratios pondérés par leur base ----------
   const POIDS = { V: 'U', W: 'U', AC: 'U', AD: 'U', AE: 'U', AF: 'U', AN: 'U', AP: 'U', AR: 'U',
     AY: 'AW', BB: 'AW', BH: 'AW', AZ: 'AX', BA: 'AX', BD: 'AX', BC: 'Q', BE: 'U',
-    BV: 'BU', XP: 'BU', XQ: 'BU', BQ: 'BU', CQ: 'CP', CS: 'CP', CU: 'CP', CW: 'CP', CY: 'CP', CM: 'P', BK: 'BL', BN: 'BO', CK: '_1' };
+    BV: 'BU', XP: 'BU', XQ: 'BU', BQ: 'BU', CQ: 'CP', CS: 'CP', CU: 'CP', CW: 'CP', CY: 'CP', CM: 'P', BK: 'BL', BN: 'BO', CK: '_1', XG: 'XJ' };
   const MONTANTS = new Set(['O', 'P', 'Q', 'R', 'S', 'BR', 'BS', 'BT', 'BU', 'CP', 'EH']); // convertis en € si multi-devises
   function agreger(items, conv) {
     const out = { N: {}, N1: {} };
@@ -85,6 +85,8 @@
     effAud: { lib: 'Effectif audio', f: (n) => n.XC, fmt: 'nb1' },
     effTheo: { lib: 'Effectif théorique', f: (n) => n.XB, fmt: 'nb1' },
     ecart: { lib: 'Écart effectif / théorique', f: (n) => (n.XA != null && n.XB != null) ? n.XA + (n.XC || 0) - n.XB : null, fmt: 'ecart', seuil: 0.5, inverse: true },
+    ageMoy: { lib: 'Âge moyen', f: (n) => n.XG, fmt: 'nb1' },
+    pctF: { lib: '% femmes', f: (n) => n.XI ? n.XH / n.XI : null, fmt: 'pct0' },
     caPers: { lib: 'CA / mois / pers.', f: (n, p, m) => (n.P != null && (n.XA || n.XC)) ? n.P / ((n.XA || 0) + (n.XC || 0)) / m : null, fmt: 'k1' },
   };
 
@@ -92,7 +94,7 @@
     complet: { lib: 'CA · Optique · Audio · Rentabilité', tri: 'ca',
       sections: [
         { lib: 'Chiffre d’affaires · Optique · Audio', groupes: [['Chiffre d’affaires', ['obj', 'ca', 'posit', 'evolCa']], ['Optique', ['ndv', 'evolNdv', 'panier', 'tc', 'sop', 'mdc', 'pcPct', 'pm1']], ['Audio', ['caAudio', 'evolAudio', 'protheses', 'pmProt', 'tcA', 'vadd', 'depist']]] },
-        { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'indus']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Google & qualité', ['note', 'avis', 'mrq']], ['Rentabilité salariale & effectifs', ['rentaSal', 'effOpt', 'effAud', 'effTheo', 'ecart', 'caPers']]] },
+        { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'indus']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Google & qualité', ['note', 'avis', 'mrq']], ['Rentabilité salariale & effectifs', ['rentaSal', 'effOpt', 'effAud', 'effTheo', 'ecart', 'ageMoy', 'pctF', 'caPers']]] },
       ],
       top: [['posit', 'Positionnement'], ['ndv', 'Nombre de ventes'], ['protheses', 'Nombre de prothèses'], ['re', 'Résultat d’exploitation']] },
     ca: { lib: 'Chiffre d’affaires', cols: ['obj', 'ca', 'prev', 'evolCa', 'posit', 'caOpt', 'caAud', 'caCon', 'ndv', 'evolNdv'], tri: 'ca',
