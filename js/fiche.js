@@ -371,7 +371,7 @@
   </div>
   ${blocSante()}
   ${blocBilan()}
-  ${section('Challenges', `<div class="grille2 chals">
+  ${section('Managers Leaders et Magasins d’Excellence', `<div class="grille2 chals">
     ${challenge('LE MANAGER LEADER', 'Une semaine de CP pour le manager (sous réserve d’avoir été en poste les 12 mois de l’année)', ch.ml, ch.sml)}
     ${challenge('LE MAGASIN D’EXCELLENCE', '3 jours de CP pour toute l’équipe (effectif au 31 décembre, proratisé au temps de présence)', ch.me, ch.sme)}
   </div>`)}
