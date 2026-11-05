@@ -359,7 +359,8 @@ export class SuiviStatsInterne extends WorkerEntrypoint {
     const oui = v => /^(oui|1|true|x)$/i.test(String(v || '').trim());
     return {
       mois: m || null,
-      magasins: ref.filter(r => r.actif === 'Oui' && ((r.pays === 'FRANCE' && r.type === 'Succursale') || (r.animateur && String(r.animateur).trim())))
+      // Camions OC Mobile exclus pour l'instant (pas suivis dans les applis terrain ; une version OC Mobile est à prévoir)
+      magasins: ref.filter(r => r.actif === 'Oui' && r.nature !== 'Camion' && ((r.pays === 'FRANCE' && r.type === 'Succursale') || (r.animateur && String(r.animateur).trim())))
         .map(r => {
           const c = String(r.code), d = photo && photo.magasins[c], N = (d && d.N) || {}, eq = (photo && photo.equipes && photo.equipes[c]) || null;
           const part = p => p.part != null ? p.part : 1;
