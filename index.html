@@ -213,7 +213,7 @@
           <button id="btn-export-obj">Exporter en Excel</button>
         </div>
       </div>
-      <div class="carte">
+      <div class="carte mode-local">
         <h2>Avis Google – Worker</h2>
         <p class="aide">La clé reste sur cet ordinateur (jamais dans le code publié).</p>
         <input id="w-url" placeholder="https://zimbra-relay.….workers.dev" style="width:100%;margin-bottom:6px">
@@ -233,11 +233,14 @@
         <button id="btn-taux" style="margin-top:8px">Enregistrer les taux</button> <button id="btn-taux-maj" style="margin-top:8px" hidden>Mettre à jour maintenant (BCE)</button> <span class="muted" id="taux-info"></span>
       </div>
       <div class="carte">
-        <h2>Score santé & bilans de passage – connexion</h2>
+        <h2>Score santé & bilans de passage</h2>
+        <p class="aide mode-cloud-seul">Lus directement dans zimbra-relay par le lien interne, sans autre connexion. Ils sont aussi relus à chaque calcul du mois.</p>
+        <div class="mode-local">
         <p class="aide">Identifiant Zimbra personnel, comme pour le dashboard bilan-passage (la session est partagée, valable 12 h). Le mot de passe n'est jamais enregistré.</p>
         <input id="s-user" placeholder="prenom.nom@optical-center.com" style="width:100%;margin-bottom:6px" autocomplete="username">
         <input id="s-pass" type="password" placeholder="Mot de passe Zimbra" style="width:100%;margin-bottom:6px" autocomplete="current-password">
         <button id="btn-s-login">Se connecter</button> <span class="muted" id="s-info"></span>
+        </div>
         <div style="margin-top:8px"><button id="btn-s-maj">Mettre à jour le score santé et les bilans de passage du mois traité</button> <span class="muted" id="s-maj-info"></span></div>
       </div>
       <div class="carte" id="carte-acces" hidden>
