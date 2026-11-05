@@ -51,6 +51,8 @@
         mdc: x.opt.length ? pond(x.opt, '% Marque Exclusive', 'Nb Vente Opt') : null,
         pm1: x.pm.length ? (x.pm.map(r => +r['Prix de vente moyen']).find(v => v > 0) || null) : null,
         transition: x.ver.length ? pond(x.ver, 'TRANS+PHOTO %', 'TOTAL Qt') : null,
+        // AR 3 / antireflet HG (même définition que la colonne X du magasin : verres ARRESIST UV et AR MAX BLUE UV / total verres)
+        arHG: x.ver.length && somme(x.ver, 'TOTAL Qt') ? 100 * somme(x.ver, 'ARRESIST UV AND AR MAX BLUE UV Qt') / somme(x.ver, 'TOTAL Qt') : null,
         depistage: x.aud.length ? pond(x.aud, '% Test auditif', 'Nb Ventes') : null,
         ventesAudio: x.aud.length ? somme(x.aud, 'Nb Ventes') : null,
         audio: x.aud.length ? {
