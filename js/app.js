@@ -182,7 +182,9 @@
       const precedent = completer ? existante : mois > 1 ? await Store.lireJSON(`donnees/${annee}-${pad(mois - 1)}/photo.json`) : null;
       let wr = completer ? null : await workerRatings(); const alerteW = wr && wr.erreur ? 'Worker avis Google injoignable : ' + wr.erreur : null; if (wr && wr.erreur) wr = null;
       const listes = S.listesConf || etatAnnee.listesConfidence || null;
-      const res = await Pipeline.construire({ fichiers: S.fichiers, pastes: { lyleoo: $('#paste-lyleoo').value, ocm: $('#paste-ocm').value, site: $('#paste-site').value },
+      // Export RH : déposé une fois par mois dans bilan-passage › Import (transmis par zimbra-relay)
+      const rhDepot = Store.cloud() ? await Store.lireJSON(`donnees/rh/${annee}-${pad(mois)}.json`).catch(() => null) : null;
+      const res = await Pipeline.construire({ rhDepot, fichiers: S.fichiers, pastes: { lyleoo: $('#paste-lyleoo').value, ocm: $('#paste-ocm').value, site: $('#paste-site').value },
         annee, mois, ref: S.ref, spec: S.spec, etatAnnee, photoPrecedente: precedent, workerRatings: wr, listesConfidence: listes });
       if (alerteW) res.rapport.alertes.unshift(alerteW);
       if (completer) { completerPhoto(existante, res); S.resultat = res; afficherRapport(res.rapport); $('#btn-enregistrer').disabled = false;
