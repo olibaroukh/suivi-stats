@@ -1627,6 +1627,42 @@
    "es": "Facturación del mes",
    "nl": "Omzet van de maand",
    "de": "Monatsumsatz"
+  },
+  {
+   "base": "Effectif vs théorique",
+   "fr": "Effectif vs théorique",
+   "he": "כוח אדם מול תיאורטי",
+   "en": "Headcount vs target",
+   "es": "Plantilla vs teórica",
+   "nl": "Bezetting vs norm",
+   "de": "Personal vs. Soll"
+  },
+  {
+   "base": "effectif conforme",
+   "fr": "effectif conforme",
+   "he": "כוח אדם תקין",
+   "en": "headcount on target",
+   "es": "plantilla conforme",
+   "nl": "bezetting conform",
+   "de": "Personal im Soll"
+  },
+  {
+   "base": "sur-effectif",
+   "fr": "sur-effectif",
+   "he": "עודף כוח אדם",
+   "en": "overstaffed",
+   "es": "exceso de plantilla",
+   "nl": "overbezetting",
+   "de": "Überbesetzung"
+  },
+  {
+   "base": "sous-effectif",
+   "fr": "sous-effectif",
+   "he": "חוסר בכוח אדם",
+   "en": "understaffed",
+   "es": "falta de plantilla",
+   "nl": "onderbezetting",
+   "de": "Unterbesetzung"
   }
  ],
  "mois": [
