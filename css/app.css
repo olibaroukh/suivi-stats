@@ -588,3 +588,6 @@ body.mode-cloud .carte.mode-local{display:none}
 body.mode-cloud .mode-local{display:none}
 .mode-cloud-seul{display:none}
 body.mode-cloud .mode-cloud-seul{display:block}
+
+/* Fiche p.2 : Renta salariale + écart d'effectif côte à côte */
+.fiche .grille2.renta-eff{grid-template-columns:2.55fr 1.45fr}

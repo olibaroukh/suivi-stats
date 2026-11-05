@@ -293,6 +293,13 @@
         <text x="2" y="${haut + 4}" class="cm-ax">${nb(maxCa / 1000)}k</text>${barres}${ligne}${ptsSvg}</svg>`;
       return section('Évolution mois par mois', `${svg}<div class="cm-leg"><span><i style="background:#E22F2A"></i>${esc(t('CA du mois'))} (${esc(dev)})</span><span><i style="background:#D9D2D1"></i>N-1</span><span><i class="ligne"></i>${esc(t('Positionnement'))}</span></div>`, 'courbe');
     };
+    // Écart d'effectif (réel optique + audio − théorique) : « OK » si l'écart est inférieur à 0,5 (consigne d'Olivier)
+    const vignetteEffectif = () => {
+      if (!eq.connu || eq.effTheo == null) return `<div><div class="v">–</div><div class="l">${esc(t('Effectif vs théorique'))}</div></div>`;
+      const d = Math.round((eq.effOpt + eq.effAud - eq.effTheo) * 10) / 10;
+      if (Math.abs(d) < 0.5) return `<div><div class="v ok">OK</div><div class="l">${esc(t('effectif conforme'))}</div><div class="s">${nb(eq.effOpt + eq.effAud, 1)} / ${nb(eq.effTheo, 1)}</div></div>`;
+      return `<div><div class="v ko">${d > 0 ? '+' : '−'}${nb(Math.abs(d), Math.abs(d) % 1 ? 1 : 0)}</div><div class="l">${esc(t(d > 0 ? 'sur-effectif' : 'sous-effectif'))}</div><div class="s">${nb(eq.effOpt + eq.effAud, 1)} / ${nb(eq.effTheo, 1)}</div></div>`;
+    };
     const page1 = `
 <div class="fiche" dir="${lang === 'he' ? 'rtl' : 'ltr'}" lang="${lang}">
   ${entete(false)}
@@ -347,11 +354,11 @@
       ${[['Verres', c.marges.verres], ['Montures', c.marges.montures], ['Contacto', c.marges.contacto], ['Audio', c.marges.audio], ['Globale', c.marges.globale]].map(([l, x], i) => `<div class="${i === 4 ? 'fort' : ''}"><div class="v">${pc(x, 0)}</div><div class="l">${esc(t(l))}</div></div>`).join('')}</div>`, '', (photo.sources.marges && photo.sources.marges.detail || '').split(' – ')[0])}
     ${section('Confidence', `<div class="barres">${c.confidence.map(([l, ct, tot]) => `<div class="b"><span>${esc(t(l))}</span><div class="j"><div style="width:${tot ? Math.min(100, 100 * ct / tot).toFixed(0) : 0}%"></div></div><b>${tot ? pc(ct / tot, 0) : '–'}</b></div>`).join('')}</div>`)}
   </div>
-  <div class="grille2 large-g">
+  <div class="grille2 large-g renta-eff">
     ${section('Reporting trimestriel', c.reporting.ca == null ? nd : `<div class="mini six">
       <div><div class="v">${c.reporting.ca == null ? '–' : nb(c.reporting.ca / 1000) + ' k' + dev}</div><div class="l">${esc(t('CA HT'))}</div></div>
       ${c.reporting.lignes.map(([l, x, ob, k]) => `<div><div class="v ${x == null ? '' : (k === 'CS' || k === 'CQ' ? x >= ob : x <= ob) ? 'ok' : 'ko'}">${pc(x)}</div><div class="l">${esc(t(l))}</div><div class="s">${esc(t('obj.'))} ${pc(ob, 0)}</div></div>`).join('')}</div>`, '', perReporting || (photo.sources.rentabilites && photo.sources.rentabilites.detail || '').split(' – ')[0])}
-    ${section(t('Renta Salariale'), `<div class="mini un"><div><div class="v ${c.rentaSal == null ? '' : c.rentaSal <= (mag.pays === 'FRANCE' ? 0.28 : 0.35) ? 'ok' : 'ko'}">${pc(c.rentaSal)}</div><div class="l">${esc(t('cumul de l’année'))}</div></div></div>`)}
+    ${section(t('Renta Salariale'), `<div class="mini"><div><div class="v ${c.rentaSal == null ? '' : c.rentaSal <= (mag.pays === 'FRANCE' ? 0.28 : 0.35) ? 'ok' : 'ko'}">${pc(c.rentaSal)}</div><div class="l">${esc(t('cumul de l’année'))}</div></div>${vignetteEffectif()}</div>`)}
   </div>
   ${blocSante()}
   ${blocBilan()}
