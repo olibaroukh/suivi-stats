@@ -666,3 +666,38 @@ body.mode-cloud .mode-cloud-seul{display:block}
 .cockpit.noms-fins .ck-liste th.nm{width:27%}
 .cockpit.noms-fins .ck-liste td.nm b{font-size:calc(var(--fs) - 1px);letter-spacing:-.15px}
 .cockpit.noms-fins .ck-liste td.nm small{margin-left:3px;font-size:calc(var(--fs) - 2.5px)}
+
+/* 06/11/2026 : cockpit CA · Optique · Audio · Rentabilité — chaque famille de colonnes a sa couleur (bandeau de titre plein,
+   colonnes teintées, assez marquées pour rester visibles à l'impression) */
+.cockpit .ck-multi{--z0:#C0392B;--z1:#2E6FBF;--z2:#1E8A52;--z3:#D98A0B;--z4:#7D46B4;--z5:#14969F}
+.cockpit .ck-multi td.zg0{background-color:rgba(192,57,43,.08)}
+.cockpit .ck-multi td.zg1{background-color:rgba(46,111,191,.09)}
+.cockpit .ck-multi td.zg2{background-color:rgba(30,138,82,.09)}
+.cockpit .ck-multi td.zg3{background-color:rgba(217,138,11,.11)}
+.cockpit .ck-multi td.zg4{background-color:rgba(125,70,180,.09)}
+.cockpit .ck-multi td.zg5{background-color:rgba(20,150,160,.10)}
+.cockpit .ck-multi thead tr.grp th.zg0{background:var(--z0)}.cockpit .ck-multi thead tr.grp th.zg1{background:var(--z1)}
+.cockpit .ck-multi thead tr.grp th.zg2{background:var(--z2)}.cockpit .ck-multi thead tr.grp th.zg3{background:var(--z3)}
+.cockpit .ck-multi thead tr.grp th.zg4{background:var(--z4)}.cockpit .ck-multi thead tr.grp th.zg5{background:var(--z5)}
+.cockpit .ck-multi thead tr.grp th[class*="zg"]{color:#fff;border-left:2px solid #fff;padding-top:2px;padding-bottom:2px}
+.cockpit .ck-multi thead tr:not(.grp) th.zg0{color:var(--z0);background:rgba(192,57,43,.14)}
+.cockpit .ck-multi thead tr:not(.grp) th.zg1{color:var(--z1);background:rgba(46,111,191,.15)}
+.cockpit .ck-multi thead tr:not(.grp) th.zg2{color:var(--z2);background:rgba(30,138,82,.15)}
+.cockpit .ck-multi thead tr:not(.grp) th.zg3{color:#A86A05;background:rgba(217,138,11,.17)}
+.cockpit .ck-multi thead tr:not(.grp) th.zg4{color:var(--z4);background:rgba(125,70,180,.15)}
+.cockpit .ck-multi thead tr:not(.grp) th.zg5{color:var(--z5);background:rgba(20,150,160,.16)}
+.cockpit .ck-multi td.sep[class*="zg"],.cockpit .ck-multi th.sep[class*="zg"]{border-left:2px solid #fff}
+.cockpit .ck-multi tr.tot td[class*="zg"]{background-color:var(--n)}
+@media print{.cockpit .ck-multi td,.cockpit .ck-multi th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.cockpit .ck-multi th.arb,.cockpit .ck-multi td.arb{width:16px;padding:0}
+.cockpit .ck-multi td.arb{color:#fff;font-weight:700;font-size:calc(var(--fs) - 1px);text-align:center;vertical-align:middle;border-top:2px solid #fff}
+.cockpit .ck-multi td.arb span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;display:inline-block;max-height:100%;overflow:hidden;letter-spacing:.3px}
+.cockpit .ck-multi tr.ar-deb td{border-top:2px solid #fff}
+.cockpit .ck-multi tr.ar0 td.arb{background:#C0392B}.cockpit .ck-multi tr.ar0 td.nm{box-shadow:inset 3px 0 #C0392B}
+.cockpit .ck-multi tr.ar1 td.arb{background:#2E6FBF}.cockpit .ck-multi tr.ar1 td.nm{box-shadow:inset 3px 0 #2E6FBF}
+.cockpit .ck-multi tr.ar2 td.arb{background:#1E8A52}.cockpit .ck-multi tr.ar2 td.nm{box-shadow:inset 3px 0 #1E8A52}
+.cockpit .ck-multi tr.ar3 td.arb{background:#D98A0B}.cockpit .ck-multi tr.ar3 td.nm{box-shadow:inset 3px 0 #D98A0B}
+.cockpit .ck-multi tr.ar4 td.arb{background:#7D46B4}.cockpit .ck-multi tr.ar4 td.nm{box-shadow:inset 3px 0 #7D46B4}
+.cockpit .ck-multi tr.ar5 td.arb{background:#14969F}.cockpit .ck-multi tr.ar5 td.nm{box-shadow:inset 3px 0 #14969F}
+.cockpit .ck-multi tr.ar6 td.arb{background:#8A5A2B}.cockpit .ck-multi tr.ar6 td.nm{box-shadow:inset 3px 0 #8A5A2B}
+.cockpit .ck-multi tr.ar7 td.arb{background:#555}.cockpit .ck-multi tr.ar7 td.nm{box-shadow:inset 3px 0 #555}
