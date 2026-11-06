@@ -323,20 +323,26 @@
       if (c.fmt === 'pts2' && v === 0) return '';
       return (c.inverse ? v <= ref : v >= ref) ? 'ok' : 'ko';
     };
-    const cellules = (l, dev) => md.cols.map(k => `<td class="${cl(k, l.v[k], md.obj)}${COL[k].fort ? ' fort' : ''}">${f(l.v[k], COL[k].fmt, dev)}</td>`).join('');
-    const thead = `<thead><tr><th class="rg">#</th><th class="nm">${md.perim.regrouper ? 'Franchisé' : 'Magasin'}</th>${md.cols.map(k => `<th>${esc(COL[k].lib)}</th>`).join('')}</tr></thead>`;
-
+    const cellules = (l, dev, cols = md.cols) => cols.map(k => `<td class="${cl(k, l.v[k], md.obj)}${COL[k].fort ? ' fort' : ''}">${f(l.v[k], COL[k].fmt, dev)}</td>`).join('');
     // Répartition en colonnes : on cherche le nombre de blocs qui tient sur la page
     const n = md.lignes.length;
     const hDispo = opts.hListe || 640;
-    const nCols = md.cols.length;
     let blocs = 1; while (blocs < 4 && n / blocs * 10.5 > hDispo) blocs++;
+    // Confidence (06/11/2026, demande d'Olivier) : dès que la liste passe sur 2 colonnes ou plus, seuls les taux
+    // sont affichés dans le détail, titrés du nom de la liste (« Global » pour le taux global) ; la synthèse garde tout.
+    let colsListe = md.cols; const libListe = {};
+    if (md.themeId === 'confidence' && blocs > 1) {
+      colsListe = md.cols.filter(k => /^cfT\d$/.test(k) || k === 'cfG');
+      colsListe.forEach(k => { libListe[k] = k === 'cfG' ? 'Global' : COL['cfN' + k.slice(3)].lib; });
+    }
+    const nCols = colsListe.length;
     if (blocs > 1 && nCols > 7) blocs = Math.min(blocs, 3);
+    const thead = `<thead><tr><th class="rg">#</th><th class="nm">${md.perim.regrouper ? 'Franchisé' : 'Magasin'}</th>${colsListe.map(k => `<th>${esc(libListe[k] || COL[k].lib)}</th>`).join('')}</tr></thead>`;
     const parBloc = Math.ceil(n / blocs);
     const hLigne = Math.max(9, Math.min(22, hDispo / Math.max(1, parBloc)));
     const fs = Math.max(6.8, Math.min(11.5, hLigne * 0.68));
     const morceaux = []; for (let i = 0; i < n; i += parBloc) morceaux.push(md.lignes.slice(i, i + parBloc));
-    const tables = morceaux.map(ls => `<table class="ck-liste" style="--h:${hLigne.toFixed(1)}px;--fs:${fs.toFixed(1)}px">${thead}<tbody>${ls.map(l => `<tr><td class="rg">${esc(l.rang)}</td><td class="nm"><b>${esc(l.nom)}</b><small>${esc(l.code)}</small></td>${cellules(l, l.dev || md.devTotal)}</tr>`).join('')}</tbody></table>`).join('');
+    const tables = morceaux.map(ls => `<table class="ck-liste" style="--h:${hLigne.toFixed(1)}px;--fs:${fs.toFixed(1)}px">${thead}<tbody>${ls.map(l => `<tr><td class="rg">${esc(l.rang)}</td><td class="nm"><b>${esc(l.nom)}</b><small>${esc(l.code)}</small></td>${cellules(l, l.dev || md.devTotal, colsListe)}</tr>`).join('')}</tbody></table>`).join('');
 
     const ligneSyn = (l, cls, lib) => `<tr class="${cls}"><td class="nm" colspan="2"><b>${esc(lib || l.nom)}</b>${l.n ? `<small>${l.n} mag.</small>` : ''}</td>${cellules(l, md.devTotal)}</tr>`;
     const synthese = `<table class="ck-syn"><thead><tr><th class="nm" colspan="2">${esc(md.sousLib || 'Périmètre')}</th>${md.cols.map(k => `<th>${esc(COL[k].lib)}</th>`).join('')}</tr></thead><tbody>
