@@ -98,7 +98,7 @@
       ],
       top: [['posit', 'Positionnement'], ['ndv', 'Nombre de ventes'], ['protheses', 'Nombre de prothèses'], ['re', 'Résultat d’exploitation']] },
     // sansSiColonnes (06/11/2026, demande d'Olivier) : colonnes retirées de la liste dès qu'elle passe sur 2 colonnes ou plus (la synthèse les garde)
-    ca: { lib: 'Chiffre d’affaires', cols: ['obj', 'ca', 'prev', 'evolCa', 'posit', 'caOpt', 'caAud', 'caCon', 'ndv', 'evolNdv'], sansSiColonnes: ['caOpt', 'caAud', 'caCon'], tri: 'ca',
+    ca: { lib: 'Chiffre d’affaires', maxBlocs: 2, cols: ['obj', 'ca', 'prev', 'evolCa', 'posit', 'caOpt', 'caAud', 'caCon', 'ndv', 'evolNdv'], sansSiColonnes: ['caOpt', 'caAud', 'caCon'], tri: 'ca',
       top: [['posit', 'Positionnement'], ['ca', 'CA généré'], ['evolCa', 'Évolution du CA']] },
     optique: { lib: 'Optique', maxBlocs: 2, cols: ['ndv', 'evolNdv', 'panier', 'evolPanier', 'tc', 'sop', 'mdc', 'pcPct', 'pcEur', 'pm1'], tri: 'ndv',
       top: [['ndv', 'Nombre de ventes'], ['panier', 'Panier moyen'], ['tc', 'Taux de concrétisation']] },
