@@ -346,6 +346,14 @@
       if (tb && f.scrollHeight > f.clientHeight + 1) tb.classList.add('tres-dense');
       if (f.scrollHeight > f.clientHeight + 1) f.classList.add('serre');
       if (f.scrollHeight > f.clientHeight + 1) f.classList.add('tres-serre');
+      // 06/11/2026 : dernier recours (page 2 coupée sur téléphone, police plus large) : on réduit légèrement le
+      // contenu jusqu'à ce qu'il tienne dans la page, plutôt que de couper le bas
+      let z = parseFloat(f.dataset.reduc || '1');
+      for (let i = 0; i < 4 && f.scrollHeight > f.clientHeight + 1; i++) {
+        z = Math.max(0.75, z * Math.min(0.99, (f.clientHeight - 6) / f.scrollHeight));
+        [...f.children].forEach(c => { c.style.zoom = z; });
+        f.dataset.reduc = z.toFixed(3);
+      }
     });
   }
   async function afficherFiche(m) {
