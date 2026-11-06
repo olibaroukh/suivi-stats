@@ -184,7 +184,7 @@
     if (perim.regrouper) {
       const g = {}, nAct = {}; magsTot.forEach(r => { const k = perim.regrouper(r) || '—'; (g[k] = g[k] || []).push(item(r)); if (r.actif === 'Oui') nAct[k] = (nAct[k] || 0) + 1; });
       lignes = Object.entries(g).map(([k, its]) => ({ code: (nAct[k] || 0) + ' mag.', nom: k, v: valeurs(agreger(its, conv)) }));
-    } else lignes = mags.map(r => ({ code: String(r.code), nom: r.magasin, v: valeurs(donnees(r)), dev: DEVISE_SYM[r.devise] || '€', devise: r.devise || 'Euro' }));
+    } else lignes = mags.map(r => ({ code: String(r.code), nom: r.magasin, ar: r.ar || '', v: valeurs(donnees(r)), dev: DEVISE_SYM[r.devise] || '€', devise: r.devise || 'Euro' }));
     // Objectifs (pays de référence du périmètre) pour colorer les cellules
     const obj = objectifsRef(opts.objectifs, mags);
     const total = { nom: 'TOTAL', v: valeurs(agreger(magsTot.map(item), conv)) };
@@ -368,6 +368,11 @@
       const sections = md.theme.sections.map(se => ({ lib: se.lib, groupes: se.groupes.map(g => [g[0], g[1].filter(plein)]).filter(g => g[1].length) })).filter(se => se.groupes.length);
       const nS = sections.length, nP = Math.max(1, opts.pages || 1), parPage = Math.ceil(n / nP);
       const libLigne = md.perim.regrouper ? 'Franchisé' : 'Magasin';
+      // Plusieurs AR dans le périmètre : lignes regroupées par AR (ordre alphabétique), tri choisi conservé dans chaque AR
+      const arsP = [...new Set(md.lignes.map(l => l.ar).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+      const parAr = !md.perim.regrouper && arsP.length > 1;
+      const arIdx = {}; arsP.forEach((a, i) => { arIdx[a] = i; }); arIdx[''] = arsP.length;
+      if (parAr) md.lignes = md.lignes.map((l, i) => [l, i]).sort((a, b) => (arIdx[a[0].ar] - arIdx[b[0].ar]) || (a[1] - b[1])).map(x => x[0]);
       const pages = [];
       for (let pI = 0; pI < nP; pI++) {
         const ls = md.lignes.slice(pI * parPage, (pI + 1) * parPage), dern = pI === nP - 1;
@@ -377,12 +382,31 @@
         const secs = sections.map(se => {
           const cols = se.groupes.flatMap(g => g[1]);
           const debut = k => se.groupes.some(g => g[1][0] === k);
-          const cellsC = (l, dev) => cols.map((k, i) => `<td class="${cl(k, l.v[k], md.obj)}${COL[k].fort ? ' fort' : ''}${debut(k) && i ? ' sep' : ''}">${f(l.v[k], COL[k].fmt, dev)}</td>`).join('');
+          // 06/11/2026 (demande d'Olivier) : chaque famille de colonnes (CA, Optique, Audio, Restes dus…) a sa teinte
+          const grpDe = {}; se.groupes.forEach((g, gi) => g[1].forEach(k => { grpDe[k] = gi % 6; }));
+          const cellsC = (l, dev) => cols.map((k, i) => `<td class="${cl(k, l.v[k], md.obj)}${COL[k].fort ? ' fort' : ''}${debut(k) && i ? ' sep' : ''} zg${grpDe[k]}">${f(l.v[k], COL[k].fmt, dev)}</td>`).join('');
+          // … et quand le périmètre compte plusieurs AR (ex. Paris), les magasins sont regroupés par AR avec une bande de couleur
+          const colAr = parAr ? '<th class="arb"></th>' : '';
+          const lignesHtml = (() => {
+            if (!parAr) return ls.map(l => `<tr><td class="rg">${esc(l.rang)}</td><td class="nm"><b>${esc(l.nom)}</b><small>${esc(l.code)}</small></td>${cellsC(l, l.dev || md.devTotal)}</tr>`).join('');
+            let html = '';
+            for (let i = 0; i < ls.length;) {
+              let j = i; while (j < ls.length && ls[j].ar === ls[i].ar) j++;
+              const k = j - i, ci = arIdx[ls[i].ar] % 8, nomAr = ls[i].ar || '—';
+              const lib = k >= 4 ? nomAr : nomAr.split(/\s+/).map(x => x[0] || '').join('').toUpperCase();
+              for (let x = i; x < j; x++) {
+                const l = ls[x];
+                html += `<tr class="ar${ci}${x === i ? ' ar-deb' : ''}">${x === i ? `<td class="arb" rowspan="${k}"><span>${esc(lib)}</span></td>` : ''}<td class="rg">${esc(l.rang)}</td><td class="nm"><b>${esc(l.nom)}</b><small>${esc(l.code)}</small></td>${cellsC(l, l.dev || md.devTotal)}</tr>`;
+              }
+              i = j;
+            }
+            return html;
+          })();
           return `<section class="ck-sec"><h2><span>${esc(se.lib)}</span></h2><table class="ck-liste ck-multi" style="--h:${hL.toFixed(1)}px;--fs:${fsM.toFixed(1)}px"><thead>
-            <tr class="grp"><th class="rg"></th><th class="nm"></th>${se.groupes.map(g => `<th colspan="${g[1].length}" class="sep">${esc(g[0])}</th>`).join('')}</tr>
-            <tr><th class="rg">#</th><th class="nm">${libLigne}</th>${cols.map((k, i) => `<th class="${debut(k) && i ? 'sep' : ''}">${esc(COL[k].lib)}</th>`).join('')}</tr></thead>
-            <tbody>${ls.map(l => `<tr><td class="rg">${esc(l.rang)}</td><td class="nm"><b>${esc(l.nom)}</b><small>${esc(l.code)}</small></td>${cellsC(l, l.dev || md.devTotal)}</tr>`).join('')}
-            ${dern ? `<tr class="tot"><td class="rg"></td><td class="nm"><b>TOTAL</b><small>${n} ${md.perim.regrouper ? 'franchisés' : 'mag.'}</small></td>${cellsC(md.total, md.devTotal)}</tr>` : ''}</tbody></table></section>`;
+            <tr class="grp">${colAr}<th class="rg"></th><th class="nm"></th>${se.groupes.map((g, gi) => `<th colspan="${g[1].length}" class="sep zg${gi % 6}">${esc(g[0])}</th>`).join('')}</tr>
+            <tr>${colAr}<th class="rg">#</th><th class="nm">${libLigne}</th>${cols.map((k, i) => `<th class="${debut(k) && i ? 'sep' : ''} zg${grpDe[k]}">${esc(COL[k].lib)}</th>`).join('')}</tr></thead>
+            <tbody>${lignesHtml}
+            ${dern ? `<tr class="tot">${parAr ? '<td class="arb"></td>' : ''}<td class="rg"></td><td class="nm"><b>TOTAL</b><small>${n} ${md.perim.regrouper ? 'franchisés' : 'mag.'}</small></td>${cellsC(md.total, md.devTotal)}</tr>` : ''}</tbody></table></section>`;
         }).join('');
         const piedP = nP > 1 ? pied.replace('</footer>', `<span><b>Page ${pI + 1} / ${nP}</b></span></footer>`) : pied;
         pages.push(`<div class="cockpit multi${pI ? ' suite' : ''}" data-blocs="1">

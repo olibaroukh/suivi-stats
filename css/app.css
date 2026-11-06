@@ -666,3 +666,25 @@ body.mode-cloud .mode-cloud-seul{display:block}
 .cockpit.noms-fins .ck-liste th.nm{width:27%}
 .cockpit.noms-fins .ck-liste td.nm b{font-size:calc(var(--fs) - 1px);letter-spacing:-.15px}
 .cockpit.noms-fins .ck-liste td.nm small{margin-left:3px;font-size:calc(var(--fs) - 2.5px)}
+
+/* 06/11/2026 : cockpit CA · Optique · Audio · Rentabilité — teinte par famille de colonnes et bandes par AR */
+.cockpit .ck-multi .zg0{background-color:rgba(226,47,42,.045)}
+.cockpit .ck-multi .zg1{background-color:rgba(40,110,200,.055)}
+.cockpit .ck-multi .zg2{background-color:rgba(30,138,82,.055)}
+.cockpit .ck-multi .zg3{background-color:rgba(230,150,20,.07)}
+.cockpit .ck-multi .zg4{background-color:rgba(130,70,180,.055)}
+.cockpit .ck-multi .zg5{background-color:rgba(20,150,160,.06)}
+.cockpit .ck-multi thead th.zg0,.cockpit .ck-multi thead th.zg1,.cockpit .ck-multi thead th.zg2,.cockpit .ck-multi thead th.zg3,.cockpit .ck-multi thead th.zg4,.cockpit .ck-multi thead th.zg5{background-image:linear-gradient(rgba(0,0,0,.035),rgba(0,0,0,.035))}
+.cockpit .ck-multi tr.tot td[class*="zg"]{background-color:var(--n)}
+.cockpit .ck-multi th.arb,.cockpit .ck-multi td.arb{width:16px;padding:0}
+.cockpit .ck-multi td.arb{color:#fff;font-weight:700;font-size:calc(var(--fs) - 1px);text-align:center;vertical-align:middle;border-top:2px solid #fff}
+.cockpit .ck-multi td.arb span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;display:inline-block;max-height:100%;overflow:hidden;letter-spacing:.3px}
+.cockpit .ck-multi tr.ar-deb td{border-top:2px solid #fff}
+.cockpit .ck-multi tr.ar0 td.arb{background:#C0392B}.cockpit .ck-multi tr.ar0 td.nm{box-shadow:inset 3px 0 #C0392B}
+.cockpit .ck-multi tr.ar1 td.arb{background:#2E6FBF}.cockpit .ck-multi tr.ar1 td.nm{box-shadow:inset 3px 0 #2E6FBF}
+.cockpit .ck-multi tr.ar2 td.arb{background:#1E8A52}.cockpit .ck-multi tr.ar2 td.nm{box-shadow:inset 3px 0 #1E8A52}
+.cockpit .ck-multi tr.ar3 td.arb{background:#D98A0B}.cockpit .ck-multi tr.ar3 td.nm{box-shadow:inset 3px 0 #D98A0B}
+.cockpit .ck-multi tr.ar4 td.arb{background:#7D46B4}.cockpit .ck-multi tr.ar4 td.nm{box-shadow:inset 3px 0 #7D46B4}
+.cockpit .ck-multi tr.ar5 td.arb{background:#14969F}.cockpit .ck-multi tr.ar5 td.nm{box-shadow:inset 3px 0 #14969F}
+.cockpit .ck-multi tr.ar6 td.arb{background:#8A5A2B}.cockpit .ck-multi tr.ar6 td.nm{box-shadow:inset 3px 0 #8A5A2B}
+.cockpit .ck-multi tr.ar7 td.arb{background:#555}.cockpit .ck-multi tr.ar7 td.nm{box-shadow:inset 3px 0 #555}
