@@ -100,14 +100,14 @@
     // sansSiColonnes (06/11/2026, demande d'Olivier) : colonnes retirées de la liste dès qu'elle passe sur 2 colonnes ou plus (la synthèse les garde)
     ca: { lib: 'Chiffre d’affaires', cols: ['obj', 'ca', 'prev', 'evolCa', 'posit', 'caOpt', 'caAud', 'caCon', 'ndv', 'evolNdv'], sansSiColonnes: ['caOpt', 'caAud', 'caCon'], tri: 'ca',
       top: [['posit', 'Positionnement'], ['ca', 'CA généré'], ['evolCa', 'Évolution du CA']] },
-    optique: { lib: 'Optique', cols: ['ndv', 'evolNdv', 'panier', 'evolPanier', 'tc', 'sop', 'mdc', 'pcPct', 'pcEur', 'pm1'], tri: 'ndv',
+    optique: { lib: 'Optique', maxBlocs: 2, cols: ['ndv', 'evolNdv', 'panier', 'evolPanier', 'tc', 'sop', 'mdc', 'pcPct', 'pcEur', 'pm1'], tri: 'ndv',
       top: [['ndv', 'Nombre de ventes'], ['panier', 'Panier moyen'], ['tc', 'Taux de concrétisation']] },
-    audio: { lib: 'Audio', cols: ['caAudio', 'evolAudio', 'ventesA', 'protheses', 'panierA', 'pmProt', 'sap', 'tcA', 'vadd', 'depist'], tri: 'caAudio',
+    audio: { lib: 'Audio', maxBlocs: 2, cols: ['caAudio', 'evolAudio', 'ventesA', 'protheses', 'panierA', 'pmProt', 'sap', 'tcA', 'vadd', 'depist'], tri: 'caAudio',
       top: [['protheses', 'Nombre de prothèses'], ['caAudio', 'CA audio'], ['depist', 'Dépistage']] },
     restes: { lib: 'Restes dus', cols: ['rdus', 'avoirs', 'gel', 'indus', 'evolIndus', 'recup'], tri: 'indus',
       top: [['indus', 'Taux d’indus le plus bas', true]] },
     confidence: { lib: 'Confidence', cols: [], tri: 'cfG', top: [['cfG', 'Taux de contact global']] },
-    renta: { lib: 'Rentabilité & gestion', cols: ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel', 'rentaSal', 'indus', 'note', 'mrq'], tri: 're',
+    renta: { lib: 'Rentabilité & gestion', maxBlocs: 2, cols: ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel', 'rentaSal', 'indus', 'note', 'mrq'], tri: 're',
       top: [['re', 'Résultat d’exploitation'], ['note', 'Note Google'], ['indus', 'Taux d’indus le plus bas', true]] },
   };
 
@@ -328,7 +328,10 @@
     // Répartition en colonnes : on cherche le nombre de blocs qui tient sur la page
     const n = md.lignes.length;
     const hDispo = opts.hListe || 640;
-    let blocs = 1; while (blocs < 4 && n / blocs * 10.5 > hDispo) blocs++;
+    // maxBlocs (06/11/2026, demande d'Olivier) : Optique, Audio, Rentabilité & gestion restent sur 2 colonnes (comme
+    // Restes dus) pour garder les noms de magasins lisibles ; l'appli lève le plafond si la page déborde.
+    const plafond = (!opts.sansPlafond && md.theme && md.theme.maxBlocs) || 4;
+    let blocs = 1; while (blocs < plafond && n / blocs * 10.5 > hDispo) blocs++;
     // Confidence (06/11/2026, demande d'Olivier) : dès que la liste passe sur 2 colonnes ou plus, seuls les taux
     // sont affichés dans le détail, titrés du nom de la liste (« Global » pour le taux global) ; la synthèse garde tout.
     let colsListe = md.cols; const libListe = {};
@@ -390,7 +393,7 @@
       }
       return pages.join('');
     }
-    return `<div class="cockpit" data-blocs="${blocs}">
+    return `<div class="cockpit${blocs > 1 ? ' noms-fins' : ''}" data-blocs="${blocs}">
       ${entete(md.perim.lib, md.theme.lib)}
       <div class="ck-haut"><div class="ck-cpts">${compteurs}${spark}</div><div class="ck-tops">${tops}</div></div>
       <section class="ck-sec"><h2><span>Synthèse</span></h2>${synthese}</section>

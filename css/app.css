@@ -661,3 +661,8 @@ body.mode-cloud .mode-cloud-seul{display:block}
 .mlme-page .mc-ar .t{background:#F6F1EF;font-weight:700}
 .mlme-page .mc-ar i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}.mlme-page .mc-ar i.or{background:#C9A227}.mlme-page .mc-ar i.bl{background:#3F63C7}
 .mlme-page .mc-pied{flex:none}
+
+/* 06/11/2026 : liste sur 2 colonnes ou plus — colonne magasin plus large, nom en police réduite, pour l'identifier en entier */
+.cockpit.noms-fins .ck-liste th.nm{width:27%}
+.cockpit.noms-fins .ck-liste td.nm b{font-size:calc(var(--fs) - 1px);letter-spacing:-.15px}
+.cockpit.noms-fins .ck-liste td.nm small{margin-left:3px;font-size:calc(var(--fs) - 2.5px)}

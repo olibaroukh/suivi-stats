@@ -492,7 +492,8 @@
     const md = Cockpit.construire(CK.photo, S.ref, pAff, th, { tri, objectifs: S.objectifs, taux: tx, siege, precedente, listesConf });
     md.serie = await seriePerimetre(pAff, tx);
     const triLib = $('#ck-tri').selectedOptions[0].textContent.replace('Tri : ', '');
-    const poser = (h, pages) => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h, pages })}</div>`; return [...$('#ck-apercu').querySelectorAll('.cockpit')]; };
+    let sansPlafond = false;
+    const poser = (h, pages) => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h, pages, sansPlafond })}</div>`; return [...$('#ck-apercu').querySelectorAll('.cockpit')]; };
     let pages = poser(640, 1), page = pages[0];
     // Hauteur réellement disponible pour la liste, puis second rendu calé dessus
     const blocs = page.querySelector('.ck-blocs');
@@ -500,6 +501,13 @@
     if (blocs && md.type === 'multi') { const h = blocs.clientHeight; if (h > 100) { hL = h; pages = poser(h, 1); } }
     else if (blocs) { const th = blocs.querySelector('thead'); const h = blocs.clientHeight - (th ? th.offsetHeight : 0) - 4; if (h > 100) pages = poser(h, 1); }
     let ok = pages.every(ajusterCockpit);
+    // Thèmes plafonnés à 2 colonnes : si la page déborde, on revient au découpage normal (3 ou 4 colonnes)
+    if (!ok && md.type === 'liste' && md.theme && md.theme.maxBlocs) {
+      sansPlafond = true; pages = poser(640, 1); page = pages[0];
+      const bl = page.querySelector('.ck-blocs'), th2 = bl && bl.querySelector('thead');
+      if (bl) { const h = bl.clientHeight - (th2 ? th2.offsetHeight : 0) - 4; if (h > 100) pages = poser(h, 1); }
+      ok = pages.every(ajusterCockpit);
+    }
     // Franchisés : plusieurs pages autorisées quand il y a trop de lignes
     if (!ok && md.type === 'multi' && p.multiPages) {
       for (let nP = 2; nP <= 6 && !ok; nP++) { pages = poser(hL, nP); ok = pages.every(ajusterCockpit); }
