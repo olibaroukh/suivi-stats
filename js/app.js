@@ -196,7 +196,9 @@
       const listes = S.listesConf || etatAnnee.listesConfidence || null;
       // Export RH : déposé une fois par mois dans bilan-passage › Import (transmis par zimbra-relay)
       const rhDepot = Store.cloud() ? await Store.lireJSON(`donnees/rh/${annee}-${pad(mois)}.json`).catch(() => null) : null;
-      const res = await Pipeline.construire({ rhDepot, fichiers: S.fichiers, pastes: { lyleoo: $('#paste-lyleoo').value, ocm: $('#paste-ocm').value, site: $('#paste-site').value },
+      // Coefficients ETP (agenda validés importé dans bilan-passage) : tous les mois de l'année jusqu'au mois traité
+      const etpDepots = Store.cloud() ? (await Promise.all(Array.from({ length: mois }, (_, i) => Store.lireJSON(`donnees/rh-etp/${annee}-${pad(i + 1)}.json`).catch(() => null)))).filter(Boolean) : [];
+      const res = await Pipeline.construire({ rhDepot, etpDepots, fichiers: S.fichiers, pastes: { lyleoo: $('#paste-lyleoo').value, ocm: $('#paste-ocm').value, site: $('#paste-site').value },
         annee, mois, ref: S.ref, spec: S.spec, etatAnnee, photoPrecedente: precedent, workerRatings: wr, listesConfidence: listes });
       if (alerteW) res.rapport.alertes.unshift(alerteW);
       if (completer) { completerPhoto(existante, res); S.resultat = res; afficherRapport(res.rapport); $('#btn-enregistrer').disabled = false;
