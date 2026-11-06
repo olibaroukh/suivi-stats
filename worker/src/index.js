@@ -501,6 +501,12 @@ export class SuiviStatsInterne extends WorkerEntrypoint {
     await this.env.FICHIERS.put(`donnees/rh-etp/${mois}.json`, JSON.stringify({ mois, recuLe: new Date().toISOString(), source: 'bilan-passage', coefs: garde }), { httpMetadata: { contentType: 'application/json' } });
     return { ok: true, mois, nb, nbPartiels };
   }
+  // 06/11/2026 : coefficients ETP d'un mois (repris une fois par zimbra-relay pour le score santé)
+  async lireEtp(mois) {
+    if (!/^\d{4}-\d{2}$/.test(String(mois || ''))) return null;
+    const d = await lireJSON(this.env, `donnees/rh-etp/${mois}.json`);
+    return d && d.coefs ? d.coefs : null;
+  }
   async statsMagasin(code, mois) {
     await schema(this.env);
     const m = mois || (await this.moisDisponibles())[0];
