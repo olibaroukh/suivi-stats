@@ -97,7 +97,8 @@
         { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'indus']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Google & qualité', ['note', 'avis', 'mrq']], ['Rentabilité salariale & effectifs', ['rentaSal', 'effOpt', 'effAud', 'effTheo', 'ecart', 'ageMoy', 'pctF', 'caPers']]] },
       ],
       top: [['posit', 'Positionnement'], ['ndv', 'Nombre de ventes'], ['protheses', 'Nombre de prothèses'], ['re', 'Résultat d’exploitation']] },
-    ca: { lib: 'Chiffre d’affaires', cols: ['obj', 'ca', 'prev', 'evolCa', 'posit', 'caOpt', 'caAud', 'caCon', 'ndv', 'evolNdv'], tri: 'ca',
+    // sansSiColonnes (06/11/2026, demande d'Olivier) : colonnes retirées de la liste dès qu'elle passe sur 2 colonnes ou plus (la synthèse les garde)
+    ca: { lib: 'Chiffre d’affaires', cols: ['obj', 'ca', 'prev', 'evolCa', 'posit', 'caOpt', 'caAud', 'caCon', 'ndv', 'evolNdv'], sansSiColonnes: ['caOpt', 'caAud', 'caCon'], tri: 'ca',
       top: [['posit', 'Positionnement'], ['ca', 'CA généré'], ['evolCa', 'Évolution du CA']] },
     optique: { lib: 'Optique', cols: ['ndv', 'evolNdv', 'panier', 'evolPanier', 'tc', 'sop', 'mdc', 'pcPct', 'pcEur', 'pm1'], tri: 'ndv',
       top: [['ndv', 'Nombre de ventes'], ['panier', 'Panier moyen'], ['tc', 'Taux de concrétisation']] },
@@ -334,6 +335,8 @@
     if (md.themeId === 'confidence' && blocs > 1) {
       colsListe = md.cols.filter(k => /^cfT\d$/.test(k) || k === 'cfG');
       colsListe.forEach(k => { libListe[k] = k === 'cfG' ? 'Global' : COL['cfN' + k.slice(3)].lib; });
+    } else if (blocs > 1 && md.theme && md.theme.sansSiColonnes) {
+      colsListe = md.cols.filter(k => !md.theme.sansSiColonnes.includes(k));
     }
     const nCols = colsListe.length;
     if (blocs > 1 && nCols > 7) blocs = Math.min(blocs, 3);
