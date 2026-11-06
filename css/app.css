@@ -667,15 +667,28 @@ body.mode-cloud .mode-cloud-seul{display:block}
 .cockpit.noms-fins .ck-liste td.nm b{font-size:calc(var(--fs) - 1px);letter-spacing:-.15px}
 .cockpit.noms-fins .ck-liste td.nm small{margin-left:3px;font-size:calc(var(--fs) - 2.5px)}
 
-/* 06/11/2026 : cockpit CA · Optique · Audio · Rentabilité — teinte par famille de colonnes et bandes par AR */
-.cockpit .ck-multi .zg0{background-color:rgba(226,47,42,.045)}
-.cockpit .ck-multi .zg1{background-color:rgba(40,110,200,.055)}
-.cockpit .ck-multi .zg2{background-color:rgba(30,138,82,.055)}
-.cockpit .ck-multi .zg3{background-color:rgba(230,150,20,.07)}
-.cockpit .ck-multi .zg4{background-color:rgba(130,70,180,.055)}
-.cockpit .ck-multi .zg5{background-color:rgba(20,150,160,.06)}
-.cockpit .ck-multi thead th.zg0,.cockpit .ck-multi thead th.zg1,.cockpit .ck-multi thead th.zg2,.cockpit .ck-multi thead th.zg3,.cockpit .ck-multi thead th.zg4,.cockpit .ck-multi thead th.zg5{background-image:linear-gradient(rgba(0,0,0,.035),rgba(0,0,0,.035))}
+/* 06/11/2026 : cockpit CA · Optique · Audio · Rentabilité — chaque famille de colonnes a sa couleur (bandeau de titre plein,
+   colonnes teintées, assez marquées pour rester visibles à l'impression) */
+.cockpit .ck-multi{--z0:#C0392B;--z1:#2E6FBF;--z2:#1E8A52;--z3:#D98A0B;--z4:#7D46B4;--z5:#14969F}
+.cockpit .ck-multi td.zg0{background-color:rgba(192,57,43,.08)}
+.cockpit .ck-multi td.zg1{background-color:rgba(46,111,191,.09)}
+.cockpit .ck-multi td.zg2{background-color:rgba(30,138,82,.09)}
+.cockpit .ck-multi td.zg3{background-color:rgba(217,138,11,.11)}
+.cockpit .ck-multi td.zg4{background-color:rgba(125,70,180,.09)}
+.cockpit .ck-multi td.zg5{background-color:rgba(20,150,160,.10)}
+.cockpit .ck-multi thead tr.grp th.zg0{background:var(--z0)}.cockpit .ck-multi thead tr.grp th.zg1{background:var(--z1)}
+.cockpit .ck-multi thead tr.grp th.zg2{background:var(--z2)}.cockpit .ck-multi thead tr.grp th.zg3{background:var(--z3)}
+.cockpit .ck-multi thead tr.grp th.zg4{background:var(--z4)}.cockpit .ck-multi thead tr.grp th.zg5{background:var(--z5)}
+.cockpit .ck-multi thead tr.grp th[class*="zg"]{color:#fff;border-left:2px solid #fff;padding-top:2px;padding-bottom:2px}
+.cockpit .ck-multi thead tr:not(.grp) th.zg0{color:var(--z0);background:rgba(192,57,43,.14)}
+.cockpit .ck-multi thead tr:not(.grp) th.zg1{color:var(--z1);background:rgba(46,111,191,.15)}
+.cockpit .ck-multi thead tr:not(.grp) th.zg2{color:var(--z2);background:rgba(30,138,82,.15)}
+.cockpit .ck-multi thead tr:not(.grp) th.zg3{color:#A86A05;background:rgba(217,138,11,.17)}
+.cockpit .ck-multi thead tr:not(.grp) th.zg4{color:var(--z4);background:rgba(125,70,180,.15)}
+.cockpit .ck-multi thead tr:not(.grp) th.zg5{color:var(--z5);background:rgba(20,150,160,.16)}
+.cockpit .ck-multi td.sep[class*="zg"],.cockpit .ck-multi th.sep[class*="zg"]{border-left:2px solid #fff}
 .cockpit .ck-multi tr.tot td[class*="zg"]{background-color:var(--n)}
+@media print{.cockpit .ck-multi td,.cockpit .ck-multi th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 .cockpit .ck-multi th.arb,.cockpit .ck-multi td.arb{width:16px;padding:0}
 .cockpit .ck-multi td.arb{color:#fff;font-weight:700;font-size:calc(var(--fs) - 1px);text-align:center;vertical-align:middle;border-top:2px solid #fff}
 .cockpit .ck-multi td.arb span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;display:inline-block;max-height:100%;overflow:hidden;letter-spacing:.3px}
