@@ -76,13 +76,14 @@
   const famille = p => { const n = norm(p); return n === 'manager' ? 'manager' : (n === 'audioprothesiste' || n === 'technicien audio') ? 'audio' : 'optique'; };
 
   // { code magasin: [personnes avec stats] } ; les deux codes canadiens (8001 / 8001A) vont sur la même fiche
-  function parMagasin(personnes, stats, ref) {
+  // etp (facultatif) : { matricule: coefficient moyen depuis janvier } — journées école et temps partiels (06/11/2026)
+  function parMagasin(personnes, stats, ref, etp) {
     const refIdx = {}; ref.forEach(r => refIdx[String(r.code)] = r);
     const out = {};
     for (const p of personnes) {
       const mags = [...new Set(p.codes.map(c => refIdx[c] ? c : (refIdx[c.replace(/A$/, '')] ? c.replace(/A$/, '') : null)).filter(Boolean))];
       for (const c of mags) {
-        (out[c] = out[c] || []).push({ matricule: p.matricule, prenom: p.prenom, nom: p.nom, poste: p.poste, famille: famille(p.poste), entree: p.entree, multi: mags.length > 1, part: 1 / mags.length, s: stats[p.matricule] || null });
+        (out[c] = out[c] || []).push({ matricule: p.matricule, prenom: p.prenom, nom: p.nom, poste: p.poste, famille: famille(p.poste), entree: p.entree, multi: mags.length > 1, part: (1 / mags.length) * (etp && etp[p.matricule] != null ? etp[p.matricule] : 1), s: stats[p.matricule] || null });
       }
     }
     const rang = { manager: 0, optique: 1, audio: 2 };
@@ -107,6 +108,17 @@
     for (const c in out) { const o = out[c]; res[c] = { XG: o.na ? o.a / o.na : null, XH: o.g ? o.f : null, XI: o.g || null, XJ: o.na || null }; }
     return res;
   }
-  const api = { rh, rhLignes, demographie, indexVendeurs, parMagasin, POSTES_RETENUS };
+  // Moyenne des coefficients ETP des mois reçus depuis janvier (fichiers donnees/rh-etp/AAAA-MM.json transmis par
+  // zimbra-relay à l'import de l'agenda validés). Une personne absente d'un mois (pas encore entrée) n'y compte pas.
+  function etpMoyen(depots) {
+    const somme = {}, nb = {}; let mois = 0;
+    for (const d of (depots || [])) {
+      if (!d || !d.coefs) continue; mois++;
+      for (const k in d.coefs) { const m = mat(k), v = Number(d.coefs[k]); if (!m || !Number.isFinite(v)) continue; somme[m] = (somme[m] || 0) + v; nb[m] = (nb[m] || 0) + 1; }
+    }
+    const coefs = {}; for (const m in somme) coefs[m] = Math.round(somme[m] / nb[m] * 1000) / 1000;
+    return { coefs, mois };
+  }
+  const api = { rh, rhLignes, demographie, indexVendeurs, parMagasin, etpMoyen, POSTES_RETENUS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Equipe = api;
 })(typeof self !== 'undefined' ? self : this);

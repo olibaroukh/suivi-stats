@@ -252,7 +252,14 @@
     if (vendeurs.length) { stats = Eq.indexVendeurs(vendeurs.map(v => ({ report: v.pr.report, rows: v.pr.rows }))); sources.stat_indiv = { statut: 'recu', detail: `${Object.keys(stats).length} matricules` }; }
     else if (photoPrecedente && photoPrecedente.statsVendeurs) { stats = photoPrecedente.statsVendeurs; sources.stat_indiv = { statut: 'repris', detail: 'stats du mois précédent' }; }
     else sources.stat_indiv = { statut: 'absent' };
-    const equipes = personnes ? Eq.parMagasin(personnes, stats || {}, ref) : {};
+    // Effectif en équivalent temps plein : moyenne depuis janvier des coefficients transmis par bilan-passage
+    // (journées école, repos temps partiel, temps partiel thérapeutique) ; sans agenda, chacun compte 1.
+    const etp = Eq.etpMoyen(p.etpDepots || []);
+    if (personnes && sources.rh) {
+      const partiels = personnes.filter(x => etp.coefs[x.matricule] != null && etp.coefs[x.matricule] < 1).length;
+      sources.rh.detail = (sources.rh.detail || '') + (etp.mois ? ` · temps plein (ETP) : moyenne de ${etp.mois} mois d’agenda, ${partiels} personne(s) à moins d’un temps plein` : ' · ETP : aucun agenda reçu, chacun compte 1');
+    }
+    const equipes = personnes ? Eq.parMagasin(personnes, stats || {}, ref, etp.coefs) : {};
     if (personnes && stats) {
       const sansStats = personnes.filter(p => !stats[p.matricule] && /opticien|manager|audio/i.test(p.poste)).length;
       if (sansStats) journal.push(`${sansStats} personne(s) de l'export RH sans stats Cosium (matricule absent des exports par vendeur)`);

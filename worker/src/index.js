@@ -485,6 +485,22 @@ export class SuiviStatsInterne extends WorkerEntrypoint {
     await this.env.FICHIERS.put(`donnees/rh/${mois}.json`, JSON.stringify({ mois, recuLe: new Date().toISOString(), source: 'bilan-passage', lignes: garde }), { httpMetadata: { contentType: 'application/json' } });
     return { ok: true, mois, nb: garde.length };
   }
+  // 06/11/2026 : coefficients ETP par matricule (1 = temps plein), calculés par zimbra-relay à l'import de
+  // l'agenda validés dans bilan-passage (journées école, repos temps partiel, temps partiel thérapeutique).
+  // Seul le coefficient est conservé, jamais le motif ; fichier privé (administrateurs).
+  async deposerEtp(mois, coefs) {
+    if (!/^\d{4}-\d{2}$/.test(String(mois || ''))) throw new Error('mois AAAA-MM requis');
+    const garde = {};
+    for (const [m, v] of Object.entries(coefs || {})) {
+      const k = String(m).trim().replace(/\.0+$/, '').replace(/^0+(?=\d)/, ''), n = Number(v);
+      if (k && Number.isFinite(n)) garde[k] = Math.max(0, Math.min(1, n));
+    }
+    const nb = Object.keys(garde).length;
+    if (!nb) throw new Error('aucun coefficient');
+    const nbPartiels = Object.values(garde).filter(v => v < 1).length;
+    await this.env.FICHIERS.put(`donnees/rh-etp/${mois}.json`, JSON.stringify({ mois, recuLe: new Date().toISOString(), source: 'bilan-passage', coefs: garde }), { httpMetadata: { contentType: 'application/json' } });
+    return { ok: true, mois, nb, nbPartiels };
+  }
   async statsMagasin(code, mois) {
     await schema(this.env);
     const m = mois || (await this.moisDisponibles())[0];
