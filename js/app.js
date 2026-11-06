@@ -288,7 +288,7 @@
   // ---------- Fiches ----------
   function brancherFiches() {
     $('#fi-photo').onchange = e => chargerPhoto(e.target.value);
-    ['#fi-recherche', '#fi-filtre-pays', '#fi-filtre-type'].forEach(s => $(s).oninput = listerMagasins);
+    ['#fi-recherche', '#fi-filtre-pays', '#fi-filtre-type', '#fi-filtre-nature'].forEach(s => $(s).oninput = listerMagasins);
     $('#fi-langue').onchange = () => S.magSel && afficherFiche(S.magSel);
     $('#btn-pdf-un').onclick = async () => { if (!S.magSel) return; const m = S.magSel; const b = await pdfMagasin(m); telecharger(b, nomPdf(m)); };
     $('#btn-pdf-tous').onclick = pdfSelection;
@@ -316,7 +316,10 @@
   function selection() {
     if (!S.photo) return [];
     const q = norm($('#fi-recherche').value), p = $('#fi-filtre-pays').value, t = $('#fi-filtre-type').value;
+    // 06/11/2026 : magasins / OC Mobile (camions) / les deux
+    const na = $('#fi-filtre-nature') ? $('#fi-filtre-nature').value : '', estOcm = r => r.nature === 'Camion';
     return S.ref.filter(r => r.actif === 'Oui' && S.photo.magasins[String(r.code)] && (!p || r.pays === p) && (!t || r.type === t)
+      && (!na || (na === 'ocm' ? estOcm(r) : !estOcm(r)))
       && (!q || norm(`${r.code} ${r.magasin} ${r.ar} ${r.groupe} ${r.manager}`).includes(q)));
   }
   function listerMagasins() {
@@ -350,6 +353,10 @@
     const tel = window.innerWidth <= 820;
     $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l, serie , challenges: S.chal, taux: S.tauxCh })).join('');
     ajuster($('#apercu')); adapterEchelle();
+    // 06/11/2026 : sur téléphone, la police (Montserrat) arrive souvent après le premier calcul et rallonge la page →
+    // bas de page coupé. On recale une fois les polices chargées.
+    const hote = $('#apercu');
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if ($('#apercu') === hote) { ajuster(hote); adapterEchelle(); } });
     if (tel) $('#apercu').scrollIntoView({ behavior: 'smooth', block: 'start' }); // téléphone : on descend directement sur la fiche
   }
   // ---------- Historique de l'année : séries mensuelles (CA du mois, N-1, positionnement) ----------

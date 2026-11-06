@@ -1,3 +1,4 @@
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @font-face{font-family:"Montserrat";font-style:italic;font-weight:300;font-display:swap;src:url(../assets/fonts/montserrat-latin-300-italic.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:"Montserrat";font-style:normal;font-weight:300;font-display:swap;src:url(../assets/fonts/montserrat-latin-300-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:"Montserrat";font-style:normal;font-weight:400;font-display:swap;src:url(../assets/fonts/montserrat-latin-400-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -701,3 +702,6 @@ body.mode-cloud .mode-cloud-seul{display:block}
 .cockpit .ck-multi tr.ar5 td.arb{background:#14969F}.cockpit .ck-multi tr.ar5 td.nm{box-shadow:inset 3px 0 #14969F}
 .cockpit .ck-multi tr.ar6 td.arb{background:#8A5A2B}.cockpit .ck-multi tr.ar6 td.nm{box-shadow:inset 3px 0 #8A5A2B}
 .cockpit .ck-multi tr.ar7 td.arb{background:#555}.cockpit .ck-multi tr.ar7 td.nm{box-shadow:inset 3px 0 #555}
+
+/* 06/11/2026 : fiche — séparation panier / nombre de ventes dans les tableaux optique et audio */
+.fiche table.kpi tbody tr.coupure{border-top:2px solid var(--n)}

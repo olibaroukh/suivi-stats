@@ -241,10 +241,12 @@
     const nd = `<div class="nd">${esc(lang === 'fr' ? 'Non disponible pour ce magasin' : '–')}</div>`;
 
     const evo = (d, dp, f) => d == null && dp == null ? '' : `<span class="evo ${cls(d != null ? d : dp)}">${d == null ? '' : sg(d, f)}${dp == null ? '' : ` (${sg(dp, pc)})`} <i>N-1</i></span>`;
+    const KPI_COUPURE = ['Taux de Concrétisation', '% TC audio'];
     const kpiRows = list => list.map(([lib, ob, re, u, perte]) => {
       const etat = (ob == null || re == null) ? (u === 'evol' ? (re == null ? '' : re >= 0 ? 'ok' : 'ko') : '') : (re >= ob ? 'ok' : 'ko');
       const ratio = (ob && re != null && u !== 'evol') ? Math.max(0, Math.min(1, re / ob)) : null;
-      return `<tr><th>${esc(t(lib))}</th><td class="obj">${ob == null ? '' : fmt(ob, u === 'evol' ? 'pct' : u)}</td>`
+      // 06/11/2026 : trait épais avant le taux de concrétisation (au-dessus : leviers du panier ; en dessous : nombre de ventes)
+      return `<tr${KPI_COUPURE.includes(lib) ? ' class="coupure"' : ''}><th>${esc(t(lib))}</th><td class="obj">${ob == null ? '' : fmt(ob, u === 'evol' ? 'pct' : u)}</td>`
         + `<td class="val ${etat}">${u === 'evol' ? sg(re, pc) : fmt(re, u)}</td>`
         + `<td class="jauge">${ratio == null ? '' : `<div class="j"><div class="${etat}" style="width:${(ratio * 100).toFixed(0)}%"></div></div>`}</td>`
         + `<td class="perte">${perte ? '−' + eur(perte) : ''}</td></tr>`;
