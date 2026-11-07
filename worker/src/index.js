@@ -151,6 +151,17 @@ async function soap(jeton, corps) {
   return d.Body;
 }
 function piecesDe(mp, out) { for (const p of mp || []) { if (p.filename && p.part) out.push({ part: p.part, nom: p.filename, taille: p.s || null }); if (p.mp) piecesDe(p.mp, out); } return out; }
+// 07/11/2026 : seules les pièces dont le NOM DE FICHIER correspond à une source connue sont prises (jamais d'après l'objet du mail,
+// pour ne pas ramasser des pièces jointes personnelles : candidatures, RH…).
+function typePiece(nom, sujet) {
+  if (/\.zip$/i.test(nom) && /\d{2}OPTI\d+/i.test(nom + ' ' + (sujet || ''))) return 'cosium';
+  if (/^confidence-dashboard.*\.xlsx$/i.test(nom)) return 'confidence';
+  if (/\.xlsx?$/i.test(nom) && /(taux.?d.?indus|restes?.?dus)/i.test(nom)) return 'restes';
+  if (/\.xlsx?$/i.test(nom) && /^(T07.?MARGES|T12.?RENTASAL|T20|T21|T10)(?!\d)|CONSODETAIL|AVIS.?SUR.?GOOGLE|MR.?QUALIT|TCD/i.test(nom)) return 'autre';
+  if (/\.zip$/i.test(nom) && /EXTERNAL.?RELATIONS?/i.test(nom)) return 'autre';
+  if (/\.csv$/i.test(nom) && /(AVOIR|FACTURE)/i.test(nom)) return 'autre';
+  return null;
+}
 // Fenêtre : du 20 du mois précédent (certains envois arrivent le dernier jour du mois d'avant) au 25 du mois suivant.
 // Le bon fichier est ensuite choisi par l'appli d'après la période inscrite dans les exports.
 async function piecesDuMois(jeton, mois) {
@@ -164,12 +175,7 @@ async function piecesDuMois(jeton, mois) {
       if (msg.d > fin || msg.d < debut) continue;
       for (const p of piecesDe(msg.mp, [])) {
         const nom = p.nom, sujet = msg.su || '';
-        let type = null;
-        if (/\.zip$/i.test(nom) && /\d{2}OPTI\d+/i.test(nom + ' ' + sujet)) type = 'cosium';
-        else if (/^confidence-dashboard.*\.xlsx$/i.test(nom)) type = 'confidence';
-        else if (/\.xlsx?$/i.test(nom) && /(rest|indus)/i.test(nom + ' ' + sujet)) type = 'restes';
-        // 07/11/2026 : autres sources envoyées par mail (le type exact est reconnu par l'appli d'après le contenu du fichier)
-        else if (/\.(xlsx?|csv|zip)$/i.test(nom) && /(T07|MARGE|T12|RENTA|T20|T21|T10|CONSO|EXTERNAL|RELATION|AVIS|GOOGLE|QUALIT|TCD|AVOIR|FACTURE|EXPORT|LISTE)/i.test(nom + ' ' + sujet)) type = 'autre';
+        const type = typePiece(nom, sujet);
         if (type) pieces.push({ id: msg.id, part: p.part, nom, taille: p.taille, date: msg.d, sujet, type });
       }
     }
@@ -190,6 +196,13 @@ async function releverBoite(env, par) {
   }
   const z = await authZimbra(env.ZIMBRA_RELEVE_USER, env.ZIMBRA_RELEVE_PASSWORD);
   if (!z) { await env.DB.prepare('INSERT INTO releve_journal (le, par, statut, detail) VALUES (?, ?, ?, ?)').bind(Date.now(), par, 'échec', 'connexion Zimbra refusée (mot de passe changé ?)').run(); return { ok: false, erreur: 'connexion Zimbra refusée' }; }
+  // Purge : toute pièce déjà relevée qui ne correspond plus aux règles est effacée (fichier R2 + ligne)
+  const anc = await env.DB.prepare('SELECT id, part, nom, sujet, cle_r2 FROM releve_pieces').all();
+  let purgees = 0;
+  for (const x of anc.results || []) if (!typePiece(x.nom || '', x.sujet || '')) {
+    if (x.cle_r2) await env.FICHIERS.delete(x.cle_r2);
+    await env.DB.prepare('DELETE FROM releve_pieces WHERE id = ? AND part = ?').bind(x.id, x.part).run(); purgees++;
+  }
   const now = new Date(), vus = new Map();
   for (const m of [moisDecale(now, -1), moisDecale(now, 0)]) for (const p of await piecesDuMois(z.jeton, m)) vus.set(p.id + '|' + p.part, p);
   let nouvelles = 0, deja = 0, erreurs = 0;
@@ -207,7 +220,7 @@ async function releverBoite(env, par) {
       nouvelles++;
     } catch (e) { erreurs++; console.error('relève', p.nom, e); }
   }
-  const detail = `${vus.size} pièce(s) utiles dans la boîte · ${nouvelles} nouvelle(s) copiée(s) · ${deja} déjà relevée(s)${erreurs ? ' · ' + erreurs + ' erreur(s)' : ''}`;
+  const detail = `${vus.size} pièce(s) utiles dans la boîte · ${nouvelles} nouvelle(s) copiée(s) · ${deja} déjà relevée(s)${erreurs ? ' · ' + erreurs + ' erreur(s)' : ''}${purgees ? ' · ' + purgees + ' pièce(s) hors sources effacée(s)' : ''}`;
   await env.DB.prepare('INSERT INTO releve_journal (le, par, statut, detail) VALUES (?, ?, ?, ?)').bind(Date.now(), par, erreurs ? 'partiel' : 'ok', detail).run();
   return { ok: true, nouvelles, deja, erreurs, detail };
 }
