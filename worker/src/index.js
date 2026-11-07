@@ -150,11 +150,12 @@ async function soap(jeton, corps) {
   if (!d || d.Body?.Fault) throw new Error(d?.Body?.Fault?.Reason?.Text || 'réponse invalide');
   return d.Body;
 }
-function piecesDe(mp, out) { for (const p of mp || []) { if (p.filename && p.part) out.push({ part: p.part, nom: p.filename, taille: p.s || null }); if (p.mp) piecesDe(p.mp, out); } return out; }
+function piecesDe(mp, out) { for (const p of mp || []) { if (p.filename && p.part) out.push({ part: p.part, nom: p.filename, taille: p.s || null, ct: p.ct || '' }); if (p.mp) piecesDe(p.mp, out); } return out; }
 // 07/11/2026 : seules les pièces dont le NOM DE FICHIER correspond à une source connue sont prises (jamais d'après l'objet du mail,
 // pour ne pas ramasser des pièces jointes personnelles : candidatures, RH…).
-function typePiece(nom, sujet) {
-  if (/\.zip$/i.test(nom) && /\d{2}OPTI\d+/i.test(nom + ' ' + (sujet || ''))) return 'cosium';
+function typePiece(nom, sujet, ct) {
+  // Cosium : ZIP (par l'extension ou le type de contenu) d'un mail « XXOPTI… n/4 - Résultats des statistiques »
+  if ((/\.zip$/i.test(nom) || /zip/i.test(ct || '')) && /\d{2}\s*OPTI\s*\d+|r.sultats des statistiques/i.test(nom + ' ' + (sujet || ''))) return 'cosium';
   if (/^confidence-dashboard.*\.xlsx$/i.test(nom)) return 'confidence';
   if (/\.xlsx?$/i.test(nom) && /(taux.?d.?indus|restes?.?dus)/i.test(nom)) return 'restes';
   if (/\.xlsx?$/i.test(nom) && /^(T07.?MARGES|T12.?RENTASAL|T20|T21|T10)(?!\d)|CONSODETAIL|AVIS.?SUR.?GOOGLE|MR.?QUALIT|TCD/i.test(nom)) return 'autre';
@@ -167,20 +168,26 @@ function typePiece(nom, sujet) {
 async function piecesDuMois(jeton, mois) {
   const [a, m] = mois.split('-').map(Number);
   const debut = Date.UTC(a, m - 2, 20), fin = Date.UTC(a, m, 26);
-  const pieces = [];
-  for (let offset = 0; offset < 1000; offset += 100) {
-    const b = await soap(jeton, { SearchRequest: { _jsns: 'urn:zimbraMail', types: 'message', query: 'has:attachment', sortBy: 'dateDesc', limit: 100, offset, fetch: 'all', html: 0, max: 1 } });
-    const res = b.SearchResponse || {}, ms = res.m || [];
-    for (const msg of ms) {
-      if (msg.d > fin || msg.d < debut) continue;
-      for (const p of piecesDe(msg.mp, [])) {
-        const nom = p.nom, sujet = msg.su || '';
-        const type = typePiece(nom, sujet);
-        if (type) pieces.push({ id: msg.id, part: p.part, nom, taille: p.taille, date: msg.d, sujet, type });
+  const pieces = [], vus = new Set(), diag = { mailsCosium: 0 };
+  // 1) recherche ciblée des mails Cosium, 2) toutes les pièces jointes récentes (dans toute la boîte, hors corbeille)
+  for (const query of ['"statistiques" has:attachment', 'has:attachment']) {
+    for (let offset = 0; offset < 1000; offset += 100) {
+      const b = await soap(jeton, { SearchRequest: { _jsns: 'urn:zimbraMail', types: 'message', query, sortBy: 'dateDesc', limit: 100, offset, fetch: 'all', html: 0, max: 1 } });
+      const res = b.SearchResponse || {}, ms = res.m || [];
+      for (const msg of ms) {
+        if (msg.d > fin || msg.d < debut || vus.has(msg.id)) continue;
+        vus.add(msg.id);
+        const sujet = msg.su || '';
+        if (/\d{2}\s*OPTI\s*\d+/i.test(sujet)) diag.mailsCosium++;
+        for (const p of piecesDe(msg.mp, [])) {
+          const type = typePiece(p.nom, sujet, p.ct);
+          if (type) pieces.push({ id: msg.id, part: p.part, nom: p.nom, taille: p.taille, date: msg.d, sujet, type });
+        }
       }
+      if (!res.more || !ms.length || ms[ms.length - 1].d < debut) break;
     }
-    if (!res.more || !ms.length || ms[ms.length - 1].d < debut) break;
   }
+  pieces.diag = diag;
   return pieces;
 }
 
@@ -197,18 +204,21 @@ async function releverBoite(env, par) {
   const z = await authZimbra(env.ZIMBRA_RELEVE_USER, env.ZIMBRA_RELEVE_PASSWORD);
   if (!z) { await env.DB.prepare('INSERT INTO releve_journal (le, par, statut, detail) VALUES (?, ?, ?, ?)').bind(Date.now(), par, 'échec', 'connexion Zimbra refusée (mot de passe changé ?)').run(); return { ok: false, erreur: 'connexion Zimbra refusée' }; }
   // Purge : toute pièce déjà relevée qui ne correspond plus aux règles est effacée (fichier R2 + ligne)
-  const anc = await env.DB.prepare('SELECT id, part, nom, sujet, cle_r2 FROM releve_pieces').all();
+  const anc = await env.DB.prepare('SELECT id, part, nom, sujet, type, cle_r2 FROM releve_pieces').all();
   let purgees = 0;
-  for (const x of anc.results || []) if (!typePiece(x.nom || '', x.sujet || '')) {
+  for (const x of anc.results || []) if (!typePiece(x.nom || '', x.sujet || '', x.type === 'cosium' ? 'zip' : '')) {
     if (x.cle_r2) await env.FICHIERS.delete(x.cle_r2);
     await env.DB.prepare('DELETE FROM releve_pieces WHERE id = ? AND part = ?').bind(x.id, x.part).run(); purgees++;
   }
   const now = new Date(), vus = new Map();
-  for (const m of [moisDecale(now, -1), moisDecale(now, 0)]) for (const p of await piecesDuMois(z.jeton, m)) vus.set(p.id + '|' + p.part, p);
-  let nouvelles = 0, deja = 0, erreurs = 0;
+  let mailsCosium = 0;
+  for (const m of [moisDecale(now, -1), moisDecale(now, 0)]) { const l = await piecesDuMois(z.jeton, m); mailsCosium = Math.max(mailsCosium, (l.diag || {}).mailsCosium || 0); for (const p of l) vus.set(p.id + '|' + p.part, p); }
+  let nouvelles = 0, deja = 0, erreurs = 0, restantes = 0;
+  const MAX_TELECHARGEMENTS = 30; // Cloudflare limite le nombre d'appels sortants par exécution : le reste est pris au passage suivant
   for (const p of vus.values()) {
     const ex = await env.DB.prepare('SELECT 1 FROM releve_pieces WHERE id = ? AND part = ?').bind(String(p.id), String(p.part)).first();
     if (ex) { deja++; continue; }
+    if (nouvelles + erreurs >= MAX_TELECHARGEMENTS) { restantes++; continue; }
     if (p.taille && p.taille > 25e6) { erreurs++; continue; }
     try {
       const r = await fetch(`${ZIMBRA_REST}?auth=co&id=${encodeURIComponent(p.id)}&part=${encodeURIComponent(p.part)}`, { headers: { Cookie: 'ZM_AUTH_TOKEN=' + z.jeton } });
@@ -220,9 +230,10 @@ async function releverBoite(env, par) {
       nouvelles++;
     } catch (e) { erreurs++; console.error('relève', p.nom, e); }
   }
-  const detail = `${vus.size} pièce(s) utiles dans la boîte · ${nouvelles} nouvelle(s) copiée(s) · ${deja} déjà relevée(s)${erreurs ? ' · ' + erreurs + ' erreur(s)' : ''}${purgees ? ' · ' + purgees + ' pièce(s) hors sources effacée(s)' : ''}`;
+  const nbCos = [...vus.values()].filter(p => p.type === 'cosium').length;
+  const detail = `${vus.size} pièce(s) utiles dans la boîte (dont ${nbCos} ZIP Cosium, ${mailsCosium} mail(s) Cosium vus) · ${nouvelles} nouvelle(s) copiée(s) · ${deja} déjà relevée(s)${restantes ? ' · ' + restantes + ' restante(s) : relancez' : ''}${erreurs ? ' · ' + erreurs + ' erreur(s)' : ''}${purgees ? ' · ' + purgees + ' pièce(s) hors sources effacée(s)' : ''}`;
   await env.DB.prepare('INSERT INTO releve_journal (le, par, statut, detail) VALUES (?, ?, ?, ?)').bind(Date.now(), par, erreurs ? 'partiel' : 'ok', detail).run();
-  return { ok: true, nouvelles, deja, erreurs, detail };
+  return { ok: true, nouvelles, deja, erreurs, restantes, detail };
 }
 // Pièces relevées de la fenêtre d'un mois traité (même fenêtre que piecesDuMois)
 async function piecesReleveesDuMois(env, mois) {

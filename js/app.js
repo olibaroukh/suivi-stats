@@ -1065,7 +1065,7 @@
         <button id="am-relever" style="margin-left:auto">Relever maintenant</button><button id="am-releve-import">Préparer l'import avec ces fichiers</button></div>
         ${lignes ? `<table class="statuts releve"><thead><tr><th>Fichier</th><th>Reçu le</th><th>Mail</th></tr></thead><tbody>${lignes}</tbody></table>` : '<p class="muted">Aucune pièce jointe utile relevée pour ce mois.</p>'}`;
       $('#am-relever').onclick = async () => { $('#am-relever').disabled = true; $('#am-relever').textContent = 'Relève en cours…';
-        try { const rr = await Store.api('/releve/lancer', { method: 'POST' }); const y = await rr.json(); if (!rr.ok || !y.ok) alert('Relève : ' + (y.erreur || rr.status)); } catch (e) { alert('Relève : ' + e.message); }
+        try { for (let i = 0; i < 6; i++) { const rr = await Store.api('/releve/lancer', { method: 'POST' }); const y = await rr.json(); if (!rr.ok || !y.ok) { alert('Relève : ' + (y.erreur || rr.status)); break; } if (!y.restantes) break; $('#am-relever').textContent = `Relève en cours… (${y.restantes} restante(s))`; } } catch (e) { alert('Relève : ' + e.message); }
         afficherReleve(k, d); };
       $('#am-releve-import').onclick = () => { $('#imp-mois').value = d.getMonth() + 1; $('#imp-annee').value = d.getFullYear(); if (S.majCompleter) S.majCompleter(); vue('import'); recupererZimbra(); };
     } catch (e) { z.innerHTML = `<p class="muted" style="margin-top:12px">Relève de la boîte mail : ${esc(e.message)}</p>`; }
