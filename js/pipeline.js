@@ -199,6 +199,24 @@
       for (const c in mag) { const o = cl.out[c]; mag[c].N.BY = o ? o.soumis : 0; mag[c].N.BZ = o ? o.express : 0; }
       sources.lyleoo = { statut: etat.lyleoo[cle(annee, mois)] ? 'recu' : 'repris', detail: cl.manquants.length ? 'mois manquants : ' + cl.manquants.join(', ') : 'cumul complet' };
     }
+    // 07/11/2026 : les relevés de l'artefact « Activité OCM » remplacent le copier-coller Intranet (mêmes chiffres, validé par Olivier).
+    // Camion rattaché par la ville dans son nom ; un copier-coller déposé le même mois reste prioritaire.
+    if (autres.ocm_act && autres.ocm_act.ocm) {
+      const camions = ref.filter(r => r.nature === 'Camion' || /OC\s*MOBILE|^OCM\b/i.test(String(r.magasin || '')));
+      const nz = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const nonRattaches = [];
+      for (const [ville, v] of Object.entries(autres.ocm_act.ocm)) {
+        const r = camions.find(c => nz(c.magasin).includes(nz(ville)));
+        if (!r) { if (Object.values(v.mois || {}).some(x => x.rdv)) nonRattaches.push(ville); continue; }
+        for (const [k, x] of Object.entries(v.mois || {})) {
+          if (!k.startsWith(annee + '-') || !x.rdv && !x.annulations) continue;
+          etat.ocm[k] = etat.ocm[k] || {};
+          etat.ocm[k][String(r.code)] = { DB: x.annulations || 0, DC: x.livraisons || 0, DD: x.depistages || 0, DE: x.reglages || 0, DF: x.ventes || 0 };
+        }
+      }
+      if (nonRattaches.length) alertes.push('Activité OCM – camions non trouvés dans le référentiel : ' + nonRattaches.join(', '));
+      journal.push('OCM : relevés repris de l’artefact Activité OCM');
+    }
     if (pastes.ocm && pastes.ocm.trim()) {
       const po = OCM.parse(pastes.ocm); const r = OCM.match(po, ref);
       Object.assign(etat.ocm, r.out);
