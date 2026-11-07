@@ -1051,7 +1051,7 @@
   async function photoMois(k) { if (!k) return null; if (!(k in A.photos)) A.photos[k] = await Store.lireJSON(`donnees/${k}/photo.json`); return A.photos[k]; }
   const moisPrec = k => { let [a, m] = k.split('-').map(Number); m--; if (!m) { m = 12; a--; } return `${a}-${pad(m)}`; };
   // 07/11/2026 : relève automatique de la boîte Zimbra (chaque nuit) — ce qui est arrivé par mail et quand
-  async function afficherReleve(k, d) {
+  async function afficherReleve(k, d, ph) {
     const z = $('#am-releve'); if (!z || !Store.cloud()) return;
     try {
       const r = await Store.api('/releve?mois=' + k), x = await r.json(); if (!r.ok) throw new Error(x.erreur || r.status);
@@ -1062,14 +1062,35 @@
       const lignes = Object.entries(groupes).map(([t, l]) => t === 'autre'
         ? l.map(p => `<tr><td>${esc(p.nom)}</td><td>${dh(p.date)}</td><td class="muted">${esc(p.sujet || '')}</td></tr>`).join('')
         : `<tr><td><b>${LIB[t] || t}</b>${l.length > 1 ? ` · ${l.length} fichiers` : ''}</td><td>${dh(l[0].date)}${l.length > 1 ? ' (dernier)' : ''}</td><td class="muted">${esc(l[0].sujet || '')}</td></tr>`).join('');
-      z.innerHTML = `<div class="ligne-outils" style="margin-top:12px"><b>Reçu par mail pour ${esc(MOIS[d.getMonth()])}</b>
+      // 07/11/2026 : ce qui est arrivé depuis le dernier enregistrement du mois → préparation + calcul en un clic
+      const depuis = ph ? Date.parse(ph.completeLe || ph.genereLe) : 0;
+      const nouv = x.pieces.filter(p => p.date > depuis && !(ph && p.type === 'cosium'));
+      const nbCos = new Set(x.pieces.filter(p => p.type === 'cosium').map(p => p.nom)).size;
+      const libP = p => p.type === 'cosium' ? 'Cosium' : p.type === 'confidence' ? 'Confidence' : p.type === 'restes' ? 'Restes dus' : p.nom.replace(/\.(xlsx?|csv|zip)$/i, '');
+      let alerte = '';
+      if (!ph) alerte = nbCos >= 28 ? `🔔 Cosium complet (28 / 28) : le mois peut être calculé.` : nbCos ? `Cosium : ${nbCos} / 28 envois reçus pour l’instant.` : '';
+      else if (nouv.length) alerte = `🔔 ${nouv.length} fichier(s) reçu(s) depuis le dernier enregistrement : ${[...new Set(nouv.map(libP))].map(esc).join(', ')}.`;
+      const prete = (!ph && nbCos >= 28) || (ph && nouv.length);
+      const bandeau = alerte ? `<div class="am-alerte"><span>${alerte}</span>${prete ? '<button class="primaire" id="am-auto">Préparer et calculer</button>' : ''}</div>` : '';
+      z.innerHTML = bandeau + `<div class="ligne-outils" style="margin-top:12px"><b>Reçu par mail pour ${esc(MOIS[d.getMonth()])}</b>
         <span class="muted">${!x.configure ? 'relève automatique non configurée (secrets Cloudflare)' : der ? `dernière relève ${dh(der.le)} (${esc(der.par === 'nuit' ? 'automatique' : 'manuelle')}) · ${esc(der.statut)} · ${esc(der.detail)}` : 'pas encore de relève'}</span>
         <button id="am-relever" style="margin-left:auto">Relever maintenant</button><button id="am-releve-import">Préparer l'import avec ces fichiers</button></div>
         ${lignes ? `<table class="statuts releve"><thead><tr><th>Fichier</th><th>Reçu le</th><th>Mail</th></tr></thead><tbody>${lignes}</tbody></table>` : '<p class="muted">Aucune pièce jointe utile relevée pour ce mois.</p>'}`;
       $('#am-relever').onclick = async () => { $('#am-relever').disabled = true; $('#am-relever').textContent = 'Relève en cours…';
         try { for (let i = 0; i < 6; i++) { const rr = await Store.api('/releve/lancer', { method: 'POST' }); const y = await rr.json(); if (!rr.ok || !y.ok) { alert('Relève : ' + (y.erreur || rr.status)); break; } if (!y.restantes) break; $('#am-relever').textContent = `Relève en cours… (${y.restantes} restante(s))`; } } catch (e) { alert('Relève : ' + e.message); }
-        afficherReleve(k, d); };
+        afficherReleve(k, d, ph); };
       $('#am-releve-import').onclick = () => { $('#imp-mois').value = d.getMonth() + 1; $('#imp-annee').value = d.getFullYear(); if (S.majCompleter) S.majCompleter(); vue('import'); recupererZimbra(); };
+      if ($('#am-auto')) $('#am-auto').onclick = async () => {
+        $('#imp-mois').value = d.getMonth() + 1; $('#imp-annee').value = d.getFullYear(); if (S.majCompleter) S.majCompleter();
+        S.fichiers = []; $('#liste-fichiers').innerHTML = ''; vue('import');
+        await recupererZimbra();
+        // Mois déjà enregistré : on complète seulement avec les nouveaux fichiers (Cosium exige un import complet)
+        if ($('#imp-completer').checked && !$('#lbl-completer').hidden) { S.fichiers = S.fichiers.filter(f => !/OPTI\d+.*\.zip$/i.test(f.name)); ajouterFichiers([]); }
+        if (!S.fichiers.length) { $('#calc-info').textContent = 'Aucun nouveau fichier à intégrer.'; return; }
+        await calculer();
+        $('#calc-info').textContent = 'Calcul automatique terminé : vérifie le rapport (et ajoute visites, avoirs, OC Mobile, Lyleoo si besoin), puis « Enregistrer la photo du mois ».';
+        $('#btn-enregistrer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
     } catch (e) { z.innerHTML = `<p class="muted" style="margin-top:12px">Relève de la boîte mail : ${esc(e.message)}</p>`; }
   }
   async function afficherAccueil() {
@@ -1092,7 +1113,7 @@
       }).join('');
       $('#am-resume').textContent = ph ? `Mois calculé le ${new Date(ph.genereLe).toLocaleDateString('fr-FR')} · ${nRecu} source(s) reçue(s)` + (nRetard ? ` · ${nRetard} en retard` : '') : `Pas encore calculé` + (nRetard ? ` · ${nRetard} source(s) attendue(s) en retard` : '');
       $('#am-import').onclick = () => { $('#imp-mois').value = d.getMonth() + 1; $('#imp-annee').value = d.getFullYear(); vue('import'); };
-      afficherReleve(k, d);
+      afficherReleve(k, d, ph);
     }
     // 2. Ce qui bouge
     const pays = [...new Set(S.ref.filter(r => r.actif === 'Oui').map(r => r.pays))].sort();
