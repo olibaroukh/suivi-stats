@@ -565,7 +565,7 @@
   const FRANCH = ['ca', 'optique', 'audio'].map(t => ({ perim: 'franchises', theme: t }));
   const DIFFUSION_DEFAUT = { jour: 2, destinataires: [
     { nom: 'Olivier Baroukh', email: 'olivier.baroukh@optical-center.com', ecrans: [SIEGE, ...SUCC, { special: 'mlme', lib: 'Managers Leaders & Magasins d’Excellence' }, { perim: 'ocm', theme: 'ocmAct' }] },
-    { nom: 'Laurent Levy', email: 'laurent.levy@optical-center.com', ecrans: [SIEGE, ...SUCC, ...FRANCH, ...INTER] },
+    { nom: 'Laurent Levy', email: 'laurent.levy@optical-center.com', ecrans: [SIEGE, ...SUCC, ...FRANCH, ...INTER, { special: 'mlme', lib: 'Managers Leaders & Magasins d’Excellence' }, { perim: 'ocm', theme: 'ocmAct' }] },
     { nom: 'Sacha Assola', email: 'sacha.assola@optical-center.com', ecrans: [SIEGE, ...FRANCH] },
     { nom: 'Cécilia Lecomte', email: 'cecilia.lecomte@optical-center.com', exclurePays: ['ISRAEL', 'ISRAËL'], ecrans: [SIEGE, ...INTER] },
   ] };
@@ -634,7 +634,36 @@
     $('#carte-diffusion').hidden = false;
     const conf = await confDiffusion();
     if (!CK.perims || !CK.perims.length) remplirPerimetres();
-    $('#dif-liste').innerHTML = `<table class="statuts"><thead><tr><th>Destinataire</th><th>Écrans</th></tr></thead><tbody>${conf.destinataires.map(d => `<tr><td><b>${esc(d.nom)}</b><br><span class="muted">${esc(d.email)}</span></td><td>${d.ecrans.map(e => esc(libEcran(e))).join('<br>')}${d.exclurePays ? `<br><span class="muted">hors ${esc(d.exclurePays[0])}</span>` : ''}</td></tr>`).join('')}</tbody></table>`;
+    // 07/11/2026 : éditeur des destinataires et de leurs écrans (enregistré dans config/diffusion.json)
+    let cfg = JSON.parse(JSON.stringify(conf)), modifie = false;
+    const perimsDif = () => CK.perims.filter(p => !p.special || p.id === 'siege');
+    const dessiner = () => {
+      const optPerim = perimsDif().map(p => `<option value="${esc(p.id)}">${esc(p.lib)}</option>`).join('') + '<option value="__mlme">Managers Leaders & Magasins d’Excellence</option>';
+      $('#dif-liste').innerHTML = `<table class="statuts dif-ed"><thead><tr><th>Destinataire</th><th>Écrans (dans l’ordre du PDF)</th></tr></thead><tbody>${cfg.destinataires.map((d, i) => `<tr>
+        <td><input data-d="${i}" data-k="nom" value="${esc(d.nom)}" placeholder="Nom"><input data-d="${i}" data-k="email" value="${esc(d.email)}" placeholder="adresse e-mail">
+          <label class="muted">Pays exclus <input data-d="${i}" data-k="exclurePays" value="${esc((d.exclurePays || []).join(', '))}" placeholder="ex. ISRAEL"></label>
+          <a href="#" data-sup="${i}">Retirer ce destinataire</a></td>
+        <td>${d.ecrans.map((e, j) => `<div class="dif-e"><span>${esc(libEcran(e))}</span><a href="#" data-haut="${i},${j}" title="Monter">↑</a><a href="#" data-x="${i},${j}" title="Retirer">✕</a></div>`).join('')}
+          <div class="dif-aj"><select data-ap="${i}">${optPerim}</select><select data-at="${i}"></select><button data-aj="${i}">+ Ajouter l’écran</button></div></td></tr>`).join('')}</tbody></table>
+        <div class="ligne-outils"><button id="dif-nouveau">+ Ajouter un destinataire</button><button class="primaire" id="dif-sauver"${modifie ? '' : ' disabled'}>Enregistrer les modifications</button><span class="muted" id="dif-sauve-info"></span></div>`;
+      const themes = i => { const v = $(`[data-ap="${i}"]`).value, p = CK.perims.find(x => x.id === v);
+        $(`[data-at="${i}"]`).innerHTML = v === '__mlme' ? '<option value="">—</option>' : (p ? p.themes : []).map(t => `<option value="${t}">${t === 'siege' ? 'Synthèse réseau' : Cockpit.THEMES[t].lib}</option>`).join(''); };
+      cfg.destinataires.forEach((d, i) => { $(`[data-ap="${i}"]`).onchange = () => themes(i); themes(i); });
+      const maj = () => { modifie = true; dessiner(); };
+      $('#dif-liste').querySelectorAll('input[data-d]').forEach(x => x.onchange = () => { const d = cfg.destinataires[+x.dataset.d];
+        d[x.dataset.k] = x.dataset.k === 'exclurePays' ? x.value.split(',').map(v => v.trim()).filter(Boolean) : x.value.trim(); if (x.dataset.k === 'exclurePays' && !d.exclurePays.length) delete d.exclurePays; modifie = true; $('#dif-sauver').disabled = false; });
+      $('#dif-liste').querySelectorAll('[data-x]').forEach(x => x.onclick = ev => { ev.preventDefault(); const [i, j] = x.dataset.x.split(',').map(Number); cfg.destinataires[i].ecrans.splice(j, 1); maj(); });
+      $('#dif-liste').querySelectorAll('[data-haut]').forEach(x => x.onclick = ev => { ev.preventDefault(); const [i, j] = x.dataset.haut.split(',').map(Number); if (!j) return; const l = cfg.destinataires[i].ecrans; [l[j - 1], l[j]] = [l[j], l[j - 1]]; maj(); });
+      $('#dif-liste').querySelectorAll('[data-aj]').forEach(x => x.onclick = () => { const i = +x.dataset.aj, v = $(`[data-ap="${i}"]`).value;
+        cfg.destinataires[i].ecrans.push(v === '__mlme' ? { special: 'mlme', lib: 'Managers Leaders & Magasins d’Excellence' } : { perim: v, theme: $(`[data-at="${i}"]`).value }); maj(); });
+      $('#dif-liste').querySelectorAll('[data-sup]').forEach(x => x.onclick = ev => { ev.preventDefault(); const d = cfg.destinataires[+x.dataset.sup]; if (confirm(`Retirer ${d.nom || 'ce destinataire'} de la diffusion ?`)) { cfg.destinataires.splice(+x.dataset.sup, 1); maj(); } });
+      $('#dif-nouveau').onclick = () => { cfg.destinataires.push({ nom: '', email: '', ecrans: [SIEGE] }); maj(); };
+      $('#dif-sauver').onclick = async () => {
+        const ko = cfg.destinataires.find(d => !d.nom || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)); if (ko) { $('#dif-sauve-info').textContent = 'Chaque destinataire doit avoir un nom et une adresse e-mail valide.'; return; }
+        await Store.ecrireJSON('config/diffusion.json', { jour: cfg.jour || 2, destinataires: cfg.destinataires }); modifie = false; dessiner();
+        $('#dif-sauve-info').textContent = '✓ Enregistré. Pensez à régénérer les PDF du mois si l’envoi n’est pas encore parti.'; };
+    };
+    dessiner();
     remplirMoisDiffusion();
     const info = t => { $('#dif-info').textContent = t; };
     const etat = async () => { try { const r = await Store.api('/diffusion/etat?mois=' + $('#dif-mois').value); const x = await r.json(); if (!r.ok) throw new Error(x.erreur || r.status);
