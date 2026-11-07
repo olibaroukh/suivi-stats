@@ -470,8 +470,15 @@ export class SuiviStatsInterne extends WorkerEntrypoint {
     const m = (await this.moisDisponibles())[0]; if (!m) return { mois: null, parMatricule: {} };
     const photo = await lireJSON(this.env, `donnees/${m}/photo.json`);
     const sv = (photo && photo.statsVendeurs) || {}, cle = x => String(x == null ? '' : x).trim().replace(/\.0+$/, '').replace(/^0+(?=\d)/, '');
+    // 07/11/2026 : % Unif individualisés du magasin (Lyris n'existe pas par vendeur) — repris pour chaque collaborateur
+    const magDe = {};
+    for (const [code, ls] of Object.entries((photo && photo.equipes) || {})) for (const pe of (ls || [])) { const k = cle(pe.matricule); if (k && !magDe[k]) magDe[k] = code; }
+    const unifMag = code => { const n = code && photo && photo.magasins && photo.magasins[code] && photo.magasins[code].N; return n && n.AH ? Math.round(1000 * (n.AI || 0) / n.AH) / 10 : null; };
     const parMatricule = {};
-    for (const x of (matricules || [])) { const s = sv[cle(x)]; if (s) parMatricule[String(x)] = s; }
+    for (const x of (matricules || [])) {
+      const k = cle(x), s = sv[k], u = unifMag(magDe[k]);
+      if (s || u != null) parMatricule[String(x)] = { ...(s || {}), unifIndivMag: u };
+    }
     return { mois: m, parMatricule };
   }
   // Export RH déposé par zimbra-relay quand Olivier l'importe dans bilan-passage (un seul dépôt par mois).
