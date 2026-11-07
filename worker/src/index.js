@@ -150,6 +150,7 @@ async function soap(jeton, corps) {
   if (!d || d.Body?.Fault) throw new Error(d?.Body?.Fault?.Reason?.Text || 'réponse invalide');
   return d.Body;
 }
+function structureParts(mp, out = [], prof = 0) { for (const p of mp || []) { out.push(`${'›'.repeat(prof)}${p.part || '?'} ${p.ct || ''}${p.filename ? ' «' + p.filename + '»' : ''}${p.cd ? ' ' + p.cd : ''}${p.s ? ' ' + p.s + 'o' : ''}`); if (p.mp) structureParts(p.mp, out, prof + 1); } return out; }
 function piecesDe(mp, out) { for (const p of mp || []) { if (p.filename && p.part) out.push({ part: p.part, nom: p.filename, taille: p.s || null, ct: p.ct || '' }); if (p.mp) piecesDe(p.mp, out); } return out; }
 // 07/11/2026 : seules les pièces dont le NOM DE FICHIER correspond à une source connue sont prises (jamais d'après l'objet du mail,
 // pour ne pas ramasser des pièces jointes personnelles : candidatures, RH…).
@@ -178,7 +179,7 @@ async function piecesDuMois(jeton, mois) {
         if (msg.d > fin || msg.d < debut || vus.has(msg.id)) continue;
         vus.add(msg.id);
         const sujet = msg.su || '';
-        if (/\d{2}\s*OPTI\s*\d+/i.test(sujet)) diag.mailsCosium++;
+        if (/\d{2}\s*OPTI\s*\d+/i.test(sujet)) { diag.mailsCosium++; if (!diag.exemple) diag.exemple = `« ${sujet} » : ` + (structureParts(msg.mp).join(' | ') || 'aucune partie renvoyée'); }
         for (const p of piecesDe(msg.mp, [])) {
           const type = typePiece(p.nom, sujet, p.ct);
           if (type) pieces.push({ id: msg.id, part: p.part, nom: p.nom, taille: p.taille, date: msg.d, sujet, type });
@@ -211,8 +212,8 @@ async function releverBoite(env, par) {
     await env.DB.prepare('DELETE FROM releve_pieces WHERE id = ? AND part = ?').bind(x.id, x.part).run(); purgees++;
   }
   const now = new Date(), vus = new Map();
-  let mailsCosium = 0;
-  for (const m of [moisDecale(now, -1), moisDecale(now, 0)]) { const l = await piecesDuMois(z.jeton, m); mailsCosium = Math.max(mailsCosium, (l.diag || {}).mailsCosium || 0); for (const p of l) vus.set(p.id + '|' + p.part, p); }
+  let mailsCosium = 0, exemple = '';
+  for (const m of [moisDecale(now, -1), moisDecale(now, 0)]) { const l = await piecesDuMois(z.jeton, m); mailsCosium = Math.max(mailsCosium, (l.diag || {}).mailsCosium || 0); if (!exemple && l.diag && l.diag.exemple) exemple = l.diag.exemple; for (const p of l) vus.set(p.id + '|' + p.part, p); }
   let nouvelles = 0, deja = 0, erreurs = 0, restantes = 0;
   const MAX_TELECHARGEMENTS = 30; // Cloudflare limite le nombre d'appels sortants par exécution : le reste est pris au passage suivant
   for (const p of vus.values()) {
@@ -231,7 +232,7 @@ async function releverBoite(env, par) {
     } catch (e) { erreurs++; console.error('relève', p.nom, e); }
   }
   const nbCos = [...vus.values()].filter(p => p.type === 'cosium').length;
-  const detail = `${vus.size} pièce(s) utiles dans la boîte (dont ${nbCos} ZIP Cosium, ${mailsCosium} mail(s) Cosium vus) · ${nouvelles} nouvelle(s) copiée(s) · ${deja} déjà relevée(s)${restantes ? ' · ' + restantes + ' restante(s) : relancez' : ''}${erreurs ? ' · ' + erreurs + ' erreur(s)' : ''}${purgees ? ' · ' + purgees + ' pièce(s) hors sources effacée(s)' : ''}`;
+  const detail = `${vus.size} pièce(s) utiles dans la boîte (dont ${nbCos} ZIP Cosium, ${mailsCosium} mail(s) Cosium vus) · ${nouvelles} nouvelle(s) copiée(s) · ${deja} déjà relevée(s)${restantes ? ' · ' + restantes + ' restante(s) : relancez' : ''}${erreurs ? ' · ' + erreurs + ' erreur(s)' : ''}${purgees ? ' · ' + purgees + ' pièce(s) hors sources effacée(s)' : ''}${!nbCos && exemple ? ' · structure d’un mail Cosium : ' + exemple.slice(0, 600) : ''}`;
   await env.DB.prepare('INSERT INTO releve_journal (le, par, statut, detail) VALUES (?, ?, ?, ?)').bind(Date.now(), par, erreurs ? 'partiel' : 'ok', detail).run();
   return { ok: true, nouvelles, deja, erreurs, restantes, detail };
 }
