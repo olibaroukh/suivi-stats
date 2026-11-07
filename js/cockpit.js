@@ -91,6 +91,8 @@
   };
 
   const THEMES = {
+    // 07/11/2026 : activité OC Mobile (base de l'artefact « Activité OCM », fichier mensuel préparé par Claude)
+    ocmAct: { lib: 'Activité OC Mobile', cols: [], tri: 'code', special: true },
     complet: { lib: 'CA · Optique · Audio · Rentabilité', tri: 'ca',
       sections: [
         { lib: 'Chiffre d’affaires · Optique · Audio', groupes: [['Chiffre d’affaires', ['obj', 'ca', 'posit', 'evolCa']], ['Optique', ['ndv', 'evolNdv', 'panier', 'tc', 'sop', 'mdc', 'pcPct', 'pm1']], ['Audio', ['caAudio', 'evolAudio', 'protheses', 'pmProt', 'tcA', 'vadd', 'depist']]] },
@@ -126,7 +128,7 @@
     [...new Set(act.filter(succFr).map(r => r.ar))].filter(Boolean).sort().forEach(a =>
       out.push({ id: 'ar:' + a, lib: 'AR – ' + a, groupeLib: 'France', filtre: r => succFr(r) && r.ar === a, themes: ['complet', 'ca', 'optique', 'audio', 'restes', 'renta'] }));
     out.push({ id: 'paris', lib: 'Paris', groupeLib: 'France', filtre: r => PARIS.includes(String(r.code)), sousTotal: r => r.ar, themes: ['complet', 'ca', 'optique', 'audio', 'restes', 'renta'] });
-    out.push({ id: 'ocm', lib: 'OCM (camions succursales)', groupeLib: 'France', filtre: r => fr(r) && norm(r.ar) === 'OCM', themes: ['ca', 'optique', 'audio', 'restes'] });
+    out.push({ id: 'ocm', lib: 'OCM (camions succursales)', groupeLib: 'France', filtre: r => fr(r) && norm(r.ar) === 'OCM', themes: ['ocmAct', 'ca', 'optique', 'audio', 'restes'] });
     out.push({ id: 'franchises', lib: 'Franchises France – par franchisé', groupeLib: 'Franchises', filtre: r => fr(r) && r.type === 'Franchise', regrouper: r => r.groupe, multiPages: true, themes: ['complet', 'ca', 'optique', 'audio'] });
     const grp = {}; act.filter(r => fr(r) && r.type === 'Franchise').forEach(r => { grp[r.groupe] = (grp[r.groupe] || 0) + 1; });
     Object.keys(grp).filter(g => grp[g] >= 2).sort().forEach(g =>
@@ -142,6 +144,7 @@
   function construire(photo, ref, perim, themeId, opts = {}) {
     const m = photo.mois, taux = Object.assign({}, TAUX_DEFAUT, opts.taux || {});
     if (perim.special === 'siege') return construireSiege(photo, ref, taux, Object.assign({}, SIEGE_DEFAUT, opts.siege || {}));
+    if (themeId === 'ocmAct') return construireOcmAct(photo, ref, perim);
     let th = THEMES[themeId];
     // Confidence : colonnes construites à partir des listes choisies (nombre de clients contactés + taux), global = somme des listes choisies
     const CF_CT = ['ZA', 'ZB', 'ZC', 'ZD', 'ZE', 'ZF'], CF_TOT = ['ZG', 'ZH', 'ZI', 'ZJ', 'ZK', 'ZL'];
@@ -316,6 +319,7 @@
     const pied = `<footer class="ck-pied"><span>Optical Center · Suivi statistique · généré le ${new Date().toLocaleDateString('fr-FR')}</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span><span>N-1 : même période de l’année précédente${md.multi || md.type === 'siege' ? ' · totaux multi-devises convertis en € (taux en Réglages)' : ''}</span></footer>`;
 
     if (md.type === 'siege') return rendreSiege(md, { esc, f, nb, entete, pied });
+    if (md.type === 'ocmAct') return rendreOcmAct(md, { esc, f, nb, logo, pied, MOIS });
 
     const cl = (k, v, obj) => {
       const c = COL[k]; let ref = c.obj ? obj[c.obj] : c.seuil;
@@ -504,6 +508,105 @@
   }
 
   const LISTES_CONF_DEFAUT = ['Rappel Devis Optique', 'Rappel Optique N+1', 'Rappel Audio N+4'];
+
+  // ===== Activité OC Mobile =====
+  // photo.ocmActivite = { mois: 'AAAA-MM', arretes, ocm: { Ville: { mois: { 'AAAA-MM': { relevés Antsroute, CA Cosium (k€), transformation } }, potentiel } } }
+  function construireOcmAct(photo, ref, perim) {
+    const A = photo.ocmActivite || null;
+    if (!A) return { type: 'ocmAct', photo, perim, vide: true };
+    const m = A.mois, [an, mo] = m.split('-').map(Number), pm = mo > 1 ? `${an}-${String(mo - 1).padStart(2, '0')}` : null;
+    const camions = ref.filter(r => perim.filtre ? perim.filtre(r) : true);
+    const S = (l, k) => l.reduce((a, x) => a + (+(x && x[k]) || 0), 0);
+    const lignes = [], inactifs = [];
+    for (const [ville, v] of Object.entries(A.ocm).sort((a, b) => a[0].localeCompare(b[0], 'fr'))) {
+      const ms = v.mois || {}, x = ms[m] || {}, p = (pm && ms[pm]) || {};
+      if (!x.rdv) { inactifs.push(ville); continue; }
+      const cumul = Object.keys(ms).filter(k => k <= m).map(k => ms[k]);
+      const po = v.potentiel || {};
+      const r = camions.find(c => norm(c.magasin).includes(norm(ville)));
+      const n = r && photo.magasins[String(r.code)] ? photo.magasins[String(r.code)].N || {} : null;
+      lignes.push({ ville, code: r ? String(r.code) : '', x, p,
+        rdvDelta: p.rdv != null ? x.rdv - p.rdv : null, rdvJour: x.jours ? x.rdv / x.jours : null,
+        tauxAnnul: (x.rdv || 0) + (x.annulations || 0) ? (x.annulations || 0) / ((x.rdv || 0) + (x.annulations || 0)) : null,
+        attM: x.objectif ? x.ca / x.objectif : null, attA: x.objectifAnnuel ? x.caAnnuel / x.objectifAnnuel : null,
+        evolA: x.caAnnuelN1 ? x.caAnnuel / x.caAnnuelN1 - 1 : null,
+        dep: S(cumul, 'depistInd'), tr: S(cumul, 'transformes'),
+        pot: { vNb: po.faNonFactNb || 0, vEur: po.faNonFactEur || 0, lNb: po.faFactNonLivreNb || 0, lEur: po.faFactNonLivreEur || 0, dNb: po.vnDevisNb || 0, dEur: po.vnDevisEur || 0,
+          retard: po.faRetardNb || 0, vns: po.vnNb || 0, renouv: po.vnRenDueNb || 0 },
+        posit: n ? COL.posit.f(n, null, photo.mois) : null, mrq: n ? n.CK : null, indus: n ? n.BV : null });
+    }
+    lignes.forEach(l => { l.potTot = l.pot.vEur + l.pot.lEur + l.pot.dEur; });
+    const T = k => lignes.reduce((a, l) => a + (+l.x[k] || 0), 0);
+    const tot = { rdv: T('rdv'), rdvPrec: lignes.reduce((a, l) => a + (+l.p.rdv || 0), 0), jours: T('jours'), deplacements: T('deplacements'), annulations: T('annulations'), ventes: T('ventes'),
+      ca: T('ca'), objectif: T('objectif'), caAnnuel: T('caAnnuel'), objectifAnnuel: T('objectifAnnuel'), caAnnuelN1: T('caAnnuelN1'),
+      livraisons: T('livraisons'), depistages: T('depistages'), reglages: T('reglages'), demarchages: T('demarchages'), autres: T('autres'),
+      dep: lignes.reduce((a, l) => a + l.dep, 0), tr: lignes.reduce((a, l) => a + l.tr, 0), potTot: lignes.reduce((a, l) => a + l.potTot, 0) };
+    ['vNb', 'vEur', 'lNb', 'lEur', 'dNb', 'dEur', 'retard', 'vns', 'renouv'].forEach(k => { tot['pot_' + k] = lignes.reduce((a, l) => a + l.pot[k], 0); });
+    // CA mois par mois (OCM actifs du mois) : réalisé, objectif, N-1
+    const serie = [];
+    for (let i = 1; i <= mo; i++) { const k = `${an}-${String(i).padStart(2, '0')}`; let ca = 0, ob = 0, n1 = 0;
+      lignes.forEach(l => { const y = (A.ocm[l.ville].mois || {})[k] || {}; ca += +y.ca || 0; ob += +y.objectif || 0; n1 += +y.caN1 || 0; }); serie.push({ mois: i, ca, ob, n1 }); }
+    const partiel = lignes.some(l => l.x.partiel);
+    return { type: 'ocmAct', photo, perim, A, mois: m, an, mo, lignes, tot, inactifs, serieCa: serie, partiel };
+  }
+
+  function rendreOcmAct(md, { esc, f, nb, logo, pied, MOIS }) {
+    const isoFr = iso => iso ? String(iso).slice(0, 10).split('-').reverse().join('/') : '–';
+    if (md.vide) return `<div class="cockpit"><header class="ck-head"><img src="${logo}" alt=""><div class="ck-t"><div class="ck-label">À fin ${esc(MOIS[md.photo.mois - 1])} ${md.photo.annee}</div><h1>${esc(md.perim.lib)}</h1></div><div class="ck-theme">Activité OC Mobile</div></header>
+      <p class="muted" style="padding:30px 0">Aucune donnée d’activité OC Mobile pour ce mois : déposez le fichier « ocm-activite_AAAA-MM.json » (préparé par Claude depuis l’artefact) dans Import du mois, puis « Compléter » et enregistrez.</p>${pied}</div>`;
+    const a = md.A.arretes || {}, t = md.tot;
+    const pc = v => v == null || isNaN(v) ? '–' : nb(v * 100) + ' %';
+    const sg = v => v == null ? '' : v > 0 ? '+' + nb(v) : v < 0 ? '−' + nb(-v) : '=';
+    const k = v => v == null ? '–' : nb(v, 1) + '\u202fk€';
+    const att = v => v == null ? '' : v >= 1 ? 'ok' : v < 0.8 ? 'ko' : 'moy';
+    const rythme = md.mo / 12;
+    const titre = `${MOIS[md.mo - 1].replace(/^./, c => c.toUpperCase())} ${md.an} · relevés Antsroute au ${isoFr(a.releves)} · CA Cosium au ${isoFr(a.cosium)}${md.partiel ? ' (mois partiel)' : ''} · CA potentiel au ${isoFr(a.potentiel)}`;
+    const vign = (v, l, s, c) => `<div class="ck-cpt oa-cpt"><div class="v ${c || ''}">${v}</div><div class="l">${esc(l)}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+    const dRdv = t.rdvPrec ? t.rdv - t.rdvPrec : null;
+    const vignettes = [
+      vign(nb(t.rdv), 'RDV effectués', dRdv == null ? '' : `${sg(dRdv)} vs ${MOIS[(md.mo + 10) % 12]}`),
+      vign(k(t.ca), 'CA du mois', `atteinte ${pc(t.objectif ? t.ca / t.objectif : null)}${md.partiel ? ' · partiel' : ''}`, att(t.objectif ? t.ca / t.objectif : null)),
+      vign(pc(t.objectifAnnuel ? t.caAnnuel / t.objectifAnnuel : null), 'Atteinte annuelle', `${k(t.caAnnuel)} · rythme ${pc(rythme)}`, t.objectifAnnuel && t.caAnnuel / t.objectifAnnuel >= rythme * 0.8 ? 'ok' : 'ko'),
+      vign(pc(t.dep ? t.tr / t.dep : null), 'Transformation des dépistages', `${nb(t.tr)} ventes / ${nb(t.dep)} dépistages depuis janvier`),
+      vign(nb(t.potTot) + ' €', 'CA potentiel', `dont ${nb(t.pot_vEur)} € de devis validés à facturer`)].join('');
+    // Courbe : CA mensuel (barres) et objectif (trait)
+    const W = 430, H = 118, mx = Math.max(1, ...md.serieCa.map(s => Math.max(s.ca, s.ob, s.n1))), bw = (W - 30) / 12;
+    const Y = v => H - 18 - (v / mx) * (H - 30);
+    const courbe = `<div class="ck-top oa-courbe"><div class="l">CA mois par mois (k€) · OCM actifs</div><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+      ${md.serieCa.map((s, i) => { const x = 20 + i * bw; return `<rect x="${(x + bw * 0.12).toFixed(1)}" y="${Y(s.n1).toFixed(1)}" width="${(bw * 0.34).toFixed(1)}" height="${(H - 18 - Y(s.n1)).toFixed(1)}" fill="#D9D3D1"/><rect x="${(x + bw * 0.48).toFixed(1)}" y="${Y(s.ca).toFixed(1)}" width="${(bw * 0.4).toFixed(1)}" height="${(H - 18 - Y(s.ca)).toFixed(1)}" fill="${s.ob && s.ca >= s.ob ? '#1E8A52' : '#E22F2A'}"/><text x="${(x + bw / 2).toFixed(1)}" y="${H - 5}" text-anchor="middle" class="sp-m">${['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'][i]}</text>`; }).join('')}
+      <polyline points="${md.serieCa.map((s, i) => `${(20 + i * bw + bw / 2).toFixed(1)},${Y(s.ob).toFixed(1)}`).join(' ')}" fill="none" stroke="#1A1A1A" stroke-width="1.5" stroke-dasharray="4 3"/>
+      </svg><div class="oa-leg"><span class="b r"></span>CA du mois <span class="b g"></span>N-1 <span class="t"></span>objectif</div></div>`;
+    const ligne1 = l => `<tr><td class="nm"><b>${esc(l.ville)}</b><small>${esc(l.code)}</small></td>
+      <td class="zg0 sep">${nb(l.x.rdv)}</td><td class="zg0 ${l.p.rdv && l.rdvDelta / l.p.rdv < -0.2 ? 'ko' : ''}">${sg(l.rdvDelta)}</td><td class="zg0">${nb(l.rdvJour, 1)}</td><td class="zg0">${nb(l.x.deplacements)}</td><td class="zg0 ${l.x.annulations > 5 ? 'ko' : ''}">${nb(l.x.annulations)} <small>${pc(l.tauxAnnul)}</small></td>
+      <td class="zg1 sep">${nb(l.x.ventes)}</td><td class="zg1 fort">${k(l.x.ca)}</td><td class="zg1 ${att(l.attM)}">${pc(l.attM)}</td><td class="zg1">${k(l.x.caAnnuel)}</td><td class="zg1 ${att(l.attA == null ? null : l.attA / rythme)}">${pc(l.attA)}</td><td class="zg1 ${l.evolA == null ? '' : l.evolA >= 0 ? 'ok' : 'ko'}">${l.evolA == null ? '–' : (l.evolA > 0 ? '+' : '') + nb(l.evolA * 100, 1) + ' %'}</td>
+      <td class="zg2 sep">${pc(l.dep ? l.tr / l.dep : null)} <small>${nb(l.tr)} / ${nb(l.dep)}</small></td>
+      <td class="zg3 sep ${l.posit == null ? '' : l.posit >= 1 ? 'ok' : 'ko'}">${pc(l.posit)}</td><td class="zg3">${l.mrq == null ? '–' : nb(l.mrq)}</td><td class="zg3 ${l.indus == null ? '' : l.indus <= 0.01 ? 'ok' : l.indus > 0.02 ? 'ko' : ''}">${l.indus == null ? '–' : nb(l.indus * 100, 2) + ' %'}</td></tr>`;
+    const tot1 = `<tr class="tot"><td class="nm"><b>TOTAL</b><small>${md.lignes.length} OCM</small></td><td class="zg0 sep">${nb(t.rdv)}</td><td class="zg0">${sg(dRdv)}</td><td class="zg0">${nb(t.jours ? t.rdv / t.jours : null, 1)}</td><td class="zg0">${nb(t.deplacements)}</td><td class="zg0">${nb(t.annulations)} <small>${pc(t.rdv + t.annulations ? t.annulations / (t.rdv + t.annulations) : null)}</small></td>
+      <td class="zg1 sep">${nb(t.ventes)}</td><td class="zg1">${k(t.ca)}</td><td class="zg1">${pc(t.objectif ? t.ca / t.objectif : null)}</td><td class="zg1">${k(t.caAnnuel)}</td><td class="zg1">${pc(t.objectifAnnuel ? t.caAnnuel / t.objectifAnnuel : null)}</td><td class="zg1">${t.caAnnuelN1 ? (t.caAnnuel / t.caAnnuelN1 - 1 > 0 ? '+' : '') + nb((t.caAnnuel / t.caAnnuelN1 - 1) * 100, 1) + ' %' : '–'}</td>
+      <td class="zg2 sep">${pc(t.dep ? t.tr / t.dep : null)} <small>${nb(t.tr)} / ${nb(t.dep)}</small></td><td class="zg3 sep"></td><td class="zg3"></td><td class="zg3"></td></tr>`;
+    const tab1 = `<table class="ck-liste ck-multi oa-t" style="--h:24px;--fs:10.5px"><thead>
+      <tr class="grp"><th class="nm"></th><th colspan="5" class="sep zg0">Activité Antsroute</th><th colspan="6" class="sep zg1">Chiffre d’affaires Cosium</th><th class="sep zg2">Dépistages</th><th colspan="3" class="sep zg3">Suivi Stats</th></tr>
+      <tr><th class="nm">OCM</th><th class="sep zg0">RDV</th><th class="zg0">vs mois préc.</th><th class="zg0">RDV / jour</th><th class="zg0">Déplac.</th><th class="zg0">Annulations</th><th class="sep zg1">Ventes</th><th class="zg1">CA du mois</th><th class="zg1">Atteinte mois</th><th class="zg1">CA cumulé</th><th class="zg1">Atteinte ann.</th><th class="zg1">Cumul vs N-1</th><th class="sep zg2">Transfo.</th><th class="sep zg3">Positionnement</th><th class="zg3">Mr Qualité</th><th class="zg3">Taux d’indus</th></tr></thead>
+      <tbody>${md.lignes.map(ligne1).join('')}${tot1}</tbody></table>`;
+    const e = (n, eur) => `${nb(n)} <small>${nb(eur)} €</small>`;
+    const ligne2 = l => `<tr><td class="nm"><b>${esc(l.ville)}</b><small>${esc(l.code)}</small></td>
+      <td class="zg4 sep">${nb(l.x.livraisons)}</td><td class="zg4">${nb(l.x.depistages)}</td><td class="zg4">${nb(l.x.reglages)}</td><td class="zg4">${nb(l.x.ventes)}</td><td class="zg4">${nb(l.x.demarchages)}</td><td class="zg4">${nb(l.x.autres)}</td>
+      <td class="zg5 sep">${e(l.pot.vNb, l.pot.vEur)}</td><td class="zg5">${e(l.pot.lNb, l.pot.lEur)}</td><td class="zg5">${e(l.pot.dNb, l.pot.dEur)}</td><td class="zg5 fort">${nb(l.potTot)} €</td><td class="zg5 ${l.pot.retard ? 'ko' : ''}">${nb(l.pot.retard)}</td><td class="zg5">${nb(l.pot.vns)}</td><td class="zg5">${nb(l.pot.renouv)}</td></tr>`;
+    const tot2 = `<tr class="tot"><td class="nm"><b>TOTAL</b></td><td class="zg4 sep">${nb(t.livraisons)}</td><td class="zg4">${nb(t.depistages)}</td><td class="zg4">${nb(t.reglages)}</td><td class="zg4">${nb(t.ventes)}</td><td class="zg4">${nb(t.demarchages)}</td><td class="zg4">${nb(t.autres)}</td>
+      <td class="zg5 sep">${e(t.pot_vNb, t.pot_vEur)}</td><td class="zg5">${e(t.pot_lNb, t.pot_lEur)}</td><td class="zg5">${e(t.pot_dNb, t.pot_dEur)}</td><td class="zg5">${nb(t.potTot)} €</td><td class="zg5">${nb(t.pot_retard)}</td><td class="zg5">${nb(t.pot_vns)}</td><td class="zg5">${nb(t.pot_renouv)}</td></tr>`;
+    const tab2 = `<table class="ck-liste ck-multi oa-t" style="--h:24px;--fs:10.5px"><thead>
+      <tr class="grp"><th class="nm"></th><th colspan="6" class="sep zg4">Répartition des RDV par activité</th><th colspan="7" class="sep zg5">CA potentiel à aller chercher (TTC)</th></tr>
+      <tr><th class="nm">OCM</th><th class="sep zg4">Livraisons</th><th class="zg4">Dépistages</th><th class="zg4">Réglages / SAV</th><th class="zg4">Ventes</th><th class="zg4">Démarchages</th><th class="zg4">Autres</th><th class="sep zg5">Devis validés à facturer</th><th class="zg5">Facturés à livrer</th><th class="zg5">Devis non validés</th><th class="zg5">Total</th><th class="zg5">Dossiers en retard</th><th class="zg5">Ventes sans suite</th><th class="zg5">Renouv. à relancer</th></tr></thead>
+      <tbody>${md.lignes.map(ligne2).join('')}${tot2}</tbody></table>`;
+    return `<div class="cockpit oa">
+      <header class="ck-head"><img src="${logo}" alt=""><div class="ck-t"><div class="ck-label">${esc(titre)}</div><h1>${esc(md.perim.lib)}</h1></div><div class="ck-theme">Activité OC Mobile</div></header>
+      <div class="ck-haut"><div class="ck-cpts oa-cpts">${vignettes}</div><div class="ck-tops">${courbe}</div></div>
+      <section class="ck-sec"><h2><span>Activité et résultats du mois</span></h2>${tab1}</section>
+      <section class="ck-sec"><h2><span>Répartition de l’activité et CA potentiel</span></h2>${tab2}</section>
+      <p class="oa-note">Source : artefact « Activité OCM » (relevés Antsroute, CA Cosium en k€ HT, CA potentiel TTC hors dossiers masqués). Transformation : dépistage individuel suivi d’une vente dans les 8 semaines, cumul depuis janvier. Atteinte annuelle comparée au rythme régulier (${pc(rythme)} à fin ${MOIS[md.mo - 1]}).${md.inactifs.length ? ' OCM sans activité ce mois : ' + md.inactifs.map(esc).join(', ') + '.' : ''}</p>
+      ${pied}</div>`;
+  }
+
   const api = { definirParis, paris: () => PARIS.slice(), LISTES_CONF_DEFAUT, SIEGE_DEFAUT, perimetres, construire, rendre, THEMES, COL, TAUX_DEFAUT, DEVISE_SYM, agreger, W_PAGE, H_PAGE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Cockpit = api;
 })(typeof self !== 'undefined' ? self : this);
