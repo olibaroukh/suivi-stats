@@ -705,3 +705,8 @@ body.mode-cloud .mode-cloud-seul{display:block}
 
 /* 06/11/2026 : fiche — séparation panier / nombre de ventes dans les tableaux optique et audio */
 .fiche table.kpi tbody tr.coupure{border-top:2px solid var(--n)}
+
+/* 07/11/2026 : lien présenté comme un bouton (Activité OCM) */
+a.bouton{font:inherit;font-weight:600;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 16px;color:var(--ink);text-decoration:none;display:inline-block}
+a.bouton:hover{border-color:var(--ink)}
+a.bouton[hidden]{display:none}

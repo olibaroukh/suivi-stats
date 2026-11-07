@@ -483,6 +483,8 @@
     $('#ck-theme').innerHTML = p.themes.map(t => `<option value="${t}">${t === 'siege' ? 'Synthèse réseau' : Cockpit.THEMES[t].lib}</option>`).join('');
     if (p.themes.includes(avant)) $('#ck-theme').value = avant;
     $('#ck-theme').disabled = p.themes.length < 2; $('#ck-tri').disabled = !!p.special;
+    // 07/11/2026 : lien vers l'artefact « Activité OCM » quand le périmètre OCM est choisi
+    if ($('#ck-ocm-lien')) $('#ck-ocm-lien').hidden = p.id !== 'ocm';
   }
   function ajusterCockpit(page) {
     const b = page.querySelector('.ck-blocs');
