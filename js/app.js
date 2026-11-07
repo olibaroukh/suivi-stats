@@ -1012,7 +1012,16 @@
 
   // ---------- Accès magasins : codes PIN ----------
   const PIN = { liste: [], choix: new Set() };
+  async function afficherCleUsage() {
+    const z = $('#cle-usage'); if (!z) return;
+    try { const r = await Store.api('/relais/cle-usage'); const x = await r.json(); if (!r.ok || !x.ok) throw new Error(x.erreur || x.error || r.status);
+      const tot = x.lignes.reduce((a, l) => a + l.nb, 0);
+      $('#cle-resume').textContent = x.lignes.length ? `· ${tot} appel(s) sur 14 jours, ${new Set(x.lignes.map(l => l.appli)).size} appli(s)` : '· aucun appel (depuis le début de l’observation)';
+      z.innerHTML = x.lignes.length ? `<table class="statuts"><thead><tr><th>Appli</th><th>Route</th><th>Appels</th><th>Dernier</th></tr></thead><tbody>${x.lignes.map(l => `<tr><td>${esc(l.appli)}</td><td>${esc(l.chemin)}</td><td>${l.nb}</td><td>${esc(l.dernier)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Aucun appel avec la seule clé partagée.</p>';
+    } catch (e) { $('#cle-resume').textContent = '· ' + e.message; }
+  }
   async function brancherPins() {
+    afficherCleUsage();
     if (!(Store.cloud() && Store.estAdmin())) return;
     $('#carte-pins').hidden = false;
     const dessiner = () => {

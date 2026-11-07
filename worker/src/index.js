@@ -552,6 +552,11 @@ async function routes(request, env) {
     } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
   }
 
+  // 07/11/2026 : appels des applis terrain qui n'utilisent encore que la clé partagée (préparation de la partie D)
+  if (chemin === '/relais/cle-usage' && admin) {
+    if (!env.RELAIS || typeof env.RELAIS.cleUsage !== 'function') return erreur('Lien interne vers zimbra-relay absent', 500, h);
+    try { return json(await env.RELAIS.cleUsage(), 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
+  }
   // Données de zimbra-relay lues côté serveur par le lien interne RELAIS (administrateurs)
   if (chemin === '/relais/google' || chemin === '/relais/sante' || chemin === '/relais/bilans') {
     if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
