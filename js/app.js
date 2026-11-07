@@ -253,6 +253,7 @@
     }
     if (srcs.rh && srcs.rh.statut === 'recu') { photo.rh = np.rh; photo.equipes = np.equipes; photo.sources.rh = srcs.rh; maj.push('Export RH'); }
     if (srcs.stat_indiv && srcs.stat_indiv.statut === 'recu') { photo.statsVendeurs = np.statsVendeurs; photo.equipes = np.equipes; photo.sources.stat_indiv = srcs.stat_indiv; maj.push('Stats par vendeur'); }
+    if (srcs.ocm_act && srcs.ocm_act.statut === 'recu') { photo.ocmActivite = np.ocmActivite; photo.sources.ocm_act = srcs.ocm_act; maj.push(Pipeline.LIBELLE_SOURCE.ocm_act); }
     for (const s of ['lyleoo', 'ocm', 'site']) if (srcs[s] && srcs[s].statut === 'recu' && !maj.includes(Pipeline.LIBELLE_SOURCE[s])) { photo.sources[s] = srcs[s]; maj.push(Pipeline.LIBELLE_SOURCE[s]); }
     if (srcs.site && srcs.site.statut === 'recu' && np.groupe && np.groupe.site) photo.groupe = Object.assign({}, photo.groupe, { site: np.groupe.site });
     photo.genereLe = new Date().toISOString(); photo.completeLe = photo.genereLe;

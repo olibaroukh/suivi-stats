@@ -24,7 +24,7 @@
   const LIBELLE_SOURCE = {
     cosium_n: 'Cosium – année en cours', cosium_n1: 'Cosium – année précédente (N-1)', marges: 'Marges produits', renta_sal: 'Renta salariale',
     restes_dus: 'Restes dus (taux d’indus)', confidence: 'Confidence', visites_presc: 'Visites prescripteurs', visites_ce: 'Visites CE',
-    avoirs: 'Avoirs', mr_qualite: 'Mr Qualité (score global)', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', site: 'Site internet', rh: 'Export RH', stat_indiv: 'Cosium – stats par vendeur', sante: 'Score santé (dashboard)', bilans: 'Bilans de passage (actions)',
+    avoirs: 'Avoirs', mr_qualite: 'Mr Qualité (score global)', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', ocm_act: 'Activité OC Mobile (artefact)', site: 'Site internet', rh: 'Export RH', stat_indiv: 'Cosium – stats par vendeur', sante: 'Score santé (dashboard)', bilans: 'Bilans de passage (actions)',
   };
   // Colonnes N-1 utiles à la fiche (évolutions)
   const COLS_N1 = ['P','Q','R','U','V','AF','AW','AY','AX'];
@@ -103,6 +103,11 @@
         const ty = typeClasseur(wb);
         if (!ty) { ignores.push(it.nom + ' (classeur non reconnu)'); continue; }
         (autres[ty] = autres[ty] || []).push({ nom: it.nom, wb, buf: it.buf });
+      } else if (/\.json$/i.test(it.nom)) {
+        // 07/11/2026 : activité OC Mobile préparée par Claude depuis la base de l'artefact « Activité OCM »
+        let d = null; try { d = JSON.parse(texte(it.buf)); } catch (e) { /* pas du JSON */ }
+        if (d && d.type === 'ocm-activite' && d.ocm) { if (!autres.ocm_act || String(d.genereLe) >= String(autres.ocm_act.genereLe)) autres.ocm_act = d; }
+        else ignores.push(it.nom + ' (JSON non reconnu)');
       } else ignores.push(it.nom);
     }
 
@@ -227,6 +232,14 @@
       }
       if (!sources.cosium_n1 || sources.cosium_n1.statut === 'absent') { for (const c in mag) if (photoPrecedente.magasins[c]) mag[c].N1 = photoPrecedente.magasins[c].N1 || {}; }
     }
+    // Activité OC Mobile (artefact) : fichier du mois, sinon celui du mois précédent
+    let ocmActivite = null;
+    if (autres.ocm_act) {
+      ocmActivite = autres.ocm_act; const mm = `${annee}-${String(mois).padStart(2, '0')}`;
+      if (ocmActivite.mois !== mm) alertes.push(`Activité OCM : fichier de ${ocmActivite.mois} (mois traité : ${mm})`);
+      const actifs = Object.values(ocmActivite.ocm).filter(v => ((v.mois || {})[ocmActivite.mois] || {}).rdv).length, a = ocmActivite.arretes || {};
+      sources.ocm_act = { statut: 'recu', detail: `${actifs} OCM actifs en ${ocmActivite.mois}${a.releves ? ' · relevés au ' + a.releves : ''}${a.cosium ? ' · CA au ' + a.cosium : ''}${a.potentiel ? ' · CA potentiel au ' + a.potentiel : ''}` };
+    } else if (photoPrecedente && photoPrecedente.ocmActivite) { ocmActivite = photoPrecedente.ocmActivite; sources.ocm_act = { statut: 'repris', detail: `fichier de ${ocmActivite.mois}` }; }
     for (const s in LIBELLE_SOURCE) if (!sources[s] && s !== 'sante' && s !== 'bilans') sources[s] = { statut: 'absent' };
 
     // 7. Contrôles
@@ -272,7 +285,7 @@
       for (const c in demo) if (mag[c] && mag[c].N) Object.assign(mag[c].N, demo[c]);
       personnes = personnes.map(({ genre, naissance, ...reste }) => reste);
     }
-    const photo = { version: 2, annee, mois, genereLe: new Date().toISOString(), sources, magasins: mag, groupe, rh: personnes, statsVendeurs: stats, equipes };
+    const photo = { version: 2, annee, mois, genereLe: new Date().toISOString(), sources, magasins: mag, groupe, rh: personnes, statsVendeurs: stats, equipes, ocmActivite };
     return { photo, etatAnnee: etat, rapport: { journal, alertes, ignores, listesConfidence: listesTrouvees, sources } };
   }
 

@@ -710,3 +710,17 @@ body.mode-cloud .mode-cloud-seul{display:block}
 a.bouton{font:inherit;font-weight:600;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 16px;color:var(--ink);text-decoration:none;display:inline-block}
 a.bouton:hover{border-color:var(--ink)}
 a.bouton[hidden]{display:none}
+
+/* 07/11/2026 : cockpit Activité OC Mobile */
+.cockpit.oa .oa-cpts{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.cockpit.oa .oa-cpt .v{font-size:24px}
+.cockpit.oa .oa-cpt .v.ok{color:#1E8A52}.cockpit.oa .oa-cpt .v.ko{color:#E22F2A}.cockpit.oa .oa-cpt .v.moy{color:#D9822B}
+.cockpit.oa .oa-cpt .s{font-size:9.5px;color:#6B6B6B;margin-top:3px;line-height:1.25}
+.cockpit.oa .oa-courbe svg{display:block}
+.cockpit.oa .oa-leg{font-size:9px;color:#6B6B6B;display:flex;gap:6px;align-items:center}
+.cockpit.oa .oa-leg .b{display:inline-block;width:9px;height:9px}.cockpit.oa .oa-leg .b.r{background:#E22F2A}.cockpit.oa .oa-leg .b.g{background:#D9D3D1}
+.cockpit.oa .oa-leg .t{display:inline-block;width:14px;border-top:1.5px dashed #1A1A1A}
+.cockpit.oa .oa-t td small{font-size:.8em;color:#7A7A7A;margin-left:2px}
+.cockpit.oa .oa-t td.moy{color:#D9822B;font-weight:700}
+.cockpit.oa .oa-t th.nm{width:12%}
+.cockpit.oa .oa-note{font-size:9.5px;color:#6B6B6B;margin:8px 0 0;line-height:1.35}
