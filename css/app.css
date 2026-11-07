@@ -724,3 +724,7 @@ a.bouton[hidden]{display:none}
 .cockpit.oa .oa-t td.moy{color:#D9822B;font-weight:700}
 .cockpit.oa .oa-t th.nm{width:12%}
 .cockpit.oa .oa-note{font-size:9.5px;color:#6B6B6B;margin:8px 0 0;line-height:1.35}
+
+/* 07/11/2026 : accueil — nouveaux fichiers reçus par mail */
+.am-alerte{display:flex;align-items:center;gap:12px;margin-top:14px;padding:10px 14px;border-radius:10px;background:#FFF4E5;border:1px solid #F2C98A;font-weight:600}
+.am-alerte span{flex:1}
