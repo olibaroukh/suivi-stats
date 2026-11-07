@@ -332,6 +332,6 @@
   }
   const fr = iso => iso.split('-').reverse().join('/');
 
-  const api = { construire, LIBELLE_SOURCE, COLONNES_SOURCE, MOIS_FR, cle, finMois };
+  const api = { construire, LIBELLE_SOURCE, COLONNES_SOURCE, MOIS_FR, cle, finMois, typeClasseur };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Pipeline = api;
 })(typeof self !== 'undefined' ? self : this);

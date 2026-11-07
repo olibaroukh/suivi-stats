@@ -1021,6 +1021,21 @@
         try { const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', bookSheets: true }); if (wb.SheetNames.some(s => /^Donn.es Restes Dus/i.test(s))) { gardes.push(f); restes = true; break; } } catch (e) {}
       }
       bilan.push(restes ? 'Restes dus ✓' : 'Restes dus : pas encore reçu');
+      // 07/11/2026 : autres sources reçues par mail (marges, renta salariale, rentabilités, avis Google, Mr Qualité, External Relations, avoirs…) :
+      // type reconnu d'après le contenu, on garde la plus récente de chaque type
+      const parType = {};
+      for (const p of pieces.filter(p => p.type === 'autre')) {
+        info('Autres fichiers : ' + p.nom);
+        let f; try { f = await telecharger(p); } catch (e) { continue; }
+        let ty = null;
+        try {
+          if (/\.xlsx?$/i.test(p.nom)) ty = Pipeline.typeClasseur(XLSX.read(await f.arrayBuffer(), { type: 'array', sheetRows: 2 }));
+          else if (/\.csv$/i.test(p.nom)) { const t = new TextDecoder('utf-8').decode((await f.arrayBuffer()).slice(0, 300)); if (/^"?Date Edition[^\n]*\n"?Factures/i.test(t)) ty = 'avoirs'; }
+          else if (/\.zip$/i.test(p.nom)) ty = 'zip:' + p.nom.replace(/[\d_\-\s.]+(\.zip)$/i, '$1').toLowerCase();
+        } catch (e) { console.warn(p.nom, e); }
+        if (ty && !parType[ty]) parType[ty] = { f, p }; // liste triée par date décroissante : le premier est le plus récent
+      }
+      for (const [ty, x] of Object.entries(parType)) { gardes.push(x.f); bilan.push(`${Pipeline.LIBELLE_SOURCE[ty] || x.p.nom} ✓ (${new Date(x.p.date).toLocaleDateString('fr-FR')})`); }
       ajouterFichiers(gardes);
       info(`${MOIS[mois - 1]} ${annee} – ` + bilan.join(' · '));
     } catch (e) { info('Erreur : ' + e.message); }
@@ -1033,6 +1048,28 @@
   const A = { photos: {} };
   async function photoMois(k) { if (!k) return null; if (!(k in A.photos)) A.photos[k] = await Store.lireJSON(`donnees/${k}/photo.json`); return A.photos[k]; }
   const moisPrec = k => { let [a, m] = k.split('-').map(Number); m--; if (!m) { m = 12; a--; } return `${a}-${pad(m)}`; };
+  // 07/11/2026 : relève automatique de la boîte Zimbra (chaque nuit) — ce qui est arrivé par mail et quand
+  async function afficherReleve(k, d) {
+    const z = $('#am-releve'); if (!z || !Store.cloud()) return;
+    try {
+      const r = await Store.api('/releve?mois=' + k), x = await r.json(); if (!r.ok) throw new Error(x.erreur || r.status);
+      const dh = t => new Date(t).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const der = (x.journal || [])[0];
+      const groupes = {}; for (const p of x.pieces) (groupes[p.type] = groupes[p.type] || []).push(p);
+      const LIB = { cosium: 'Cosium (ZIP)', confidence: 'Confidence', restes: 'Restes dus', autre: 'Autres fichiers' };
+      const lignes = Object.entries(groupes).map(([t, l]) => t === 'autre'
+        ? l.map(p => `<tr><td>${esc(p.nom)}</td><td>${dh(p.date)}</td><td class="muted">${esc(p.sujet || '')}</td></tr>`).join('')
+        : `<tr><td><b>${LIB[t] || t}</b>${l.length > 1 ? ` · ${l.length} fichiers` : ''}</td><td>${dh(l[0].date)}${l.length > 1 ? ' (dernier)' : ''}</td><td class="muted">${esc(l[0].sujet || '')}</td></tr>`).join('');
+      z.innerHTML = `<div class="ligne-outils" style="margin-top:12px"><b>Reçu par mail pour ${esc(MOIS[d.getMonth()])}</b>
+        <span class="muted">${!x.configure ? 'relève automatique non configurée (secrets Cloudflare)' : der ? `dernière relève ${dh(der.le)} (${esc(der.par === 'nuit' ? 'automatique' : 'manuelle')}) · ${esc(der.statut)} · ${esc(der.detail)}` : 'pas encore de relève'}</span>
+        <button id="am-relever" style="margin-left:auto">Relever maintenant</button><button id="am-releve-import">Préparer l'import avec ces fichiers</button></div>
+        ${lignes ? `<table class="statuts releve"><thead><tr><th>Fichier</th><th>Reçu le</th><th>Mail</th></tr></thead><tbody>${lignes}</tbody></table>` : '<p class="muted">Aucune pièce jointe utile relevée pour ce mois.</p>'}`;
+      $('#am-relever').onclick = async () => { $('#am-relever').disabled = true; $('#am-relever').textContent = 'Relève en cours…';
+        try { const rr = await Store.api('/releve/lancer', { method: 'POST' }); const y = await rr.json(); if (!rr.ok || !y.ok) alert('Relève : ' + (y.erreur || rr.status)); } catch (e) { alert('Relève : ' + e.message); }
+        afficherReleve(k, d); };
+      $('#am-releve-import').onclick = () => { $('#imp-mois').value = d.getMonth() + 1; $('#imp-annee').value = d.getFullYear(); if (S.majCompleter) S.majCompleter(); vue('import'); recupererZimbra(); };
+    } catch (e) { z.innerHTML = `<p class="muted" style="margin-top:12px">Relève de la boîte mail : ${esc(e.message)}</p>`; }
+  }
   async function afficherAccueil() {
     const admin = !Store.cloud() || Store.estAdmin();
     // 1. Où en est le mois (administrateurs) : mois traité = mois précédent
@@ -1053,6 +1090,7 @@
       }).join('');
       $('#am-resume').textContent = ph ? `Mois calculé le ${new Date(ph.genereLe).toLocaleDateString('fr-FR')} · ${nRecu} source(s) reçue(s)` + (nRetard ? ` · ${nRetard} en retard` : '') : `Pas encore calculé` + (nRetard ? ` · ${nRetard} source(s) attendue(s) en retard` : '');
       $('#am-import').onclick = () => { $('#imp-mois').value = d.getMonth() + 1; $('#imp-annee').value = d.getFullYear(); vue('import'); };
+      afficherReleve(k, d);
     }
     // 2. Ce qui bouge
     const pays = [...new Set(S.ref.filter(r => r.actif === 'Oui').map(r => r.pays))].sort();
