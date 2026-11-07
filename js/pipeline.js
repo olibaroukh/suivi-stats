@@ -86,7 +86,7 @@
     for (const it of items) {
       if (/\.csv$/i.test(it.nom)) {
         const t = texte(it.buf);
-        if (/^"?Date Edition[^\n]*\n"?Factures/i.test(t.slice(0, 200))) { autres.avoirs = { nom: it.nom, texte: t }; continue; }
+        if (/^"?Date Edition[^\n]*\n"?Factures/i.test(t.slice(0, 200))) { (autres.avoirs = autres.avoirs || []).push({ nom: it.nom, texte: t }); continue; } // un fichier par serveur Cosium
         const pr = Cosium.parse(it.nom, t);
         if (!pr.report) { ignores.push(it.nom + ' (type inconnu)'); continue; }
         if (!pr.used) { ignores.push(it.nom + ' (non utilisé)'); continue; }
@@ -163,7 +163,13 @@
     if (un('visites_presc')) { for (const c in mag) Object.assign(mag[c].N, { DV: 0, DW: 0, DX: 0, DY: 0 }); poser('visites_presc', Sources.visites(XLSX, un('visites_presc').wb).out); }
     if (un('mr_qualite')) poser('mr_qualite', Sources.mrQualite(XLSX, un('mr_qualite').wb).out, un('mr_qualite').nom);
     if (un('visites_ce')) { for (const c in mag) mag[c].N.DZ = 0; poser('visites_ce', Sources.visites(XLSX, un('visites_ce').wb).out); }
-    if (autres.avoirs) poser('avoirs', Sources.avoirs(autres.avoirs.texte, finMois(annee, mois)).out, autres.avoirs.nom);
+    // 07/11/2026 : un tableau des avoirs par serveur Cosium → additionnés (un même fichier déposé deux fois n'est compté qu'une fois)
+    if (autres.avoirs && autres.avoirs.length) {
+      const vus = new Set(), tot = {};
+      for (const a of autres.avoirs) { if (vus.has(a.texte)) continue; vus.add(a.texte);
+        const o = Sources.avoirs(a.texte, finMois(annee, mois)).out; for (const c in o) { tot[c] = tot[c] || { S: 0 }; tot[c].S += o[c].S; } }
+      poser('avoirs', tot, `${vus.size} fichier(s)`);
+    }
 
     // Confidence : listes cochées
     let listesTrouvees = null;
