@@ -1033,9 +1033,11 @@
           else if (/\.csv$/i.test(p.nom)) { const t = new TextDecoder('utf-8').decode((await f.arrayBuffer()).slice(0, 300)); if (/^"?Date Edition[^\n]*\n"?Factures/i.test(t)) ty = 'avoirs'; }
           else if (/\.zip$/i.test(p.nom)) ty = 'zip:' + p.nom.replace(/[\d_\-\s.]+(\.zip)$/i, '$1').toLowerCase();
         } catch (e) { console.warn(p.nom, e); }
-        if (ty && !parType[ty]) parType[ty] = { f, p }; // liste triée par date décroissante : le premier est le plus récent
+        // France et International arrivent dans deux fichiers distincts (marges T07, renta salariale T12, rentabilités T20/T21 et T10) : on garde le plus récent de chacun
+        const zone = /INTERNATIONAL|\bT10\b|T10[_ ]/i.test(p.nom) ? ' – International' : /FRANCE|T20|T21/i.test(p.nom) ? ' – France' : '';
+        if (ty && !parType[ty + zone]) parType[ty + zone] = { f, p, ty, zone }; // liste triée par date décroissante : le premier est le plus récent
       }
-      for (const [ty, x] of Object.entries(parType)) { gardes.push(x.f); bilan.push(`${Pipeline.LIBELLE_SOURCE[ty] || x.p.nom} ✓ (${new Date(x.p.date).toLocaleDateString('fr-FR')})`); }
+      for (const x of Object.values(parType)) { gardes.push(x.f); bilan.push(`${(Pipeline.LIBELLE_SOURCE[x.ty] || x.p.nom) + x.zone} ✓ (${new Date(x.p.date).toLocaleDateString('fr-FR')})`); }
       ajouterFichiers(gardes);
       info(`${MOIS[mois - 1]} ${annee} – ` + bilan.join(' · '));
     } catch (e) { info('Erreur : ' + e.message); }
