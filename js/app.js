@@ -563,9 +563,10 @@
   const SUCC = ['ca', 'optique', 'audio', 'renta'].map(t => ({ perim: 'france', theme: t }));
   const INTER = ['ca', 'optique', 'audio', 'renta'].map(t => ({ perim: 'inter', theme: t }));
   const FRANCH = ['ca', 'optique', 'audio'].map(t => ({ perim: 'franchises', theme: t }));
-  const DIFFUSION_DEFAUT = { jour: 2, destinataires: [
-    { nom: 'Olivier Baroukh', email: 'olivier.baroukh@optical-center.com', ecrans: [SIEGE, ...SUCC, { special: 'mlme', lib: 'Managers Leaders & Magasins d’Excellence' }, { perim: 'ocm', theme: 'ocmAct' }] },
-    { nom: 'Laurent Levy', email: 'laurent.levy@optical-center.com', ecrans: [SIEGE, ...SUCC, ...FRANCH, ...INTER, { special: 'mlme', lib: 'Managers Leaders & Magasins d’Excellence' }, { perim: 'ocm', theme: 'ocmAct' }] },
+  const ACTIONS = { special: 'actions', lib: 'Les Actions de l’Année' };
+  const DIFFUSION_DEFAUT = { jour: 1, destinataires: [
+    { nom: 'Olivier Baroukh', email: 'olivier.baroukh@optical-center.com', ecrans: [SIEGE, ...SUCC, { special: 'mlme', lib: 'Managers Leaders & Magasins d’Excellence' }, { perim: 'ocm', theme: 'ocmAct' }, ACTIONS] },
+    { nom: 'Laurent Levy', email: 'laurent.levy@optical-center.com', ecrans: [SIEGE, ...SUCC, ...FRANCH, ...INTER, { special: 'mlme', lib: 'Managers Leaders & Magasins d’Excellence' }, { perim: 'ocm', theme: 'ocmAct' }, ACTIONS] },
     { nom: 'Sacha Assola', email: 'sacha.assola@optical-center.com', ecrans: [SIEGE, ...FRANCH] },
     { nom: 'Cécilia Lecomte', email: 'cecilia.lecomte@optical-center.com', exclurePays: ['ISRAEL', 'ISRAËL'], ecrans: [SIEGE, ...INTER] },
   ] };
@@ -594,6 +595,11 @@
         const doc = new jsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' }), libs = [];
         for (const e of d.ecrans) {
           info(`${d.nom} : ${libEcran(e)}…`);
+          if (e.special === 'actions') {
+            vue('actions'); await afficherActions(); if ([...$('#ac-mois').options].some(o => o.value === k)) { $('#ac-mois').value = k; await afficherActions(); }
+            const pg = $('#ac-apercu .actions-page'); if (pg) { await capturerA3([pg], doc); libs.push(libEcran(e)); }
+            continue;
+          }
           if (e.special === 'mlme') {
             vue('challenges'); CHG.vue = 'cockpit'; if (![...$('#chg-mois').options].some(o => o.value === k)) await afficherChallenges(); $('#chg-mois').value = k; if ($('#chg-pays').options.length) $('#chg-pays').value = 'FRANCE'; $('#chg-ar').value = ''; $('#chg-q').value = '';
             await afficherChallenges(); const pg = $('#chg-apercu .mlme-page'); if (pg) { await capturerA3([pg], doc); libs.push(libEcran(e)); }
@@ -638,7 +644,7 @@
     let cfg = JSON.parse(JSON.stringify(conf)), modifie = false;
     const perimsDif = () => CK.perims.filter(p => !p.special || p.id === 'siege');
     const dessiner = () => {
-      const optPerim = perimsDif().map(p => `<option value="${esc(p.id)}">${esc(p.lib)}</option>`).join('') + '<option value="__mlme">Managers Leaders & Magasins d’Excellence</option>';
+      const optPerim = perimsDif().map(p => `<option value="${esc(p.id)}">${esc(p.lib)}</option>`).join('') + '<option value="__mlme">Managers Leaders & Magasins d’Excellence</option><option value="__actions">Les Actions de l’Année</option>';
       $('#dif-liste').innerHTML = `<table class="statuts dif-ed"><thead><tr><th>Destinataire</th><th>Écrans (dans l’ordre du PDF)</th></tr></thead><tbody>${cfg.destinataires.map((d, i) => `<tr>
         <td><input data-d="${i}" data-k="nom" value="${esc(d.nom)}" placeholder="Nom"><input data-d="${i}" data-k="email" value="${esc(d.email)}" placeholder="adresse e-mail">
           <label class="muted">Pays exclus <input data-d="${i}" data-k="exclurePays" value="${esc((d.exclurePays || []).join(', '))}" placeholder="ex. ISRAEL"></label>
@@ -647,7 +653,7 @@
           <div class="dif-aj"><select data-ap="${i}">${optPerim}</select><select data-at="${i}"></select><button data-aj="${i}">+ Ajouter l’écran</button></div></td></tr>`).join('')}</tbody></table>
         <div class="ligne-outils"><button id="dif-nouveau">+ Ajouter un destinataire</button><button class="primaire" id="dif-sauver"${modifie ? '' : ' disabled'}>Enregistrer les modifications</button><span class="muted" id="dif-sauve-info"></span></div>`;
       const themes = i => { const v = $(`[data-ap="${i}"]`).value, p = CK.perims.find(x => x.id === v);
-        $(`[data-at="${i}"]`).innerHTML = v === '__mlme' ? '<option value="">—</option>' : (p ? p.themes : []).map(t => `<option value="${t}">${t === 'siege' ? 'Synthèse réseau' : Cockpit.THEMES[t].lib}</option>`).join(''); };
+        $(`[data-at="${i}"]`).innerHTML = v === '__mlme' || v === '__actions' ? '<option value="">—</option>' : (p ? p.themes : []).map(t => `<option value="${t}">${t === 'siege' ? 'Synthèse réseau' : Cockpit.THEMES[t].lib}</option>`).join(''); };
       cfg.destinataires.forEach((d, i) => { $(`[data-ap="${i}"]`).onchange = () => themes(i); themes(i); });
       const maj = () => { modifie = true; dessiner(); };
       $('#dif-liste').querySelectorAll('input[data-d]').forEach(x => x.onchange = () => { const d = cfg.destinataires[+x.dataset.d];
@@ -655,7 +661,7 @@
       $('#dif-liste').querySelectorAll('[data-x]').forEach(x => x.onclick = ev => { ev.preventDefault(); const [i, j] = x.dataset.x.split(',').map(Number); cfg.destinataires[i].ecrans.splice(j, 1); maj(); });
       $('#dif-liste').querySelectorAll('[data-haut]').forEach(x => x.onclick = ev => { ev.preventDefault(); const [i, j] = x.dataset.haut.split(',').map(Number); if (!j) return; const l = cfg.destinataires[i].ecrans; [l[j - 1], l[j]] = [l[j], l[j - 1]]; maj(); });
       $('#dif-liste').querySelectorAll('[data-aj]').forEach(x => x.onclick = () => { const i = +x.dataset.aj, v = $(`[data-ap="${i}"]`).value;
-        cfg.destinataires[i].ecrans.push(v === '__mlme' ? { special: 'mlme', lib: 'Managers Leaders & Magasins d’Excellence' } : { perim: v, theme: $(`[data-at="${i}"]`).value }); maj(); });
+        cfg.destinataires[i].ecrans.push(v === '__mlme' ? { special: 'mlme', lib: 'Managers Leaders & Magasins d’Excellence' } : v === '__actions' ? ACTIONS : { perim: v, theme: $(`[data-at="${i}"]`).value }); maj(); });
       $('#dif-liste').querySelectorAll('[data-sup]').forEach(x => x.onclick = ev => { ev.preventDefault(); const d = cfg.destinataires[+x.dataset.sup]; if (confirm(`Retirer ${d.nom || 'ce destinataire'} de la diffusion ?`)) { cfg.destinataires.splice(+x.dataset.sup, 1); maj(); } });
       $('#dif-nouveau').onclick = () => { cfg.destinataires.push({ nom: '', email: '', ecrans: [SIEGE] }); maj(); };
       $('#dif-sauver').onclick = async () => {
