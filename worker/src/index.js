@@ -180,7 +180,14 @@ async function piecesDuMois(jeton, mois) {
         vus.add(msg.id);
         const sujet = msg.su || '';
         if (/\d{2}\s*OPTI\s*\d+/i.test(sujet)) { diag.mailsCosium++; if (!diag.exemple) diag.exemple = `« ${sujet} » : ` + (structureParts(msg.mp).join(' | ') || 'aucune partie renvoyée'); }
-        for (const p of piecesDe(msg.mp, [])) {
+        const parts = piecesDe(msg.mp, []);
+        // 07/11/2026 : les mails Cosium contiennent directement les CSV (pas de ZIP) → une seule pièce par mail, téléchargée en ZIP
+        const mc = sujet.match(/(\d{2})\s*OPTI\s*(\d+)\s*(\d)\s*\/\s*4/i), csv = parts.filter(p => /\.csv$/i.test(p.nom));
+        if (mc && csv.length && !parts.some(p => /\.zip$/i.test(p.nom))) {
+          pieces.push({ id: msg.id, part: csv.map(p => p.part).join(','), nom: `${mc[1]}OPTI${mc[2]}_${mc[3]}4_Resultats.zip`, taille: csv.reduce((a, p) => a + (p.taille || 0), 0), date: msg.d, sujet, type: 'cosium' });
+          continue;
+        }
+        for (const p of parts) {
           const type = typePiece(p.nom, sujet, p.ct);
           if (type) pieces.push({ id: msg.id, part: p.part, nom: p.nom, taille: p.taille, date: msg.d, sujet, type });
         }
@@ -190,6 +197,38 @@ async function piecesDuMois(jeton, mois) {
   }
   pieces.diag = diag;
   return pieces;
+}
+
+// Téléchargement d'une pièce (ou d'un groupe de CSV « 2,3,4 » regroupés en ZIP)
+async function telechargerPiece(jeton, id, part) {
+  const base = `${ZIMBRA_REST}?auth=co&id=${encodeURIComponent(id)}`, cookie = { headers: { Cookie: 'ZM_AUTH_TOKEN=' + jeton } };
+  if (!String(part).includes(',')) { const r = await fetch(`${base}&part=${encodeURIComponent(part)}`, cookie); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.arrayBuffer(); }
+  const r = await fetch(`${base}&part=${encodeURIComponent(part)}&fmt=zip&disp=a&filename=Resultats.zip`, cookie);
+  if (r.ok) { const b = await r.arrayBuffer(); const u = new Uint8Array(b); if (u[0] === 0x50 && u[1] === 0x4b) return b; }
+  // Repli : chaque CSV téléchargé puis réunis dans un ZIP (sans compression)
+  const fichiers = [];
+  for (const p of String(part).split(',')) {
+    const x = await fetch(`${base}&part=${encodeURIComponent(p)}`, cookie); if (!x.ok) throw new Error('HTTP ' + x.status);
+    const cd = x.headers.get('Content-Disposition') || '', nm = (cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i) || [])[1];
+    fichiers.push({ nom: nm ? decodeURIComponent(nm) : `piece_${p}.csv`, data: new Uint8Array(await x.arrayBuffer()) });
+  }
+  return zipStocke(fichiers);
+}
+let CRC_TABLE = null;
+function crc32(u) { if (!CRC_TABLE) { CRC_TABLE = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; CRC_TABLE[n] = c >>> 0; } }
+  let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = CRC_TABLE[(c ^ u[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipStocke(fichiers) {
+  const enc = new TextEncoder(), loc = [], cen = []; let off = 0;
+  for (const f of fichiers) {
+    const nom = enc.encode(f.nom), crc = crc32(f.data), n = f.data.length;
+    const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint32(14, crc, true); h.setUint32(18, n, true); h.setUint32(22, n, true); h.setUint16(26, nom.length, true);
+    const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint32(16, crc, true); c.setUint32(20, n, true); c.setUint32(24, n, true); c.setUint16(28, nom.length, true); c.setUint32(42, off, true);
+    loc.push(new Uint8Array(h.buffer), nom, f.data); cen.push(new Uint8Array(c.buffer), nom); off += 30 + nom.length + n;
+  }
+  const tailleCen = cen.reduce((a, x) => a + x.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, fichiers.length, true); e.setUint16(10, fichiers.length, true); e.setUint32(12, tailleCen, true); e.setUint32(16, off, true);
+  const tout = [...loc, ...cen, new Uint8Array(e.buffer)], out = new Uint8Array(tout.reduce((a, x) => a + x.length, 0)); let i = 0; for (const x of tout) { out.set(x, i); i += x.length; }
+  return out.buffer;
 }
 
 // ---------- Relève automatique (chaque nuit + bouton) ----------
@@ -222,9 +261,7 @@ async function releverBoite(env, par) {
     if (nouvelles + erreurs >= MAX_TELECHARGEMENTS) { restantes++; continue; }
     if (p.taille && p.taille > 25e6) { erreurs++; continue; }
     try {
-      const r = await fetch(`${ZIMBRA_REST}?auth=co&id=${encodeURIComponent(p.id)}&part=${encodeURIComponent(p.part)}`, { headers: { Cookie: 'ZM_AUTH_TOKEN=' + z.jeton } });
-      if (!r.ok) { erreurs++; continue; }
-      const buf = await r.arrayBuffer(), cle = `releve/${String(p.id).replace(/[^\w-]/g, '_')}_${String(p.part).replace(/[^\w.]/g, '_')}/${p.nom.replace(/[\/\\]/g, '_')}`;
+      const buf = await telechargerPiece(z.jeton, p.id, p.part), cle = `releve/${String(p.id).replace(/[^\w-]/g, '_')}_${String(p.part).replace(/[^\w.]/g, '_').slice(0, 40)}/${p.nom.replace(/[\/\\]/g, '_')}`;
       await env.FICHIERS.put(cle, buf, { httpMetadata: { contentType: 'application/octet-stream' } });
       await env.DB.prepare('INSERT OR REPLACE INTO releve_pieces (id, part, nom, type, date, sujet, taille, cle_r2, releve_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .bind(String(p.id), String(p.part), p.nom, p.type, p.date, p.sujet || '', buf.byteLength, cle, Date.now()).run();
@@ -415,13 +452,12 @@ async function routes(request, env) {
       return json({ ok: true, pieces: rel.concat(direct) }, 200, h);
     }
     const id = url.searchParams.get('id') || '', part = url.searchParams.get('part') || '';
-    if (!/^-?\d+(:\d+)?$/.test(id) || !/^[\d.]+$/.test(part)) return erreur('Paramètres invalides', 400, h);
+    if (!/^-?\d+(:\d+)?$/.test(id) || !/^[\d.,]+$/.test(part)) return erreur('Paramètres invalides', 400, h);
     const rp = await env.DB.prepare('SELECT cle_r2 FROM releve_pieces WHERE id = ? AND part = ?').bind(id, part).first();
     if (rp && rp.cle_r2) { const o = await env.FICHIERS.get(rp.cle_r2); if (o) return new Response(o.body, { headers: { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-store', ...h } }); }
     if (!enDirect) return erreur('Connexion Zimbra expirée : déconnectez-vous puis reconnectez-vous.', 409, h);
-    const r = await fetch(`${ZIMBRA_REST}?auth=co&id=${encodeURIComponent(id)}&part=${encodeURIComponent(part)}`, { headers: { Cookie: 'ZM_AUTH_TOKEN=' + j.jeton } });
-    if (!r.ok) return erreur('Pièce jointe introuvable (' + r.status + ')', 502, h);
-    return new Response(r.body, { headers: { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-store', ...h } });
+    try { return new Response(await telechargerPiece(j.jeton, id, part), { headers: { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-store', ...h } }); }
+    catch (e) { return erreur('Pièce jointe introuvable (' + e.message + ')', 502, h); }
   }
 
   if (chemin === '/admin/taux' && request.method === 'POST') {
