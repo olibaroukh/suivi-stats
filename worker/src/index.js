@@ -267,6 +267,42 @@ async function diffuser(env, mois, { test = false, par = 'auto' } = {}) {
   return { ok: true, detail: (test ? 'Test envoyé à ' + env.ZIMBRA_RELEVE_USER + ' : ' : 'Envoi : ') + (res.join(' · ') || 'rien à envoyer (déjà fait)') };
 }
 
+// ---------- Rappel mensuel à Olivier (le 1er à 9 h, heure de Paris) ----------
+async function rappelMensuel(env, par = 'auto') {
+  if (!env.ZIMBRA_RELEVE_USER || !env.ZIMBRA_RELEVE_PASSWORD) return { ok: false, erreur: 'boîte Zimbra non configurée' };
+  await schema(env);
+  const z = await authZimbra(env.ZIMBRA_RELEVE_USER, env.ZIMBRA_RELEVE_PASSWORD); if (!z) return { ok: false, erreur: 'connexion Zimbra refusée' };
+  const mois = moisDecale(new Date(), -1), [a, m] = mois.split('-').map(Number), lib = `${MOIS_LIB[m - 1]} ${a}`;
+  const pcs = await piecesReleveesDuMois(env, mois);
+  const nbCos = new Set(pcs.filter(p => p.type === 'cosium').map(p => p.nom)).size;
+  const vu = t => pcs.some(p => p.type === t);
+  const autres = [...new Set(pcs.filter(p => p.type === 'autre').map(p => p.nom))];
+  const dejaEnregistre = await env.DB.prepare('SELECT enregistre_le FROM mois WHERE cle = ?').bind(mois).first();
+  const L = '\n';
+  const texte = [
+    `Bonjour Olivier,`, ``,
+    `C'est le moment de boucler ${lib} dans Suivi statistique.`, ``,
+    `👉 Ouvrir Suivi Stats : https://olibaroukh.github.io/suivi-stats`, ``,
+    `Ce qui est déjà arrivé par mail (relève automatique) :`,
+    `  - Cosium : ${nbCos} / 28 envois${nbCos >= 28 ? ' ✓' : ' (les 3/4 et 4/4 arrivent dans la matinée : cliquez sur « Relever maintenant »)'}`,
+    `  - Confidence : ${vu('confidence') ? 'reçu ✓' : 'pas encore (arrive en début de mois)'}`,
+    `  - Restes dus : ${vu('restes') ? 'reçu ✓' : 'pas encore (vers le 7)'}`,
+    autres.length ? `  - Autres fichiers : ${autres.join(', ')}` : `  - Autres fichiers (marges, renta salariale, rentabilités, avis Google) : arrivent au fil du mois`,
+    dejaEnregistre ? `${L}(${lib} est déjà enregistré : il suffira d'intégrer les fichiers arrivés depuis.)` : '', ``,
+    `À faire aujourd'hui (avant 15 h, heure de l'envoi automatique aux destinataires) :`,
+    `  1. Accueil › « Relever maintenant », puis attendre « Cosium complet (28 / 28) ».`,
+    `  2. Import du mois › « 🚐 Préparer l'activité OC Mobile avec Claude » → récupérer le fichier ocm-activite_${mois}.json.`,
+    `  3. Accueil › « Préparer et calculer ».`,
+    `  4. Déposer les fichiers manuels : tableaux des avoirs (un par serveur Cosium), exports des visites (External Relations), fichier OC Mobile ; coller Lyleoo si besoin.`,
+    `  5. Cocher les listes Confidence à compter, cliquer « Calculer le mois », vérifier le rapport.`,
+    `  6. « Enregistrer la photo du mois » → les PDF de diffusion se préparent ; envoi automatique à 15 h.`, ``,
+    `Ensuite : quand un fichier arrive plus tard (restes dus, Confidence…), le bandeau orange de l'accueil le signale → « Préparer et calculer » → « Enregistrer ».`, ``,
+    `Mode d'emploi complet : PDF « Suivi statistique – mode d'emploi mensuel ».`, ``,
+    `— Suivi statistique (message automatique)`].filter(x => x !== '').join(L).replace(/\n\n\n+/g, L + L);
+  await soap(z.jeton, { SendMsgRequest: { _jsns: 'urn:zimbraMail', m: { e: [{ t: 't', a: env.ZIMBRA_RELEVE_USER }], su: { _content: `📊 Suivi statistique : boucler ${lib}` }, mp: [{ ct: 'text/plain', content: { _content: texte } }] } } });
+  return { ok: true, detail: `Rappel envoyé à ${env.ZIMBRA_RELEVE_USER}` };
+}
+
 // ---------- Relève automatique (chaque nuit + bouton) ----------
 // Identifiants de la boîte dans les secrets Cloudflare ZIMBRA_RELEVE_USER / ZIMBRA_RELEVE_PASSWORD (jamais dans le code).
 // Mois traités : le mois précédent et le mois en cours (envois Cosium du dernier jour du mois). Chaque pièce n'est copiée qu'une fois.
@@ -471,6 +507,9 @@ async function routes(request, env) {
     const j = await env.DB.prepare('SELECT le, par, statut, detail FROM releve_journal ORDER BY le DESC LIMIT 5').all();
     return json({ ok: true, configure: !!(env.ZIMBRA_RELEVE_USER && env.ZIMBRA_RELEVE_PASSWORD), journal: j.results || [], pieces: await piecesReleveesDuMois(env, m) }, 200, h);
   }
+  if (chemin === '/rappel/tester' && request.method === 'POST' && admin) {
+    try { return json(await rappelMensuel(env, email), 200, h); } catch (e) { return erreur('Rappel : ' + e.message, 502, h); }
+  }
   if (chemin === '/diffusion/etat' && admin) {
     const m = url.searchParams.get('mois') || ''; if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois requis', 400, h);
     await schema(env);
@@ -602,6 +641,11 @@ export default {
     if (event.cron === '0 5 1 * *') ctx.waitUntil(majTaux(env, 'automatique').catch(e => console.error('taux', e)));
     // 07/11/2026 : diffusion du mois précédent le 1er à 15 h (heure de Paris), puis chaque jour à 15 h jusqu'au 10 tant que les PDF
     // ne sont pas prêts / envoyés. Deux déclenchements (13 h et 14 h UTC) : seul celui qui tombe à 15 h à Paris envoie (heure d'été / d'hiver).
+    // 07/11/2026 : rappel à Olivier le 1er à 9 h (heure de Paris) : crons 7 h et 8 h UTC, seul celui de 9 h à Paris envoie
+    else if (event.cron === '0 7 1 * *' || event.cron === '0 8 1 * *') {
+      const hP = +new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date(event.scheduledTime || Date.now()));
+      if (hP === 9) ctx.waitUntil(rappelMensuel(env).then(r => console.log('rappel', JSON.stringify(r))).catch(e => console.error('rappel', e)));
+    }
     else if (event.cron === '0 13 1-10 * *' || event.cron === '0 14 1-10 * *') {
       const hParis = +new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date(event.scheduledTime || Date.now()));
       if (hParis === 15) ctx.waitUntil(diffuser(env, moisDecale(new Date(), -1)).then(r => console.log('diffusion', JSON.stringify(r))).catch(e => console.error('diffusion', e)));

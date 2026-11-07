@@ -31,4 +31,5 @@ enabled = true
 # Chaque nuit à 2 h (heure de Paris en hiver) : relève des pièces jointes utiles dans la boîte Zimbra
 [triggers]
 # Du 1er au 10 de chaque mois à 15 h (heure de Paris, été comme hiver) : envoi de la diffusion mensuelle (une seule fois par destinataire)
-crons = ["0 5 1 * *", "0 1 * * *", "0 13 1-10 * *", "0 14 1-10 * *"]
+# Le 1er de chaque mois à 9 h (heure de Paris) : mail de rappel à Olivier (ce qui est arrivé + ce qu'il reste à faire)
+crons = ["0 5 1 * *", "0 1 * * *", "0 13 1-10 * *", "0 14 1-10 * *", "0 7 1 * *", "0 8 1 * *"]
