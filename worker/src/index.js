@@ -74,6 +74,9 @@ async function schema(env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS echecs (identifiant TEXT PRIMARY KEY, nb INTEGER, depuis INTEGER)`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS mois (cle TEXT PRIMARY KEY, enregistre_le TEXT, par TEXT)`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS jetons_zimbra (email TEXT PRIMARY KEY, jeton TEXT NOT NULL, expire INTEGER NOT NULL)`),
+    // 07/11/2026 : relève automatique de la boîte Zimbra (pièces jointes utiles copiées dans R2)
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS releve_pieces (id TEXT NOT NULL, part TEXT NOT NULL, nom TEXT, type TEXT, date INTEGER, sujet TEXT, taille INTEGER, cle_r2 TEXT, releve_le INTEGER, PRIMARY KEY (id, part))`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS releve_journal (le INTEGER, par TEXT, statut TEXT, detail TEXT)`),
   ]);
   schemaPret = true;
 }
@@ -164,13 +167,56 @@ async function piecesDuMois(jeton, mois) {
         let type = null;
         if (/\.zip$/i.test(nom) && /\d{2}OPTI\d+/i.test(nom + ' ' + sujet)) type = 'cosium';
         else if (/^confidence-dashboard.*\.xlsx$/i.test(nom)) type = 'confidence';
-        else if (/\.xlsx?$/i.test(nom) && /(rest|indus|avoir)/i.test(nom + ' ' + sujet)) type = 'restes';
+        else if (/\.xlsx?$/i.test(nom) && /(rest|indus)/i.test(nom + ' ' + sujet)) type = 'restes';
+        // 07/11/2026 : autres sources envoyées par mail (le type exact est reconnu par l'appli d'après le contenu du fichier)
+        else if (/\.(xlsx?|csv|zip)$/i.test(nom) && /(T07|MARGE|T12|RENTA|T20|T21|T10|CONSO|EXTERNAL|RELATION|AVIS|GOOGLE|QUALIT|TCD|AVOIR|FACTURE|EXPORT|LISTE)/i.test(nom + ' ' + sujet)) type = 'autre';
         if (type) pieces.push({ id: msg.id, part: p.part, nom, taille: p.taille, date: msg.d, sujet, type });
       }
     }
     if (!res.more || !ms.length || ms[ms.length - 1].d < debut) break;
   }
   return pieces;
+}
+
+// ---------- Relève automatique (chaque nuit + bouton) ----------
+// Identifiants de la boîte dans les secrets Cloudflare ZIMBRA_RELEVE_USER / ZIMBRA_RELEVE_PASSWORD (jamais dans le code).
+// Mois traités : le mois précédent et le mois en cours (envois Cosium du dernier jour du mois). Chaque pièce n'est copiée qu'une fois.
+const moisDecale = (d, n) => { const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1)); return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, '0')}`; };
+async function releverBoite(env, par) {
+  await schema(env);
+  if (!env.ZIMBRA_RELEVE_USER || !env.ZIMBRA_RELEVE_PASSWORD) {
+    await env.DB.prepare('INSERT INTO releve_journal (le, par, statut, detail) VALUES (?, ?, ?, ?)').bind(Date.now(), par, 'non configuré', 'secrets ZIMBRA_RELEVE_USER / ZIMBRA_RELEVE_PASSWORD absents').run();
+    return { ok: false, erreur: 'relève non configurée (secrets Cloudflare absents)' };
+  }
+  const z = await authZimbra(env.ZIMBRA_RELEVE_USER, env.ZIMBRA_RELEVE_PASSWORD);
+  if (!z) { await env.DB.prepare('INSERT INTO releve_journal (le, par, statut, detail) VALUES (?, ?, ?, ?)').bind(Date.now(), par, 'échec', 'connexion Zimbra refusée (mot de passe changé ?)').run(); return { ok: false, erreur: 'connexion Zimbra refusée' }; }
+  const now = new Date(), vus = new Map();
+  for (const m of [moisDecale(now, -1), moisDecale(now, 0)]) for (const p of await piecesDuMois(z.jeton, m)) vus.set(p.id + '|' + p.part, p);
+  let nouvelles = 0, deja = 0, erreurs = 0;
+  for (const p of vus.values()) {
+    const ex = await env.DB.prepare('SELECT 1 FROM releve_pieces WHERE id = ? AND part = ?').bind(String(p.id), String(p.part)).first();
+    if (ex) { deja++; continue; }
+    if (p.taille && p.taille > 25e6) { erreurs++; continue; }
+    try {
+      const r = await fetch(`${ZIMBRA_REST}?auth=co&id=${encodeURIComponent(p.id)}&part=${encodeURIComponent(p.part)}`, { headers: { Cookie: 'ZM_AUTH_TOKEN=' + z.jeton } });
+      if (!r.ok) { erreurs++; continue; }
+      const buf = await r.arrayBuffer(), cle = `releve/${String(p.id).replace(/[^\w-]/g, '_')}_${String(p.part).replace(/[^\w.]/g, '_')}/${p.nom.replace(/[\/\\]/g, '_')}`;
+      await env.FICHIERS.put(cle, buf, { httpMetadata: { contentType: 'application/octet-stream' } });
+      await env.DB.prepare('INSERT OR REPLACE INTO releve_pieces (id, part, nom, type, date, sujet, taille, cle_r2, releve_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .bind(String(p.id), String(p.part), p.nom, p.type, p.date, p.sujet || '', buf.byteLength, cle, Date.now()).run();
+      nouvelles++;
+    } catch (e) { erreurs++; console.error('relève', p.nom, e); }
+  }
+  const detail = `${vus.size} pièce(s) utiles dans la boîte · ${nouvelles} nouvelle(s) copiée(s) · ${deja} déjà relevée(s)${erreurs ? ' · ' + erreurs + ' erreur(s)' : ''}`;
+  await env.DB.prepare('INSERT INTO releve_journal (le, par, statut, detail) VALUES (?, ?, ?, ?)').bind(Date.now(), par, erreurs ? 'partiel' : 'ok', detail).run();
+  return { ok: true, nouvelles, deja, erreurs, detail };
+}
+// Pièces relevées de la fenêtre d'un mois traité (même fenêtre que piecesDuMois)
+async function piecesReleveesDuMois(env, mois) {
+  await schema(env);
+  const [a, m] = mois.split('-').map(Number);
+  const r = await env.DB.prepare('SELECT id, part, nom, type, date, sujet, taille, releve_le FROM releve_pieces WHERE date >= ? AND date <= ? ORDER BY date DESC').bind(Date.UTC(a, m - 2, 20), Date.UTC(a, m, 26)).all();
+  return (r.results || []).map(x => ({ ...x, releve: true }));
 }
 
 // ---------- Connexion Zimbra ----------
@@ -319,17 +365,35 @@ async function routes(request, env) {
   }
 
   // Pièces jointes Zimbra du mois (administrateurs)
-  if (chemin === '/zimbra/pieces' || chemin === '/zimbra/piece') {
+  // Relève automatique : état (accueil), lancement manuel
+  if (chemin === '/releve' && admin) {
+    const m = url.searchParams.get('mois') || moisDecale(new Date(), -1);
+    if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois (AAAA-MM) requis', 400, h);
+    await schema(env);
+    const j = await env.DB.prepare('SELECT le, par, statut, detail FROM releve_journal ORDER BY le DESC LIMIT 5').all();
+    return json({ ok: true, configure: !!(env.ZIMBRA_RELEVE_USER && env.ZIMBRA_RELEVE_PASSWORD), journal: j.results || [], pieces: await piecesReleveesDuMois(env, m) }, 200, h);
+  }
+  if (chemin === '/releve/lancer' && request.method === 'POST' && admin) {
+    try { return json(await releverBoite(env, email), 200, h); } catch (e) { return erreur('Relève : ' + e.message, 502, h); }
+  }
+  if ((chemin === '/zimbra/pieces' || chemin === '/zimbra/piece') && admin) {
     const j = await env.DB.prepare('SELECT jeton, expire FROM jetons_zimbra WHERE email = ?').bind(email).first();
-    if (!j || j.expire < Date.now()) return erreur('Connexion Zimbra expirée : déconnectez-vous puis reconnectez-vous.', 409, h);
+    const enDirect = j && j.expire >= Date.now();
     if (chemin === '/zimbra/pieces') {
       const m = url.searchParams.get('mois') || '';
       if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois (AAAA-MM) requis', 400, h);
-      try { return json({ ok: true, pieces: await piecesDuMois(j.jeton, m) }, 200, h); }
-      catch (e) { return erreur('Zimbra : ' + e.message, 502, h); }
+      // Pièces déjà relevées (chaque nuit) + recherche en direct si la session Zimbra est valide
+      const rel = await piecesReleveesDuMois(env, m), cles = new Set(rel.map(p => p.id + '|' + p.part));
+      let direct = [];
+      if (enDirect) { try { direct = (await piecesDuMois(j.jeton, m)).filter(p => !cles.has(p.id + '|' + p.part)); } catch (e) { console.warn('Zimbra direct', e); } }
+      if (!enDirect && !rel.length) return erreur('Connexion Zimbra expirée et aucune pièce relevée : déconnectez-vous puis reconnectez-vous.', 409, h);
+      return json({ ok: true, pieces: rel.concat(direct) }, 200, h);
     }
     const id = url.searchParams.get('id') || '', part = url.searchParams.get('part') || '';
     if (!/^-?\d+(:\d+)?$/.test(id) || !/^[\d.]+$/.test(part)) return erreur('Paramètres invalides', 400, h);
+    const rp = await env.DB.prepare('SELECT cle_r2 FROM releve_pieces WHERE id = ? AND part = ?').bind(id, part).first();
+    if (rp && rp.cle_r2) { const o = await env.FICHIERS.get(rp.cle_r2); if (o) return new Response(o.body, { headers: { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-store', ...h } }); }
+    if (!enDirect) return erreur('Connexion Zimbra expirée : déconnectez-vous puis reconnectez-vous.', 409, h);
     const r = await fetch(`${ZIMBRA_REST}?auth=co&id=${encodeURIComponent(id)}&part=${encodeURIComponent(part)}`, { headers: { Cookie: 'ZM_AUTH_TOKEN=' + j.jeton } });
     if (!r.ok) return erreur('Pièce jointe introuvable (' + r.status + ')', 502, h);
     return new Response(r.body, { headers: { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-store', ...h } });
@@ -422,7 +486,9 @@ export default {
   },
   // Tâche planifiée (wrangler.toml › triggers) : le 1er de chaque mois, mise à jour des taux de change
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(majTaux(env, 'automatique').catch(e => console.error('taux', e)));
+    // « 0 5 1 * * » : taux de change le 1er du mois ; « 0 1 * * * » : relève de la boîte Zimbra chaque nuit
+    if (event.cron === '0 5 1 * *') ctx.waitUntil(majTaux(env, 'automatique').catch(e => console.error('taux', e)));
+    else ctx.waitUntil(releverBoite(env, 'nuit').catch(e => console.error('relève', e)));
   },
 };
 
