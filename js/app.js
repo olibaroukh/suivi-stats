@@ -209,7 +209,9 @@
       const rhDepot = Store.cloud() ? await Store.lireJSON(`donnees/rh/${annee}-${pad(mois)}.json`).catch(() => null) : null;
       // Coefficients ETP (agenda validés importé dans bilan-passage) : tous les mois de l'année jusqu'au mois traité
       const etpDepots = Store.cloud() ? (await Promise.all(Array.from({ length: mois }, (_, i) => Store.lireJSON(`donnees/rh-etp/${annee}-${pad(i + 1)}.json`).catch(() => null)))).filter(Boolean) : [];
-      const res = await Pipeline.construire({ rhDepot, etpDepots, fichiers: S.fichiers, pastes: { lyleoo: $('#paste-lyleoo').value, ocm: $('#paste-ocm').value, site: $('#paste-site').value },
+      // Codes connus hors référentiel (magasins fermés) : config/codes-ignores.json, sinon liste validée par Olivier le 07/11/2026
+      const codesIgnores = (await Store.lireJSON('config/codes-ignores.json').catch(() => null)) || ['202011', '202012', '202013', '104002', '6028', '6701', '112003', '169001', '212001', '278301', '900001'];
+      const res = await Pipeline.construire({ codesIgnores, rhDepot, etpDepots, fichiers: S.fichiers, pastes: { lyleoo: $('#paste-lyleoo').value, ocm: $('#paste-ocm').value, site: $('#paste-site').value },
         annee, mois, ref: S.ref, spec: S.spec, etatAnnee, photoPrecedente: precedent, workerRatings: wr, listesConfidence: listes });
       if (alerteW) res.rapport.alertes.unshift(alerteW);
       if (completer) { completerPhoto(existante, res); S.resultat = res; afficherRapport(res.rapport); $('#btn-enregistrer').disabled = false;

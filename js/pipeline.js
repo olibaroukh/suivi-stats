@@ -73,7 +73,7 @@
   }
 
   async function construire(p) {
-    const { fichiers = [], pastes = {}, annee, mois, ref, spec, etatAnnee = {}, photoPrecedente = null, workerRatings = null, listesConfidence = null } = p;
+    const { fichiers = [], pastes = {}, annee, mois, ref, spec, etatAnnee = {}, photoPrecedente = null, workerRatings = null, listesConfidence = null, codesIgnores = [] } = p;
     const journal = [], alertes = [], sources = {};
     const etat = JSON.parse(JSON.stringify(etatAnnee || {}));
     etat.lyleoo = etat.lyleoo || {}; etat.ocm = etat.ocm || {}; etat.site = etat.site || {}; etat.avisFichiers = etat.avisFichiers || [];
@@ -261,12 +261,16 @@
     for (const s in LIBELLE_SOURCE) if (!sources[s] && s !== 'sante' && s !== 'bilans') sources[s] = { statut: 'absent' };
 
     // 7. Contrôles
+    // 07/11/2026 : codes connus (magasins fermés gardés pour une réouverture éventuelle) : plus d'alerte, simple mention au journal
+    const ign = new Set((codesIgnores || []).map(x => String(x).replace(/^0+/, ''))), horsRefConnus = [];
     const horsRefCA = [];
     for (const c in codesHorsRef) {
+      if (ign.has(String(c).replace(/^0+/, ''))) { horsRefConnus.push(c); continue; }
       let ca = 0; for (const s in cosN) { const p = cosN[s].stat_optique; if (p) { const r = p.rows.find(x => x.code === c); if (r) ca += r['CA Généré Opt+Aud'] || 0; } }
       if (ca > 0 && !/A$/.test(c)) horsRefCA.push(`${c} ${codesHorsRef[c] || ''} (${Math.round(ca).toLocaleString('fr-FR')} €)`);
     }
     if (horsRefCA.length) alertes.push('Codes avec CA absents du référentiel (ignorés) : ' + horsRefCA.join(' ; '));
+    if (horsRefConnus.length) journal.push('Codes connus hors référentiel (magasins fermés, ignorés) : ' + horsRefConnus.join(', '));
     const actifsSansCA = ref.filter(r => r.actif === 'Oui' && mag[r.code] && srvN.includes(r.serveur) && !mag[r.code].N.P).map(r => r.code + ' ' + r.magasin);
     if (actifsSansCA.length) journal.push(`${actifsSansCA.length} magasin(s) actif(s) sans CA ce mois-ci : ` + actifsSansCA.slice(0, 15).join(', ') + (actifsSansCA.length > 15 ? '…' : ''));
 
