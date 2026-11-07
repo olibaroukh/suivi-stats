@@ -102,6 +102,17 @@
     $('#btn-zimbra').onclick = recupererZimbra;
     const majCompleter = () => { const k = `${$('#imp-annee').value}-${pad(+$('#imp-mois').value)}`, existe = (S.moisDispo || []).includes(k);
       $('#imp-completer').checked = existe; $('#lbl-completer').hidden = !existe; };
+    // 07/11/2026 : activité OC Mobile — ouvre une conversation Claude pré-remplie (le texte est aussi copié)
+    if ($('#btn-ocm-claude')) $('#btn-ocm-claude').onclick = async () => {
+      const k = `${$('#imp-annee').value}-${pad(+$('#imp-mois').value)}`;
+      const consigne = `Prépare le fichier mensuel « Activité OC Mobile » de Suivi Stats pour ${k}.
+1. Avec l'outil Artifact (action read_db, out_dir /mnt/user-data/outputs/ocm-db), lis l'artefact https://claude.ai/artifact/8aWDTheYdauLap1Z2U4mMZ : collections « releves » et « cosium » (db_op list, limit 200), puis les documents « transfo » (collection analyses) et « potentiel » (collection cockpit). Ne lis aucune autre collection : elles contiennent des données nominatives.
+2. Télécharge https://raw.githubusercontent.com/olibaroukh/suivi-stats/main/outils/ocm_activite.py et lance : python3 ocm_activite.py /mnt/user-data/outputs/ocm-db ${k} /mnt/user-data/outputs/ocm-activite_${k}.json
+3. Présente le fichier (present_files) et donne en quelques lignes les totaux du mois (RDV, CA, atteinte, CA potentiel) et les dates d'arrêté. Supprime ensuite le dossier ocm-db.`;
+      try { await navigator.clipboard.writeText(consigne); } catch (e) { /* presse-papiers indisponible */ }
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(consigne), '_blank', 'noopener');
+      $('#ocm-claude-info').textContent = `Conversation ouverte pour ${k} (consigne aussi copiée : Cmd+V si elle n'apparaît pas). Déposez ensuite ici le fichier ocm-activite_${k}.json.`;
+    };
     $('#imp-mois').addEventListener('change', majCompleter); $('#imp-annee').addEventListener('change', majCompleter); S.majCompleter = majCompleter;
     $('#btn-enregistrer').onclick = enregistrer;
   }
