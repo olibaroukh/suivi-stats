@@ -728,3 +728,10 @@ a.bouton[hidden]{display:none}
 /* 07/11/2026 : accueil — nouveaux fichiers reçus par mail */
 .am-alerte{display:flex;align-items:center;gap:12px;margin-top:14px;padding:10px 14px;border-radius:10px;background:#FFF4E5;border:1px solid #F2C98A;font-weight:600}
 .am-alerte span{flex:1}
+
+/* 07/11/2026 : éditeur de la diffusion */
+.dif-ed td{vertical-align:top}
+.dif-ed input{display:block;width:100%;margin:2px 0 6px;font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:8px}
+.dif-ed label input{margin-top:2px}
+.dif-e{display:flex;gap:8px;align-items:center;padding:2px 0}.dif-e span{flex:1}.dif-e a{text-decoration:none;color:var(--muted,#888)}
+.dif-aj{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.dif-aj select{max-width:240px}
