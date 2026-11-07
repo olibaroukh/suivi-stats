@@ -77,6 +77,8 @@ async function schema(env) {
     // 07/11/2026 : relève automatique de la boîte Zimbra (pièces jointes utiles copiées dans R2)
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS releve_pieces (id TEXT NOT NULL, part TEXT NOT NULL, nom TEXT, type TEXT, date INTEGER, sujet TEXT, taille INTEGER, cle_r2 TEXT, releve_le INTEGER, PRIMARY KEY (id, part))`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS releve_journal (le INTEGER, par TEXT, statut TEXT, detail TEXT)`),
+    // 07/11/2026 : diffusion mensuelle des PDF par mail
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS diffusion_envois (mois TEXT, email TEXT, le INTEGER, statut TEXT, PRIMARY KEY (mois, email))`),
   ]);
   schemaPret = true;
 }
@@ -229,6 +231,40 @@ function zipStocke(fichiers) {
   e.setUint32(0, 0x06054b50, true); e.setUint16(8, fichiers.length, true); e.setUint16(10, fichiers.length, true); e.setUint32(12, tailleCen, true); e.setUint32(16, off, true);
   const tout = [...loc, ...cen, new Uint8Array(e.buffer)], out = new Uint8Array(tout.reduce((a, x) => a + x.length, 0)); let i = 0; for (const x of tout) { out.set(x, i); i += x.length; }
   return out.buffer;
+}
+
+// ---------- Diffusion mensuelle (PDF préparés par l'appli dans diffusion/AAAA-MM/, envoyés depuis la boîte Zimbra) ----------
+const MOIS_LIB = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+async function envoyerMailZimbra(jeton, { a, nom, sujet, texte, pdf, nomPdf }) {
+  const up = await fetch('https://zimbra.oc-pratique.com/service/upload?fmt=raw', { method: 'POST', headers: { Cookie: 'ZM_AUTH_TOKEN=' + jeton, 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${nomPdf}"` }, body: pdf });
+  const t = await up.text(), aid = (t.match(/'([^']+)'\s*$/) || t.match(/,'[^']*','([^']+)'/) || [])[1];
+  if (!up.ok || !aid) throw new Error('dépôt de la pièce jointe refusé (' + up.status + ')');
+  await soap(jeton, { SendMsgRequest: { _jsns: 'urn:zimbraMail', m: { e: [{ t: 't', a, p: nom || undefined }], su: { _content: sujet }, mp: [{ ct: 'text/plain', content: { _content: texte } }], attach: { aid } } } });
+}
+async function diffuser(env, mois, { test = false, par = 'auto' } = {}) {
+  await schema(env);
+  const idx = await lireJSON(env, `diffusion/${mois}/index.json`);
+  if (!idx || !(idx.destinataires || []).length) return { ok: false, erreur: 'PDF de diffusion non générés pour ' + mois };
+  if (!env.ZIMBRA_RELEVE_USER || !env.ZIMBRA_RELEVE_PASSWORD) return { ok: false, erreur: 'boîte Zimbra non configurée' };
+  const z = await authZimbra(env.ZIMBRA_RELEVE_USER, env.ZIMBRA_RELEVE_PASSWORD); if (!z) return { ok: false, erreur: 'connexion Zimbra refusée' };
+  const [a, m] = mois.split('-').map(Number), libMois = `${MOIS_LIB[m - 1]} ${a}`;
+  const res = [];
+  for (const d of idx.destinataires) {
+    if (!test) { const deja = await env.DB.prepare("SELECT statut FROM diffusion_envois WHERE mois = ? AND email = ? AND statut = 'envoyé'").bind(mois, d.email).first(); if (deja) continue; }
+    const o = await env.FICHIERS.get(d.fichier); if (!o) { res.push(d.email + ' : PDF introuvable'); continue; }
+    const prenom = String(d.nom || '').split(' ')[0];
+    const texte = `Bonjour ${prenom},\n\nVous trouverez ci-joint le suivi statistique à fin ${libMois} (cumul depuis le 1er janvier) :\n${(d.ecrans || []).map(x => '  - ' + x).join('\n')}\n\nToutes les données sont aussi consultables dans l'appli Suivi statistique : https://olibaroukh.github.io/suivi-stats\n\nBonne lecture,\nOlivier`;
+    const dest = test ? env.ZIMBRA_RELEVE_USER : d.email;
+    try {
+      await envoyerMailZimbra(z.jeton, { a: dest, nom: test ? null : d.nom, sujet: `${test ? '[TEST pour ' + d.nom + '] ' : ''}Suivi statistique – ${libMois}`, texte, pdf: await o.arrayBuffer(), nomPdf: `Suivi statistique - ${libMois} - ${d.nom}.pdf` });
+      if (!test) await env.DB.prepare('INSERT OR REPLACE INTO diffusion_envois (mois, email, le, statut) VALUES (?, ?, ?, ?)').bind(mois, d.email, Date.now(), 'envoyé').run();
+      res.push(`${d.nom} ✓`);
+    } catch (e) {
+      if (!test) await env.DB.prepare('INSERT OR REPLACE INTO diffusion_envois (mois, email, le, statut) VALUES (?, ?, ?, ?)').bind(mois, d.email, Date.now(), 'échec : ' + e.message).run();
+      res.push(`${d.nom} : ${e.message}`);
+    }
+  }
+  return { ok: true, detail: (test ? 'Test envoyé à ' + env.ZIMBRA_RELEVE_USER + ' : ' : 'Envoi : ') + (res.join(' · ') || 'rien à envoyer (déjà fait)') };
 }
 
 // ---------- Relève automatique (chaque nuit + bouton) ----------
@@ -435,6 +471,16 @@ async function routes(request, env) {
     const j = await env.DB.prepare('SELECT le, par, statut, detail FROM releve_journal ORDER BY le DESC LIMIT 5').all();
     return json({ ok: true, configure: !!(env.ZIMBRA_RELEVE_USER && env.ZIMBRA_RELEVE_PASSWORD), journal: j.results || [], pieces: await piecesReleveesDuMois(env, m) }, 200, h);
   }
+  if (chemin === '/diffusion/etat' && admin) {
+    const m = url.searchParams.get('mois') || ''; if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois requis', 400, h);
+    await schema(env);
+    const e = await env.DB.prepare('SELECT email, le, statut FROM diffusion_envois WHERE mois = ? ORDER BY le').bind(m).all();
+    return json({ ok: true, index: await lireJSON(env, `diffusion/${m}/index.json`), envois: e.results || [] }, 200, h);
+  }
+  if (chemin === '/diffusion/envoyer' && request.method === 'POST' && admin) {
+    const b = await request.json().catch(() => ({})); if (!/^\d{4}-\d{2}$/.test(String(b.mois || ''))) return erreur('mois requis', 400, h);
+    try { return json(await diffuser(env, b.mois, { test: !!b.test, par: email }), 200, h); } catch (e) { return erreur('Diffusion : ' + e.message, 502, h); }
+  }
   if (chemin === '/releve/lancer' && request.method === 'POST' && admin) {
     try { return json(await releverBoite(env, email), 200, h); } catch (e) { return erreur('Relève : ' + e.message, 502, h); }
   }
@@ -549,6 +595,8 @@ export default {
   async scheduled(event, env, ctx) {
     // « 0 5 1 * * » : taux de change le 1er du mois ; « 0 1 * * * » : relève de la boîte Zimbra chaque nuit
     if (event.cron === '0 5 1 * *') ctx.waitUntil(majTaux(env, 'automatique').catch(e => console.error('taux', e)));
+    // « 0 6 2-10 * * » : diffusion du mois précédent le 2 à 7 h, puis chaque matin jusqu'au 10 tant que les PDF ne sont pas prêts / envoyés
+    else if (event.cron === '0 6 2-10 * *') ctx.waitUntil(diffuser(env, moisDecale(new Date(), -1)).then(r => console.log('diffusion', JSON.stringify(r))).catch(e => console.error('diffusion', e)));
     else ctx.waitUntil(releverBoite(env, 'nuit').catch(e => console.error('relève', e)));
   },
 };
