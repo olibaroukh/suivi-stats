@@ -320,6 +320,7 @@
     const ks = (await Store.lister('donnees')).filter(n => /^\d{4}-\d{2}$/.test(n)).sort().reverse();
     S.moisDispo = ks;
     if (S.majCompleter) S.majCompleter();
+    remplirMoisDiffusion();
     $('#ck-photo').innerHTML = ks.length ? ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)} (cumul depuis janvier)</option>`).join('') : '<option value="">Aucun mois enregistré</option>';
     $('#fi-photo').innerHTML = ks.length ? ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join('') : '<option value="">Aucun mois enregistré</option>';
     if (ks.length) await chargerPhoto(ks[0]);
@@ -622,18 +623,26 @@
     }
     return index.destinataires.length;
   }
+  // Liste des mois enregistrés (remplie aussi après le chargement des photos, qui arrive après la connexion)
+  function remplirMoisDiffusion() {
+    const sel = $('#dif-mois'); if (!sel) return; const ks = S.moisDispo || [], v = sel.value;
+    sel.innerHTML = ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join('');
+    if (v && ks.includes(v)) sel.value = v;
+    if (S.difEtat) S.difEtat();
+  }
   async function brancherDiffusion() {
     $('#carte-diffusion').hidden = false;
     const conf = await confDiffusion();
     if (!CK.perims || !CK.perims.length) remplirPerimetres();
     $('#dif-liste').innerHTML = `<table class="statuts"><thead><tr><th>Destinataire</th><th>Écrans</th></tr></thead><tbody>${conf.destinataires.map(d => `<tr><td><b>${esc(d.nom)}</b><br><span class="muted">${esc(d.email)}</span></td><td>${d.ecrans.map(e => esc(libEcran(e))).join('<br>')}${d.exclurePays ? `<br><span class="muted">hors ${esc(d.exclurePays[0])}</span>` : ''}</td></tr>`).join('')}</tbody></table>`;
-    const ks = S.moisDispo || []; $('#dif-mois').innerHTML = ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join('');
+    remplirMoisDiffusion();
     const info = t => { $('#dif-info').textContent = t; };
     const etat = async () => { try { const r = await Store.api('/diffusion/etat?mois=' + $('#dif-mois').value); const x = await r.json(); if (!r.ok) throw new Error(x.erreur || r.status);
       info(x.index ? `PDF générés le ${new Date(x.index.genereLe).toLocaleString('fr-FR')} · ` + (x.envois.length ? x.envois.map(e => `${e.email.split('@')[0]} : ${e.statut} ${new Date(e.le).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`).join(' · ') : 'pas encore envoyés') : 'PDF pas encore générés pour ce mois.'); } catch (e) { info(e.message); } };
-    $('#dif-mois').onchange = etat; etat();
-    $('#dif-generer').onclick = async () => { $('#dif-generer').disabled = true; try { const n = await genererDiffusion($('#dif-mois').value, info); info(`${n} PDF générés.`); await etat(); } catch (e) { info('Erreur : ' + e.message); } finally { $('#dif-generer').disabled = false; } };
-    const envoyer = async test => { if (!test && !confirm('Envoyer maintenant les PDF de ' + $('#dif-mois').selectedOptions[0].textContent + ' à tous les destinataires ?')) return;
+    $('#dif-mois').onchange = etat; S.difEtat = etat; etat();
+    const moisOk = () => { if ($('#dif-mois').value) return true; info('Aucun mois enregistré dans la liste : rechargez la page.'); return false; };
+    $('#dif-generer').onclick = async () => { if (!moisOk()) return; $('#dif-generer').disabled = true; try { const n = await genererDiffusion($('#dif-mois').value, info); info(`${n} PDF générés.`); await etat(); } catch (e) { info('Erreur : ' + e.message); } finally { $('#dif-generer').disabled = false; } };
+    const envoyer = async test => { if (!moisOk()) return; if (!test && !confirm('Envoyer maintenant les PDF de ' + $('#dif-mois').selectedOptions[0].textContent + ' à tous les destinataires ?')) return;
       info('Envoi…'); try { const r = await Store.api('/diffusion/envoyer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mois: $('#dif-mois').value, test }) }); const x = await r.json(); if (!r.ok || !x.ok) throw new Error(x.erreur || r.status); info(x.detail); } catch (e) { info('Erreur : ' + e.message); } };
     $('#dif-test').onclick = () => envoyer(true); $('#dif-envoyer').onclick = () => envoyer(false);
   }
