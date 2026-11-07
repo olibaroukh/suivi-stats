@@ -64,7 +64,7 @@
       if (!admin && v !== 'accueil' && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
       b.hidden = !ok;
     });
-    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherIddigital(); if (admin) brancherEcrans(); $('#zone-zimbra').hidden = !admin;
+    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherIddigital(); if (admin) brancherDiffusion(); if (admin) brancherEcrans(); $('#zone-zimbra').hidden = !admin;
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
@@ -296,6 +296,12 @@
     for (const f of S.fichiers) await Store.ecrire(`donnees/${k}/imports/${f.name.replace(/^[0-9a-f]{8}-/, '')}`, f);
     for (const p of ['lyleoo', 'ocm', 'site']) { const v = $('#paste-' + p).value; if (v.trim()) await Store.ecrire(`donnees/${k}/imports/copier-coller-${p}.txt`, v); }
     $('#calc-info').textContent = `Photo de ${MOIS[photo.mois - 1]} ${photo.annee} enregistrée.`; $('#btn-enregistrer').disabled = true;
+    // 07/11/2026 : PDF de la diffusion mensuelle préparés pour le mois précédent (envoi automatique par le serveur le 2)
+    if (Store.cloud() && Store.estAdmin()) { const now = new Date(), dp = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      if (k === `${dp.getFullYear()}-${pad(dp.getMonth() + 1)}`) { S.moisDispo = [...new Set([k, ...(S.moisDispo || [])])].sort().reverse();
+        $('#calc-info').textContent += ' Préparation des PDF de diffusion…';
+        try { const n = await genererDiffusion(k); $('#calc-info').textContent = `Photo de ${MOIS[photo.mois - 1]} ${photo.annee} enregistrée · ${n} PDF de diffusion prêts (envoi automatique le 2 à 7 h).`; }
+        catch (e) { $('#calc-info').textContent += ' PDF de diffusion : ' + e.message; } } }
     await listerPhotos(); $('#fi-photo').value = k; await chargerPhoto(k); afficherAccueil();
   }
 
@@ -513,8 +519,9 @@
     const th = $('#ck-theme').value; let tri = $('#ck-tri').value;
     if (tri === '__theme') tri = th !== 'siege' ? Cockpit.THEMES[th].tri : 'code';
     const siege = (await Store.lireJSON(`config/objectifs-siege-${CK.cle.slice(0, 4)}.json`)) || {};
-    const exclus = selCockpit(p.id);
-    const pAff = (p.filtre && exclus.size) ? { ...p, filtre: r => p.filtre(r) && !exclus.has(String(r.code)) } : p;
+    const exclus = CK.diffusion ? new Set() : selCockpit(p.id); // diffusion : pas les choix locaux d'Olivier
+    const exP = (CK.exclusPays || []).map(x => normTxt(x));
+    const pAff = (p.filtre && (exclus.size || exP.length)) ? { ...p, filtre: r => p.filtre(r) && !exclus.has(String(r.code)) && !exP.includes(normTxt(r.pays)) } : p;
     majBoutonSel(p, exclus);
     const precedente = th === 'restes' ? await photoMois(moisPrec(CK.cle)) : null;
     const tx = await tauxChange();
@@ -548,6 +555,87 @@
     echelle(); window.onresize = echelle;
     $('#ck-info').innerHTML = ok ? `${md.type === 'siege' ? '' : md.lignes.length + ' lignes · '}A3 paysage, ${pages.length} page${pages.length > 1 ? 's' : ''}.` : '<b style="color:var(--ko)">Attention : ce cockpit dépasse une page A3, même resserré. Choisis un périmètre plus restreint.</b>';
     return ok;
+  }
+  // ---------- Diffusion mensuelle (07/11/2026) ----------
+  const normTxt = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  const SIEGE = { perim: 'siege', theme: 'siege', lib: 'Réseau – vue Siège' };
+  const SUCC = ['ca', 'optique', 'audio', 'renta'].map(t => ({ perim: 'france', theme: t }));
+  const INTER = ['ca', 'optique', 'audio', 'renta'].map(t => ({ perim: 'inter', theme: t }));
+  const FRANCH = ['ca', 'optique', 'audio'].map(t => ({ perim: 'franchises', theme: t }));
+  const DIFFUSION_DEFAUT = { jour: 2, destinataires: [
+    { nom: 'Olivier Baroukh', email: 'olivier.baroukh@optical-center.com', ecrans: [SIEGE, ...SUCC, { special: 'mlme', lib: 'Managers Leaders & Magasins d’Excellence' }, { perim: 'ocm', theme: 'ocmAct' }] },
+    { nom: 'Laurent Levy', email: 'laurent.levy@optical-center.com', ecrans: [SIEGE, ...SUCC, ...FRANCH, ...INTER] },
+    { nom: 'Sacha Assola', email: 'sacha.assola@optical-center.com', ecrans: [SIEGE, ...FRANCH] },
+    { nom: 'Cécilia Lecomte', email: 'cecilia.lecomte@optical-center.com', exclurePays: ['ISRAEL', 'ISRAËL'], ecrans: [SIEGE, ...INTER] },
+  ] };
+  async function confDiffusion() { return (await Store.lireJSON('config/diffusion.json').catch(() => null)) || DIFFUSION_DEFAUT; }
+  const libEcran = e => e.lib || (() => { const p = CK.perims.find(x => x.id === e.perim); const t = e.theme === 'siege' ? '' : (Cockpit.THEMES[e.theme] || {}).lib; return [p ? p.lib : e.perim, t].filter(Boolean).join(' · '); })();
+  const slugMail = m => String(m).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  async function capturerA3(pages, doc) {
+    for (const pg of pages) {
+      const clone = pg.cloneNode(true), hote = document.createElement('div'); hote.style.cssText = 'position:fixed;left:-10000px;top:0'; hote.appendChild(clone); document.body.appendChild(hote);
+      const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', logging: false }); hote.remove();
+      if (doc.__n) doc.addPage('a3', 'landscape'); doc.__n = (doc.__n || 0) + 1;
+      doc.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 420, 297);
+    }
+  }
+  // Génère un PDF par destinataire (tous ses écrans à la suite) dans diffusion/AAAA-MM/ ; retourne le nombre de PDF
+  async function genererDiffusion(k, info = () => {}) {
+    const conf = await confDiffusion();
+    if (!CK.perims || !CK.perims.length) remplirPerimetres();
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    const avant = { photo: $('#ck-photo').value, perim: $('#ck-perim').value, theme: $('#ck-theme').value, tri: $('#ck-tri').value, chgMois: $('#chg-mois').value, chgPays: $('#chg-pays').value, chgVue: CHG.vue };
+    const { jsPDF } = window.jspdf, index = { mois: k, genereLe: new Date().toISOString(), destinataires: [] };
+    // les écrans doivent être affichés pour que la mise en page (ajustement à une page A3) soit calculée
+    const vueAvant = ((document.querySelector('.vue.actif') || {}).id || 'vue-accueil').replace('vue-', '');
+    try {
+      for (const d of conf.destinataires) {
+        const doc = new jsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' }), libs = [];
+        for (const e of d.ecrans) {
+          info(`${d.nom} : ${libEcran(e)}…`);
+          if (e.special === 'mlme') {
+            vue('challenges'); CHG.vue = 'cockpit'; if (![...$('#chg-mois').options].some(o => o.value === k)) await afficherChallenges(); $('#chg-mois').value = k; if ($('#chg-pays').options.length) $('#chg-pays').value = 'FRANCE'; $('#chg-ar').value = ''; $('#chg-q').value = '';
+            await afficherChallenges(); const pg = $('#chg-apercu .mlme-page'); if (pg) { await capturerA3([pg], doc); libs.push(libEcran(e)); }
+            continue;
+          }
+          if (![...$('#ck-photo').options].some(o => o.value === k)) $('#ck-photo').insertAdjacentHTML('afterbegin', `<option value="${k}">${k}</option>`);
+          vue('cockpits'); $('#ck-photo').value = k; $('#ck-perim').value = e.perim; if ($('#ck-perim').value !== e.perim) continue;
+          remplirThemes(); $('#ck-theme').value = e.theme; $('#ck-tri').value = '__theme';
+          CK.exclusPays = d.exclurePays || null; CK.diffusion = true;
+          await afficherCockpit();
+          const pages = [...$('#ck-apercu').querySelectorAll('.cockpit')];
+          const ech = $('#ck-apercu .ck-echelle'), tr = ech ? ech.style.transform : ''; if (ech) ech.style.transform = 'none';
+          await capturerA3(pages, doc); if (ech) ech.style.transform = tr;
+          libs.push(libEcran(e));
+        }
+        CK.exclusPays = null;
+        if (!doc.__n) continue;
+        const fichier = `diffusion/${k}/${slugMail(d.email)}.pdf`;
+        await Store.ecrire(fichier, doc.output('blob'));
+        index.destinataires.push({ nom: d.nom, email: d.email, fichier, ecrans: libs, pages: doc.__n });
+      }
+      await Store.ecrireJSON(`diffusion/${k}/index.json`, index);
+    } finally {
+      CK.exclusPays = null; CK.diffusion = false; CHG.vue = avant.chgVue; vue(vueAvant);
+      if (avant.photo) { $('#ck-photo').value = avant.photo; $('#ck-perim').value = avant.perim; remplirThemes(); $('#ck-theme').value = avant.theme; $('#ck-tri').value = avant.tri; }
+      if (avant.chgMois) $('#chg-mois').value = avant.chgMois;
+    }
+    return index.destinataires.length;
+  }
+  async function brancherDiffusion() {
+    $('#carte-diffusion').hidden = false;
+    const conf = await confDiffusion();
+    if (!CK.perims || !CK.perims.length) remplirPerimetres();
+    $('#dif-liste').innerHTML = `<table class="statuts"><thead><tr><th>Destinataire</th><th>Écrans</th></tr></thead><tbody>${conf.destinataires.map(d => `<tr><td><b>${esc(d.nom)}</b><br><span class="muted">${esc(d.email)}</span></td><td>${d.ecrans.map(e => esc(libEcran(e))).join('<br>')}${d.exclurePays ? `<br><span class="muted">hors ${esc(d.exclurePays[0])}</span>` : ''}</td></tr>`).join('')}</tbody></table>`;
+    const ks = S.moisDispo || []; $('#dif-mois').innerHTML = ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join('');
+    const info = t => { $('#dif-info').textContent = t; };
+    const etat = async () => { try { const r = await Store.api('/diffusion/etat?mois=' + $('#dif-mois').value); const x = await r.json(); if (!r.ok) throw new Error(x.erreur || r.status);
+      info(x.index ? `PDF générés le ${new Date(x.index.genereLe).toLocaleString('fr-FR')} · ` + (x.envois.length ? x.envois.map(e => `${e.email.split('@')[0]} : ${e.statut} ${new Date(e.le).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`).join(' · ') : 'pas encore envoyés') : 'PDF pas encore générés pour ce mois.'); } catch (e) { info(e.message); } };
+    $('#dif-mois').onchange = etat; etat();
+    $('#dif-generer').onclick = async () => { $('#dif-generer').disabled = true; try { const n = await genererDiffusion($('#dif-mois').value, info); info(`${n} PDF générés.`); await etat(); } catch (e) { info('Erreur : ' + e.message); } finally { $('#dif-generer').disabled = false; } };
+    const envoyer = async test => { if (!test && !confirm('Envoyer maintenant les PDF de ' + $('#dif-mois').selectedOptions[0].textContent + ' à tous les destinataires ?')) return;
+      info('Envoi…'); try { const r = await Store.api('/diffusion/envoyer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mois: $('#dif-mois').value, test }) }); const x = await r.json(); if (!r.ok || !x.ok) throw new Error(x.erreur || r.status); info(x.detail); } catch (e) { info('Erreur : ' + e.message); } };
+    $('#dif-test').onclick = () => envoyer(true); $('#dif-envoyer').onclick = () => envoyer(false);
   }
   async function pdfCockpit() {
     const page = $('#ck-apercu .cockpit'); if (!page) return;

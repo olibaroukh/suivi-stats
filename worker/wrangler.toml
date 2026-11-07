@@ -30,4 +30,5 @@ enabled = true
 # Le 1er de chaque mois à 6 h (heure de Paris en hiver) : mise à jour des taux de change
 # Chaque nuit à 2 h (heure de Paris en hiver) : relève des pièces jointes utiles dans la boîte Zimbra
 [triggers]
-crons = ["0 5 1 * *", "0 1 * * *"]
+# Du 2 au 10 de chaque mois à 7 h (heure de Paris en hiver) : envoi de la diffusion mensuelle (une seule fois par destinataire)
+crons = ["0 5 1 * *", "0 1 * * *", "0 6 2-10 * *"]
