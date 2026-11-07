@@ -600,8 +600,12 @@ export default {
   async scheduled(event, env, ctx) {
     // « 0 5 1 * * » : taux de change le 1er du mois ; « 0 1 * * * » : relève de la boîte Zimbra chaque nuit
     if (event.cron === '0 5 1 * *') ctx.waitUntil(majTaux(env, 'automatique').catch(e => console.error('taux', e)));
-    // « 0 6 2-10 * * » : diffusion du mois précédent le 2 à 7 h, puis chaque matin jusqu'au 10 tant que les PDF ne sont pas prêts / envoyés
-    else if (event.cron === '0 6 2-10 * *') ctx.waitUntil(diffuser(env, moisDecale(new Date(), -1)).then(r => console.log('diffusion', JSON.stringify(r))).catch(e => console.error('diffusion', e)));
+    // 07/11/2026 : diffusion du mois précédent le 1er à 15 h (heure de Paris), puis chaque jour à 15 h jusqu'au 10 tant que les PDF
+    // ne sont pas prêts / envoyés. Deux déclenchements (13 h et 14 h UTC) : seul celui qui tombe à 15 h à Paris envoie (heure d'été / d'hiver).
+    else if (event.cron === '0 13 1-10 * *' || event.cron === '0 14 1-10 * *') {
+      const hParis = +new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date(event.scheduledTime || Date.now()));
+      if (hParis === 15) ctx.waitUntil(diffuser(env, moisDecale(new Date(), -1)).then(r => console.log('diffusion', JSON.stringify(r))).catch(e => console.error('diffusion', e)));
+    }
     else ctx.waitUntil(releverBoite(env, 'nuit').catch(e => console.error('relève', e)));
   },
 };

@@ -300,7 +300,7 @@
     if (Store.cloud() && Store.estAdmin()) { const now = new Date(), dp = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       if (k === `${dp.getFullYear()}-${pad(dp.getMonth() + 1)}`) { S.moisDispo = [...new Set([k, ...(S.moisDispo || [])])].sort().reverse();
         $('#calc-info').textContent += ' Préparation des PDF de diffusion…';
-        try { const n = await genererDiffusion(k); $('#calc-info').textContent = `Photo de ${MOIS[photo.mois - 1]} ${photo.annee} enregistrée · ${n} PDF de diffusion prêts (envoi automatique le 2 à 7 h).`; }
+        try { const n = await genererDiffusion(k); $('#calc-info').textContent = `Photo de ${MOIS[photo.mois - 1]} ${photo.annee} enregistrée · ${n} PDF de diffusion prêts (envoi automatique à 15 h).`; }
         catch (e) { $('#calc-info').textContent += ' PDF de diffusion : ' + e.message; } } }
     await listerPhotos(); $('#fi-photo').value = k; await chargerPhoto(k); afficherAccueil();
   }
