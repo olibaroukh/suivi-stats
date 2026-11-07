@@ -32,4 +32,5 @@ enabled = true
 [triggers]
 # Du 1er au 10 de chaque mois à 15 h (heure de Paris, été comme hiver) : envoi de la diffusion mensuelle (une seule fois par destinataire)
 # Le 1er de chaque mois à 9 h (heure de Paris) : mail de rappel à Olivier (ce qui est arrivé + ce qu'il reste à faire)
-crons = ["0 5 1 * *", "0 1 * * *", "0 13 1-10 * *", "0 14 1-10 * *", "0 7 1 * *", "0 8 1 * *"]
+# Le 27 de chaque mois à 9 h : rappel de préparation (référentiel, objectifs, accès, saisies, import RH)
+crons = ["0 5 1 * *", "0 1 * * *", "0 13 1-10 * *", "0 14 1-10 * *", "0 7 1 * *", "0 8 1 * *", "0 7 27 * *", "0 8 27 * *"]

@@ -680,6 +680,7 @@
     const envoyer = async test => { if (!moisOk()) return; if (!test && !confirm('Envoyer maintenant les PDF de ' + $('#dif-mois').selectedOptions[0].textContent + ' à tous les destinataires ?')) return;
       info('Envoi…'); try { const r = await Store.api('/diffusion/envoyer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mois: $('#dif-mois').value, test }) }); const x = await r.json(); if (!r.ok || !x.ok) throw new Error(x.erreur || r.status); info(x.detail); } catch (e) { info('Erreur : ' + e.message); } };
     $('#dif-test').onclick = () => envoyer(true); $('#dif-envoyer').onclick = () => envoyer(false);
+    $('#dif-rappel27').onclick = async () => { info('Envoi du rappel…'); try { const r = await Store.api('/rappel/tester', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'preparation' }) }); const x = await r.json(); if (!r.ok || !x.ok) throw new Error(x.erreur || r.status); info(x.detail + ' (automatique le 27 à 9 h).'); } catch (e) { info('Erreur : ' + e.message); } };
     $('#dif-rappel').onclick = async () => { info('Envoi du rappel…'); try { const r = await Store.api('/rappel/tester', { method: 'POST' }); const x = await r.json(); if (!r.ok || !x.ok) throw new Error(x.erreur || r.status); info(x.detail + ' (automatique le 1er à 9 h).'); } catch (e) { info('Erreur : ' + e.message); } };
   }
   async function pdfCockpit() {

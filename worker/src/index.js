@@ -268,6 +268,29 @@ async function diffuser(env, mois, { test = false, par = 'auto' } = {}) {
 }
 
 // ---------- Rappel mensuel à Olivier (le 1er à 9 h, heure de Paris) ----------
+// 07/11/2026 : rappel de préparation le 27 à 9 h (ce qui doit être à jour avant le 1er)
+async function rappelPreparation(env) {
+  if (!env.ZIMBRA_RELEVE_USER || !env.ZIMBRA_RELEVE_PASSWORD) return { ok: false, erreur: 'boîte Zimbra non configurée' };
+  const z = await authZimbra(env.ZIMBRA_RELEVE_USER, env.ZIMBRA_RELEVE_PASSWORD); if (!z) return { ok: false, erreur: 'connexion Zimbra refusée' };
+  const mois = moisDecale(new Date(), 0), [a, m] = mois.split('-').map(Number), lib = `${MOIS_LIB[m - 1]} ${a}`;
+  const texte = [
+    `Bonjour Olivier,`, ``,
+    `La fin de ${lib} approche : voici ce qui doit être à jour avant le 1er pour que le calcul et la diffusion de 15 h se passent bien.`, ``,
+    `👉 Suivi Stats : https://olibaroukh.github.io/suivi-stats`, ``,
+    `D'ici la fin du mois :`,
+    `  1. Référentiel magasins (Suivi Stats › Réglages › Référentiel : exporter, corriger, réimporter) : ouvertures et fermetures (colonne Actif), changements de manager ou d'AR, e-mails magasins, nouveau code site (renseigner « Ancien code site » pour garder le N-1).`,
+    `  2. Objectifs (Réglages › Objectifs) : objectif des magasins ouverts ou repris dans le mois.`,
+    `  3. Accès : comptes des nouveaux collaborateurs (Réglages › Accès des équipes) ; code PIN des nouveaux magasins (Réglages › Accès magasins).`,
+    `  4. Saisies manuelles : critères Managers Leaders / Magasins d'Excellence (relancer les AR) et réalisé des Actions de l'Année non automatiques.`,
+    `  5. Diffusion : destinataires et écrans à jour (Réglages › Diffusion mensuelle).`, ``,
+    `Le dernier jour du mois ou le 1er au matin :`,
+    `  6. bilan-passage › Import RH : export effectif (8 colonnes) ET « Rapport agenda validés » du mois (absences, journées école, temps partiels) → effectifs et ETP de Suivi Stats et du score santé.`,
+    `  7. Score santé du mois calculé (et validé) dans bilan-passage ; dans Suivi Stats, il est repris au calcul (bouton « Mettre à jour le score santé… » si besoin).`, ``,
+    `Le 1er à 9 h, tu recevras le rappel « boucler ${lib} » avec la suite (Cosium, OC Mobile, avoirs, visites, Lyleoo, calcul, enregistrement).`, ``,
+    `— Suivi statistique (message automatique)`].join('\n');
+  await soap(z.jeton, { SendMsgRequest: { _jsns: 'urn:zimbraMail', m: { e: [{ t: 't', a: env.ZIMBRA_RELEVE_USER }], su: { _content: `🗓️ Suivi statistique : préparer la fin de ${lib}` }, mp: [{ ct: 'text/plain', content: { _content: texte } }] } } });
+  return { ok: true, detail: `Rappel de préparation envoyé à ${env.ZIMBRA_RELEVE_USER}` };
+}
 async function rappelMensuel(env, par = 'auto') {
   if (!env.ZIMBRA_RELEVE_USER || !env.ZIMBRA_RELEVE_PASSWORD) return { ok: false, erreur: 'boîte Zimbra non configurée' };
   await schema(env);
@@ -290,6 +313,7 @@ async function rappelMensuel(env, par = 'auto') {
     autres.length ? `  - Autres fichiers : ${autres.join(', ')}` : `  - Autres fichiers (marges, renta salariale, rentabilités, avis Google) : arrivent au fil du mois`,
     dejaEnregistre ? `${L}(${lib} est déjà enregistré : il suffira d'intégrer les fichiers arrivés depuis.)` : '', ``,
     `À faire aujourd'hui (avant 15 h, heure de l'envoi automatique aux destinataires) :`,
+    `  0. Si ce n'est pas fait : bilan-passage › Import RH (export effectif + « Rapport agenda validés » du mois écoulé), et référentiel magasins à jour.`,
     `  1. Accueil › « Relever maintenant », puis attendre « Cosium complet (28 / 28) ».`,
     `  2. Import du mois › « 🚐 Préparer l'activité OC Mobile avec Claude » → récupérer le fichier ocm-activite_${mois}.json.`,
     `  3. Accueil › « Préparer et calculer ».`,
@@ -508,7 +532,8 @@ async function routes(request, env) {
     return json({ ok: true, configure: !!(env.ZIMBRA_RELEVE_USER && env.ZIMBRA_RELEVE_PASSWORD), journal: j.results || [], pieces: await piecesReleveesDuMois(env, m) }, 200, h);
   }
   if (chemin === '/rappel/tester' && request.method === 'POST' && admin) {
-    try { return json(await rappelMensuel(env, email), 200, h); } catch (e) { return erreur('Rappel : ' + e.message, 502, h); }
+    const b = await request.json().catch(() => ({}));
+    try { return json(b.type === 'preparation' ? await rappelPreparation(env) : await rappelMensuel(env, email), 200, h); } catch (e) { return erreur('Rappel : ' + e.message, 502, h); }
   }
   if (chemin === '/diffusion/etat' && admin) {
     const m = url.searchParams.get('mois') || ''; if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois requis', 400, h);
@@ -645,6 +670,11 @@ export default {
     else if (event.cron === '0 7 1 * *' || event.cron === '0 8 1 * *') {
       const hP = +new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date(event.scheduledTime || Date.now()));
       if (hP === 9) ctx.waitUntil(rappelMensuel(env).then(r => console.log('rappel', JSON.stringify(r))).catch(e => console.error('rappel', e)));
+    }
+    // le 27 à 9 h (heure de Paris) : rappel de préparation de la fin de mois
+    else if (event.cron === '0 7 27 * *' || event.cron === '0 8 27 * *') {
+      const hP = +new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date(event.scheduledTime || Date.now()));
+      if (hP === 9) ctx.waitUntil(rappelPreparation(env).then(r => console.log('rappel prépa', JSON.stringify(r))).catch(e => console.error('rappel prépa', e)));
     }
     else if (event.cron === '0 13 1-10 * *' || event.cron === '0 14 1-10 * *') {
       const hParis = +new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date(event.scheduledTime || Date.now()));
