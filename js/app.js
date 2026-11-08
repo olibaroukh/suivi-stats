@@ -57,6 +57,8 @@
   async function sessionPrete() {
     document.body.classList.remove('non-connecte'); $('#ecran-connexion').hidden = true;
     const p = Store.profil(), admin = Store.estAdmin();
+    // 08/11/2026 : compte « séminaire franchisés » seul → page du séminaire
+    if (p && p.role === 'seminaire') { location.href = 'seminaire-franchises/'; return; }
     $('#lien-deconnexion').hidden = false;
     $('#pied-stockage').textContent = 'Données stockées sur Cloudflare, accès par connexion personnelle.' + (window.APP_VERSION ? ' · version ' + window.APP_VERSION : '');
     // Lecteurs : ni import ni réglages ; écrans éventuellement limités par leur profil

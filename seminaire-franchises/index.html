@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="../assets/icone-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Séminaire">
+<title>Séminaire franchisés</title>
+<link rel="stylesheet" href="sem.css">
+</head>
+<body>
+<header class="entete">
+  <img src="../assets/logo-optical-center.png" alt="Optical Center">
+  <h1><small>Optical Center</small><span id="titre-edition">Séminaire franchisés</span></h1>
+  <div class="droite"><span id="etat-sync" class="sync hors" hidden></span><br><span id="qui"></span> <a href="#" id="lien-deconnexion" hidden>Déconnexion</a></div>
+</header>
+
+<section id="ecran-connexion" hidden>
+  <div class="carte">
+    <h2>Connexion</h2>
+    <p class="aide">Connectez-vous avec votre adresse e-mail et votre mot de passe Zimbra (les mêmes que pour Suivi Stats). Vos notes ne sont visibles que par vous et par les responsables du séminaire.</p>
+    <label for="cx-user">Adresse e-mail Zimbra</label><input id="cx-user" type="email" autocomplete="username" placeholder="prenom.nom@optical-center.com">
+    <label for="cx-pass">Mot de passe</label><input id="cx-pass" type="password" autocomplete="current-password">
+    <button class="primaire" id="btn-connexion" style="width:100%;margin-top:14px">Se connecter</button>
+    <p class="muted petit" id="cx-info" style="min-height:1.2em"></p>
+  </div>
+</section>
+
+<nav class="onglets" id="onglets" hidden>
+  <button data-vue="franchises" class="actif"><span>👥</span>Franchisés</button>
+  <button data-vue="planning"><span>⏱️</span>Speed dating</button>
+  <button data-vue="synthese"><span>📊</span>Synthèse</button>
+  <button data-vue="reglages" id="onglet-reglages" hidden><span>⚙️</span>Réglages</button>
+</nav>
+
+<main id="principal" hidden>
+  <section class="vue actif" id="vue-franchises">
+    <div class="carte">
+      <h2>Franchisés</h2>
+      <input id="fr-q" type="search" placeholder="🔍 Franchisé, magasin, pays…" autocomplete="off">
+      <div class="ligne petit" style="margin-top:8px">
+        <label class="ligne" style="margin:0;font-weight:600"><input type="checkbox" id="fr-mes" style="width:auto"> Seulement ceux que j'ai préparés ou rencontrés</label>
+      </div>
+      <div class="liste-fr" id="fr-liste"></div>
+      <p class="muted petit" id="fr-source"></p>
+    </div>
+  </section>
+
+  <section class="vue" id="vue-planning">
+    <div class="carte">
+      <h2>Mes rendez-vous speed dating</h2>
+      <p class="aide">Ajoutez vos 5 à 10 créneaux avant le départ ; touchez un rendez-vous pour saisir l'échange.</p>
+      <div id="pl-liste"></div>
+      <button class="primaire" id="pl-ajouter" style="width:100%;margin-top:8px">+ Ajouter un rendez-vous</button>
+    </div>
+    <div class="carte">
+      <h2>Mes échanges informels</h2>
+      <div id="pl-informels"></div>
+    </div>
+  </section>
+
+  <section class="vue" id="vue-synthese">
+    <div class="carte pas-imprimer">
+      <div class="ligne">
+        <select id="sy-auteur" style="flex:1;min-width:180px" hidden></select>
+        <select id="sy-annee" style="width:auto"></select>
+        <button id="sy-excel">Exporter en Excel</button>
+        <button id="sy-imprimer">Imprimer</button>
+      </div>
+    </div>
+    <div id="sy-contenu"></div>
+  </section>
+
+  <section class="vue" id="vue-reglages">
+    <div class="carte">
+      <h2>Séminaire de l'année</h2>
+      <div class="ligne"><div style="flex:1;min-width:160px"><label>Année</label><select id="rg-annee"></select></div><div style="flex:3;min-width:220px"><label>Titre</label><input id="rg-titre"></div></div>
+      <div class="ligne"><div style="flex:2;min-width:160px"><label>Lieu</label><input id="rg-lieu"></div><div style="flex:1;min-width:140px"><label>Du</label><input id="rg-du" type="date"></div><div style="flex:1;min-width:140px"><label>Au</label><input id="rg-au" type="date"></div></div>
+      <label>Sujets proposés (un par ligne)</label><textarea id="rg-sujets" rows="6"></textarea>
+      <label>Sujet central de l'année</label><input id="rg-central">
+      <label>Questions du sujet central</label>
+      <p class="aide">Une question par ligne : <b>libellé | type | options séparées par des virgules</b>. Types : choix (une réponse), etiquettes (plusieurs), texte.</p>
+      <textarea id="rg-questions" rows="7"></textarea>
+      <div class="ligne" style="margin-top:10px"><button class="primaire" id="rg-enregistrer">Enregistrer</button><span class="muted petit" id="rg-info"></span></div>
+    </div>
+    <div class="carte">
+      <h2>Comptes</h2>
+      <p class="aide">Directeur : ne voit que ses notes. Responsable : voit toutes les notes et gère ces réglages. Les administrateurs de Suivi Stats sont responsables d'office. Connexion avec l'adresse Zimbra.</p>
+      <div class="defile" id="cp-liste"></div>
+      <div class="ligne" style="margin-top:10px">
+        <input id="cp-nom" placeholder="Prénom Nom" style="flex:1;min-width:140px">
+        <input id="cp-email" type="email" placeholder="prenom.nom@optical-center.com" style="flex:2;min-width:200px">
+        <select id="cp-role" style="width:auto"><option value="directeur">Directeur</option><option value="responsable">Responsable</option></select>
+        <button class="primaire" id="cp-ajouter">Ajouter</button>
+      </div>
+      <p class="muted petit" id="cp-info"></p>
+    </div>
+  </section>
+</main>
+
+<div id="fenetre"></div>
+
+<script src="../lib/xlsx.full.min.js" defer></script>
+<script src="sem.js?v=2026.11.08-4"></script>
+</body>
+</html>

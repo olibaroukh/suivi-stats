@@ -16,6 +16,7 @@
  *  - ADMINS : adresse(s) Zimbra des administrateurs, séparées par des virgules.
  */
 import { WorkerEntrypoint } from 'cloudflare:workers';
+import { routesSeminaire, compteSeminaire } from './seminaire.js';
 
 const ZIMBRA_SOAP_URL = 'https://zimbra.oc-pratique.com/service/soap';
 const ORIGINES = ['https://olibaroukh.github.io'];
@@ -87,7 +88,11 @@ async function schema(env) {
 async function profil(env, email) {
   if (estAdminEnv(env, email)) return { email, role: 'admin', perimetre: { tous: true }, ecrans: null };
   const u = await env.DB.prepare('SELECT * FROM utilisateurs WHERE email = ? AND actif = 1').bind(email).first();
-  if (!u) return null;
+  if (!u) {
+    // 08/11/2026 : compte « séminaire franchisés » seul (directeur de pôle sans accès à Suivi Stats)
+    const s = await compteSeminaire(env, email);
+    return s ? { email, nom: s.nom, role: 'seminaire', perimetre: {}, ecrans: ['seminaire'] } : null;
+  }
   return { email, nom: u.nom, role: u.role === 'admin' ? 'admin' : 'lecteur', perimetre: JSON.parse(u.perimetre || '{}'), ecrans: u.ecrans ? JSON.parse(u.ecrans) : null };
 }
 
@@ -429,6 +434,10 @@ async function routes(request, env) {
   const admin = p.role === 'admin';
 
   if (chemin === '/auth/moi') return json({ ok: true, profil: p }, 200, h);
+
+  // 08/11/2026 : séminaire franchisés (tables à part, droits propres)
+  if (chemin.startsWith('/seminaire/')) return routesSeminaire(request, env, p, chemin, url, h, json, erreur);
+  if (p.role === 'seminaire') return erreur('Ce compte n’a accès qu’au séminaire franchisés', 403, h);
 
   // Lecture filtrée (tous les comptes)
   if (chemin === '/donnees/mois') {
