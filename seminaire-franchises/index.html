@@ -90,6 +90,24 @@
       <div class="ligne" style="margin-top:10px"><button class="primaire" id="rg-enregistrer">Enregistrer</button><span class="muted petit" id="rg-info"></span></div>
     </div>
     <div class="carte">
+      <h2>Participants et planning</h2>
+      <p class="aide">Les participants sont les franchisés (personnes) ; chacun peut être associé à un groupe du référentiel pour afficher ses chiffres. Chaque colonne du planning doit être associée au compte du directeur qui fait les rendez-vous.</p>
+      <div class="ligne">
+        <div style="flex:1;min-width:150px"><label>Date des speed dating</label><input id="pp-date" type="date"></div>
+        <div style="flex:2;min-width:220px"><label>Importer</label><div class="ligne"><button id="pp-imp-json">Fichier de départ (.json)</button><button id="pp-imp-xlsx">Développement 2030 (.xlsx)</button></div></div>
+      </div>
+      <input type="file" id="pp-fic-json" accept=".json,application/json" hidden><input type="file" id="pp-fic-xlsx" accept=".xlsx,.xls" hidden>
+      <label class="ligne" style="font-weight:600"><input type="checkbox" id="pp-partage" style="width:auto"> Montrer à tous les directeurs les informations de départ de tous les franchisés (sinon : seulement ceux de leur planning)</label>
+      <p class="muted petit" id="pp-imp-info"></p>
+      <label>Planning</label>
+      <div class="defile" id="pp-planning"></div>
+      <label>Participants</label>
+      <div class="ligne"><input id="pp-q" type="search" placeholder="🔍 Rechercher" style="flex:1;min-width:160px"><button id="pp-auto">Associer automatiquement aux groupes</button></div>
+      <div class="defile" id="pp-participants" style="max-height:60vh;overflow:auto"></div>
+      <datalist id="pp-groupes"></datalist>
+      <div class="ligne" style="margin-top:10px"><button class="primaire" id="pp-enregistrer">Enregistrer</button><span class="muted petit" id="pp-info"></span></div>
+    </div>
+    <div class="carte">
       <h2>Comptes</h2>
       <p class="aide">Directeur : ne voit que ses notes. Responsable : voit toutes les notes et gère ces réglages. Les administrateurs de Suivi Stats sont responsables d'office. Connexion avec l'adresse Zimbra.</p>
       <div class="defile" id="cp-liste"></div>
@@ -107,6 +125,6 @@
 <div id="fenetre"></div>
 
 <script src="../lib/xlsx.full.min.js" defer></script>
-<script src="sem.js?v=2026.11.08-4"></script>
+<script src="sem.js?v=2026.11.08-5"></script>
 </body>
 </html>

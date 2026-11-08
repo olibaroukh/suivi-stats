@@ -69,6 +69,15 @@ async function droit(env, p) {
   return { droit: c.role === 'responsable' ? 'responsable' : 'directeur', nom: c.nom || nomDepuisEmail(p.email) };
 }
 
+const normNom = x => String(x == null ? '' : x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+// Directeur : son planning seulement ; informations « avant le séminaire » (état d'esprit, CA, développement, sujets demandés)
+// seulement pour les franchisés de son planning, sauf si les responsables ont choisi de les partager à tous.
+function filtrerConfig(c, email, resp) {
+  if (resp || !c) return c;
+  const mes = (c.planning || []).filter(p => p.directeur === email);
+  const noms = new Set(mes.flatMap(p => (p.creneaux || []).map(x => normNom(x.participant))));
+  return { ...c, planning: mes, participants: (c.participants || []).map(p => c.partageInfosDepart || noms.has(normNom(p.nom)) ? p : { nom: p.nom, groupe: p.groupe || '' }) };
+}
 async function lireJSON(env, chemin) { const o = await env.FICHIERS.get(chemin); if (!o) return null; try { return await o.json(); } catch (e) { return null; } }
 
 async function lireConfig(env, annee) {
@@ -137,14 +146,14 @@ export async function routesSeminaire(request, env, p, chemin, url, h, json, err
   }
   if (chemin === '/seminaire/config' && request.method === 'GET') {
     if (!(annee >= 2024 && annee <= 2100)) return erreur('Année invalide', 400, h);
-    return json({ ok: true, config: await lireConfig(env, annee) }, 200, h);
+    return json({ ok: true, config: filtrerConfig(await lireConfig(env, annee), email, resp) }, 200, h);
   }
   if (chemin === '/seminaire/config' && request.method === 'PUT') {
     if (!resp) return erreur('Réservé aux responsables du séminaire', 403, h);
     const c = await request.json().catch(() => null);
     if (!c || !(+c.annee >= 2024 && +c.annee <= 2100)) return erreur('Année invalide', 400, h);
     delete c._parDefaut; delete c._maj; delete c._par;
-    const t = JSON.stringify(c); if (t.length > 50000) return erreur('Réglages trop longs', 400, h);
+    const t = JSON.stringify(c); if (t.length > 800000) return erreur('Réglages trop longs', 400, h);
     await env.DB.prepare('INSERT INTO seminaire_config (annee, valeur, maj_le, par) VALUES (?, ?, ?, ?) ON CONFLICT(annee) DO UPDATE SET valeur = excluded.valeur, maj_le = excluded.maj_le, par = excluded.par')
       .bind(+c.annee, t, new Date().toISOString(), email).run();
     return json({ ok: true }, 200, h);
@@ -185,7 +194,10 @@ export async function routesSeminaire(request, env, p, chemin, url, h, json, err
       const r = await env.DB.prepare('SELECT email, nom, role, actif, maj_le FROM seminaire_comptes ORDER BY role DESC, nom').all();
       const cx = await env.DB.prepare(`SELECT auteur, COUNT(*) AS nb, MAX(maj_le) AS der FROM seminaire_notes WHERE annee = ? AND supprime = 0 GROUP BY auteur`).bind(annee).all();
       const parAuteur = Object.fromEntries((cx.results || []).map(x => [x.auteur, x]));
-      return json({ ok: true, comptes: (r.results || []).map(c => ({ ...c, notes: (parAuteur[c.email] || {}).nb || 0, derniere: (parAuteur[c.email] || {}).der || null })) }, 200, h);
+      // Administrateurs de Suivi Stats (responsables d'office, non modifiables ici)
+      const admins = String(env.ADMINS || '').toLowerCase().split(',').map(x => x.trim()).filter(Boolean)
+        .filter(e => !(r.results || []).some(c => c.email === e)).map(e => ({ email: e, nom: nomDepuisEmail(e), role: 'responsable', actif: 1, admin: true }));
+      return json({ ok: true, comptes: [...admins, ...(r.results || [])].map(c => ({ ...c, notes: (parAuteur[c.email] || {}).nb || 0, derniere: (parAuteur[c.email] || {}).der || null })) }, 200, h);
     }
     if (request.method === 'PUT') {
       const c = await request.json().catch(() => null);
