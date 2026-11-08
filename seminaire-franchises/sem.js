@@ -94,7 +94,7 @@
       }
       if (complet) {
         const [moi, cfg, fr] = await Promise.all([appel('/seminaire/moi'), appel('/seminaire/config?annee=' + S.annee), appel('/seminaire/franchises')]);
-        S.erreur = null; S.moi = moi; S.config = cfg.config; S.franchises = fr.franchises || []; S.moisChiffres = fr.mois;
+        $('#bandeau-erreur').hidden = true; S.erreur = null; S.moi = moi; S.config = cfg.config; S.franchises = fr.franchises || []; S.moisChiffres = fr.mois;
       }
       const n = await appel('/seminaire/notes?annee=' + S.annee);
       const enAttente = new Set(S.file.map(x => x.id));
@@ -109,7 +109,7 @@
     } catch (e) {
       etatReseau = e.session ? 'session' : e.horsLigne ? 'hors' : etatReseau;
       S.erreur = e.message;
-      if (!e.session && !e.horsLigne) console.warn(e);
+      if (!e.session && !e.horsLigne) { console.warn(e); const b = $('#bandeau-erreur'); b.hidden = false; b.textContent = '⚠️ Impossible de charger le séminaire : ' + e.message; }
       if (e.session) verrouiller(e.message);
     } finally { syncEnCours = false; afficherSync(); }
   }
