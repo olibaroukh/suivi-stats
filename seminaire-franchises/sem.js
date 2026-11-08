@@ -105,6 +105,20 @@
   function hash(s) { let h1 = 0x811c9dc5, h2 = 0x01000193; for (let i = 0; i < s.length; i++) { h1 = Math.imul(h1 ^ s.charCodeAt(i), 16777619) >>> 0; h2 = Math.imul(h2 + s.charCodeAt(i), 2654435761) >>> 0; } return h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0'); }
   const idPrep = fr => 'prep-' + S.annee + '-' + hash(monEmail() + '|' + fr);
 
+  // Participants (personnes) de l'édition, rattachés à un groupe du référentiel ; à défaut, les groupes eux-mêmes
+  const groupeDe = nom => S.franchises.find(f => f.groupe === nom) || null;
+  function entrees() {
+    const ps = (S.config && S.config.participants) || [];
+    if (ps.length) return ps.map(p => ({ cle: p.nom, p, f: p.groupe ? groupeDe(p.groupe) : null })).sort((a, b) => a.cle.localeCompare(b.cle, 'fr'));
+    return S.franchises.map(f => ({ cle: f.groupe, p: null, f }));
+  }
+  const entree = cle => entrees().find(e => e.cle === cle) || { cle, p: null, f: groupeDe(cle) };
+  const nomCle = x => norm(x).replace(/[^a-z0-9]+/g, ' ').trim();
+  const mesCreneaux = () => ((S.config && S.config.planning) || []).filter(pl => pl.directeur && pl.directeur === monEmail())
+    .flatMap(pl => (pl.creneaux || []).map(c => ({ ...c, libelle: pl.libelle })));
+  const idCreneau = c => 'sd-' + S.annee + '-' + hash(monEmail() + '|' + nomCle(c.participant) + '|' + c.debut);
+  const creneauDe = cle => mesCreneaux().find(c => nomCle(c.participant) === nomCle(cle));
+
   const notesVisibles = () => [...S.notes.values()].filter(n => !n.supprime && n.annee === S.annee);
   const mesNotes = () => notesVisibles().filter(n => n.auteur === monEmail());
   const prepDe = fr => S.notes.get(idPrep(fr));
@@ -184,35 +198,49 @@
   function rendreFranchises() {
     const q = norm($('#fr-q').value), mes = $('#fr-mes').checked;
     const miennes = new Set(mesNotes().map(n => n.franchise));
-    const l = S.franchises.filter(f => (!q || norm(`${f.groupe} ${f.pays.join(' ')} ${f.ar.join(' ')} ${f.magasins.map(m => m.magasin + ' ' + m.code).join(' ')}`).includes(q)) && (!mes || miennes.has(f.groupe)));
-    $('#fr-liste').innerHTML = l.length ? l.map(f => {
-      const p = prepDe(f.groupe), rdv = mesNotes().filter(n => n.franchise === f.groupe && n.type === 'speed');
+    const l = entrees().filter(e => { const f = e.f;
+      const txt = `${e.cle} ${e.p && e.p.groupe || ''} ${f ? f.pays.join(' ') + ' ' + f.ar.join(' ') + ' ' + f.magasins.map(m => m.magasin + ' ' + m.code).join(' ') : ''} ${e.p && e.p.dev ? e.p.dev.map(d => d.villes).join(' ') : ''}`;
+      return (!q || norm(txt).includes(q)) && (!mes || miennes.has(e.cle) || creneauDe(e.cle)); });
+    $('#fr-liste').innerHTML = l.length ? l.map(e => {
+      const f = e.f, p = prepDe(e.cle), rdv = mesNotes().filter(n => n.franchise === e.cle && n.type === 'speed'), c = creneauDe(e.cle);
       const fait = rdv.some(n => n.donnees && n.donnees.realise);
-      return `<div class="item" data-fr="${esc(f.groupe)}"><div><b>${esc(f.groupe)}</b><span class="s">${f.nb} magasin${f.nb > 1 ? 's' : ''} · ${esc(f.pays.join(', '))}${f.ar.length ? ' · ' + esc(f.ar.join(', ')) : ''}</span></div>
-        <div class="d">${p && p.donnees.humeur ? `<span style="font-size:18px">${emoji(p.donnees.humeur)}</span> ` : ''}${p ? '<span class="pastille ok">préparé</span>' : ''}${rdv.length ? `<span class="pastille ${fait ? 'ok' : 'att'}">${fait ? 'rencontré' : 'RDV prévu'}</span>` : ''}</div></div>`;
+      const sous = f ? `${f.nb} magasin${f.nb > 1 ? 's' : ''} · ${esc(f.pays.join(', '))}` : e.p && e.p.groupe ? esc(e.p.groupe) : '';
+      return `<div class="item" data-fr="${esc(e.cle)}"><div><b>${esc(e.cle)}</b><span class="s">${sous}${e.p && e.p.sujetsDemandes ? ' · 📝 sujets envoyés' : ''}</span></div>
+        <div class="d">${p && p.donnees.humeur ? `<span style="font-size:18px">${emoji(p.donnees.humeur)}</span> ` : ''}${p ? '<span class="pastille ok">préparé</span>' : ''}${fait ? '<span class="pastille ok">rencontré</span>' : c ? `<span class="pastille att">⏱️ ${esc(c.debut)}</span>` : rdv.length ? '<span class="pastille att">RDV prévu</span>' : ''}</div></div>`;
     }).join('') : '<p class="muted">Aucun franchisé ne correspond.</p>';
     $('#fr-liste').querySelectorAll('[data-fr]').forEach(x => x.onclick = () => ouvrirFranchise(x.dataset.fr));
-    $('#fr-source').textContent = S.franchises.length ? `${S.franchises.length} franchisés (référentiel Suivi Stats)${S.moisChiffres ? ' · chiffres cumulés à fin ' + S.moisChiffres.split('-').reverse().join('/') : ''}` : 'Liste des franchisés indisponible (connexion nécessaire au premier chargement).';
+    const nbP = ((S.config && S.config.participants) || []).length;
+    $('#fr-source').textContent = nbP ? `${nbP} participants${S.moisChiffres ? ' · chiffres des groupes cumulés à fin ' + S.moisChiffres.split('-').reverse().join('/') : ''}` : S.franchises.length ? `${S.franchises.length} franchisés (référentiel Suivi Stats)${S.moisChiffres ? ' · chiffres cumulés à fin ' + S.moisChiffres.split('-').reverse().join('/') : ''}` : 'Liste des franchisés indisponible (connexion nécessaire au premier chargement).';
   }
 
   let fenetreFr = null;
   function ouvrirFranchise(fr) { fenetreFr = fr; rendreFicheFranchise(fr); }
   function fermerFenetre() { fenetreFr = null; $('#fenetre').innerHTML = ''; rafraichir(); }
   function rendreFicheFranchise(fr) {
-    const f = S.franchises.find(x => x.groupe === fr) || { groupe: fr, magasins: [], pays: [], ar: [], nb: 0 };
+    const e = entree(fr), f = e.f, part = e.p || {};
     const p = prepDe(fr), pd = (p && p.donnees) || {};
+    const cr = creneauDe(fr);
+    const infosDepart = part.etatEsprit || part.sujetsDemandes || part.ca2025 || (part.dev && part.dev.length) || part.ouverture;
     const echanges = notesVisibles().filter(n => n.franchise === fr && n.type !== 'preparation').sort((a, b) => String(b.donnees.date || b.creeLe).localeCompare(String(a.donnees.date || a.creeLe)));
     const autresPreps = resp() ? notesVisibles().filter(n => n.franchise === fr && n.type === 'preparation' && n.auteur !== monEmail()) : [];
     const sujetsListe = [...new Set([...(S.config.sujetsProposes || []), ...(pd.sujets || [])])];
     const ouvert = $('#fenetre').querySelector('.fond');
     const scroll = ouvert ? ouvert.scrollTop : 0;
     $('#fenetre').innerHTML = `<div class="fond"><div class="barre-haut"><button id="ff-retour">← Retour</button><h3>${esc(fr)}</h3></div><div class="contenu">
-      <div class="carte"><h2>Chiffres</h2>
+      ${cr ? `<div class="carte ligne"><b>⏱️ Speed dating ${esc(cr.debut)} – ${esc(cr.fin)}</b><button class="primaire pousse" id="ff-creneau">${S.notes.get(idCreneau(cr)) && !S.notes.get(idCreneau(cr)).supprime ? 'Voir l’échange' : 'Saisir l’échange'}</button></div>` : ''}
+      ${infosDepart ? `<div class="carte"><h2>Avant le séminaire</h2>
+        ${part.ca2025 ? `<p class="petit"><b>CA 2025 :</b> ${esc(Number(part.ca2025).toLocaleString('fr-FR'))} €</p>` : ''}
+        ${part.etatEsprit ? `<label>État d'esprit</label><p style="white-space:pre-wrap;margin:0">${esc(part.etatEsprit)}</p>` : ''}
+        ${part.dev && part.dev.length ? `<label>Développement prévu</label><div class="defile"><table>${part.dev.map(d => `<tr><td style="width:60px"><b>${esc(d.annee)}</b></td><td>${esc(d.villes)}</td></tr>`).join('')}</table></div>` : ''}
+        ${part.ouverture ? `<p class="petit"><b>Ouverture prévue :</b> ${esc(part.ouverture)}</p>` : ''}
+        ${part.sujetsDemandes ? `<label>Sujets qu'il souhaite aborder</label><p style="white-space:pre-wrap;margin:0;font-size:13px">${esc(part.sujetsDemandes)}</p>` : ''}
+      </div>` : ''}
+      ${f ? `<div class="carte"><h2>Chiffres${e.p ? ' · ' + esc(f.groupe) : ''}</h2>
         <div class="chiffres"><div><div class="v">${keur(f.ca)}</div><div class="l">CA cumulé</div></div><div><div class="v">${evo(f.evol)}</div><div class="l">vs N-1</div></div><div><div class="v">${pc(f.posit)}</div><div class="l">Positionnement</div></div></div>
         <p class="muted petit">${f.nb} magasin${f.nb > 1 ? 's' : ''} · ${esc(f.pays.join(', '))}${f.ar.length ? ' · AR : ' + esc(f.ar.join(', ')) : ''}${S.moisChiffres ? ' · à fin ' + S.moisChiffres.split('-').reverse().join('/') : ''}</p>
         <details><summary class="petit" style="cursor:pointer">Voir les magasins</summary><div class="defile"><table><tr><th>Magasin</th><th>CA</th><th>vs N-1</th><th>Posit.</th><th>Google</th></tr>
         ${f.magasins.map(m => `<tr><td>${esc(m.magasin)}<br><span class="muted">${esc(m.code)}${m.ouverture ? ' · ouv. ' + esc(String(m.ouverture).slice(0, 10)) : ''}</span></td><td>${keur(m.ca)}</td><td>${m.ca1 ? evo(m.ca / m.ca1 - 1) : '–'}</td><td>${m.obj && m.ca != null && S.moisChiffres ? pc(m.ca * 12 / +S.moisChiffres.slice(5) / m.obj) : '–'}</td><td>${m.noteGoogle ? '★ ' + m.noteGoogle.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' (' + (m.avisGoogle || 0) + ')' : '–'}</td></tr>`).join('')}</table></div></details>
-      </div>
+      </div>` : `<p class="muted petit" style="margin:0 4px 12px">${e.p ? 'Groupe du référentiel non associé : chiffres indisponibles' + (resp() ? ' (Réglages › Participants).' : '.') : ''}</p>`}
       <div class="carte"><h2>Ma préparation</h2>
         <label>État d'esprit</label>
         <div class="humeur">${HUMEURS.map(([v, e, l]) => `<button data-h="${v}" class="${pd.humeur === v ? 'on' : ''}" title="${esc(l)}">${e}</button>`).join('')}</div>
@@ -239,7 +267,8 @@
     $('#ff-esprit').onblur = e => { if (t) { clearTimeout(t); t = null; if ((pd.esprit || '') !== e.target.value) sauverPrep({ esprit: e.target.value }, true); } };
     fond.querySelectorAll('#ff-sujets [data-s]').forEach(c => c.onclick = () => { const s = c.dataset.s, l = new Set(pd.sujets || []); l.has(s) ? l.delete(s) : l.add(s); sauverPrep({ sujets: [...l] }); });
     $('#ff-autre').onclick = () => { const s = (prompt('Autre sujet :') || '').trim(); if (s) sauverPrep({ sujets: [...new Set([...(pd.sujets || []), s])] }); };
-    $('#ff-speed').onclick = () => ouvrirNote({ type: 'speed', franchise: fr });
+    $('#ff-speed').onclick = () => cr ? ouvrirCreneau(cr) : ouvrirNote({ type: 'speed', franchise: fr });
+    if ($('#ff-creneau')) $('#ff-creneau').onclick = () => ouvrirCreneau(cr);
     $('#ff-info-btn').onclick = () => ouvrirNote({ type: 'informel', franchise: fr });
     fond.querySelectorAll('[data-note]').forEach(x => x.onclick = () => ouvrirNote(S.notes.get(x.dataset.note)));
   }
@@ -255,8 +284,14 @@
   }
 
   // ---------- Saisie d'un échange (speed dating ou informel) ----------
+  function ouvrirCreneau(c) {
+    const id = idCreneau(c), ex = S.notes.get(id);
+    ouvrirNote(ex && !ex.supprime ? ex : { id, type: 'speed', franchise: c.participant, donnees: { date: (S.config && S.config.dateSpeed) || aujourdhui(), heure: c.debut, sujets: [], central: {}, actions: [] } });
+  }
   function ouvrirNote(base) {
     const n = base && base.id ? JSON.parse(JSON.stringify(base)) : { id: nouvelId(), type: base.type, franchise: base.franchise || '', donnees: { date: aujourdhui(), sujets: [], central: {}, actions: [] } };
+    if (n.supprime) n.supprime = false;
+    const existe = base && base.id && S.notes.has(base.id) && !S.notes.get(base.id).supprime;
     const lecture = base && base.id && base.auteur && base.auteur !== monEmail();
     const d = n.donnees; d.central = d.central || {}; d.actions = d.actions || []; d.sujets = d.sujets || [];
     const qs = ((S.config.sujetCentral || {}).questions) || [];
@@ -267,7 +302,7 @@
     $('#fenetre').innerHTML = `<div class="fond ${lecture ? 'lecture' : ''}"><div class="barre-haut"><button id="fn-retour">← Retour</button><h3>${n.type === 'speed' ? '⏱️ Speed dating' : '💬 Échange informel'}${lecture ? ' · ' + esc(n.auteurNom) : ''}</h3></div><div class="contenu">
       <div class="carte">
         <label>Franchisé</label>
-        <input id="fn-fr" list="fn-liste-fr" value="${esc(n.franchise)}" placeholder="Choisir un franchisé"${dis}><datalist id="fn-liste-fr">${S.franchises.map(f => `<option value="${esc(f.groupe)}">`).join('')}</datalist>
+        <input id="fn-fr" list="fn-liste-fr" value="${esc(n.franchise)}" placeholder="Choisir un franchisé"${dis}><datalist id="fn-liste-fr">${entrees().map(e => `<option value="${esc(e.cle)}">`).join('')}</datalist>
         <div class="ligne"><div style="flex:1"><label>Date</label><input id="fn-date" type="date" value="${esc(d.date || '')}"${dis}></div><div style="flex:1"><label>Heure</label><input id="fn-heure" type="time" value="${esc(d.heure || '')}"${dis}></div></div>
         ${n.type === 'speed' ? `<label class="ligne" style="font-weight:600;margin-top:12px"><input type="checkbox" id="fn-realise" style="width:auto"${d.realise ? ' checked' : ''}${dis}> Rendez-vous réalisé</label>` : ''}
       </div>
@@ -282,7 +317,7 @@
       ${qs.length ? `<div class="carte"><h2>🎯 ${esc((S.config.sujetCentral || {}).titre || 'Sujet central')}</h2>${qs.map(q => champQuestion(q, d.central[q.id], lecture)).join('')}</div>` : ''}
       <div class="carte"><h2>Actions à suivre</h2><div id="fn-actions"></div>${lecture ? '' : '<button id="fn-plus-action" style="width:100%">+ Ajouter une action</button>'}</div>
     </div>
-    <div class="pied">${lecture ? '<button id="fn-fermer">Fermer</button>' : `${base && base.id ? '<button id="fn-suppr">Supprimer</button>' : ''}<button class="primaire" id="fn-enreg">Enregistrer</button>`}</div></div>`;
+    <div class="pied">${lecture ? '<button id="fn-fermer">Fermer</button>' : `${existe ? '<button id="fn-suppr">Supprimer</button>' : ''}<button class="primaire" id="fn-enreg">Enregistrer</button>`}</div></div>`;
     const fond = $('#fenetre .fond');
     const revenir = () => { if (frPrecedent) ouvrirFranchise(frPrecedent); else fermerFenetre(); };
     $('#fn-retour').onclick = () => { if (!lecture && modifie && !confirm('Quitter sans enregistrer ?')) return; revenir(); };
@@ -317,7 +352,7 @@
     $('#fn-enreg').onclick = () => {
       const fr = $('#fn-fr').value.trim();
       if (!fr) { alert('Choisissez le franchisé.'); return; }
-      if (!S.franchises.some(f => f.groupe === fr) && !confirm(`« ${fr} » n'est pas dans la liste des franchisés. Enregistrer quand même ?`)) return;
+      if (!entrees().some(e => e.cle === fr) && !confirm(`« ${fr} » n'est pas dans la liste des franchisés. Enregistrer quand même ?`)) return;
       n.franchise = fr; d.date = $('#fn-date').value; d.heure = $('#fn-heure').value; d.notes = $('#fn-notes').value; d.demandes = $('#fn-demandes').value;
       if (n.type === 'speed') d.realise = $('#fn-realise').checked;
       d.actions = d.actions.filter(a => (a.quoi || '').trim());
@@ -336,10 +371,15 @@
   // ---------- Planning speed dating ----------
   function rendrePlanning() {
     const cle = n => (n.donnees.date || '') + ' ' + (n.donnees.heure || '');
-    const rdv = mesNotes().filter(n => n.type === 'speed').sort((a, b) => cle(a).localeCompare(cle(b)));
-    $('#pl-liste').innerHTML = rdv.length ? rdv.map(n => `<div class="note" data-note="${esc(n.id)}"><div class="ligne"><b>${esc(n.franchise)}</b><span class="pousse petit muted">${esc(dateFr(n.donnees.date))} ${esc(n.donnees.heure || '')}</span></div>
+    const crs = mesCreneaux(), idsCr = new Set(crs.map(idCreneau));
+    const ligneCr = c => { const n = S.notes.get(idCreneau(c)), ok = n && !n.supprime && n.donnees.realise;
+      return `<div class="note" data-cr="${esc(c.debut)}|${esc(c.participant)}"><div class="ligne"><b>${esc(c.participant)}</b><span class="pousse petit"><b>${esc(c.debut)}</b> – ${esc(c.fin)}</span></div>
+      <div class="petit">${ok ? '<span class="pastille ok">réalisé</span>' : n && !n.supprime ? '<span class="pastille att">en cours de saisie</span>' : '<span class="pastille">à venir</span>'} ${n ? emoji(n.donnees.humeur) : ''} ${prepDe(c.participant) ? '<span class="pastille">préparé</span>' : ''}${(entree(c.participant).p || {}).sujetsDemandes ? ' <span class="pastille">📝 sujets envoyés</span>' : ''}</div></div>`; };
+    const rdv = mesNotes().filter(n => n.type === 'speed' && !idsCr.has(n.id)).sort((a, b) => cle(a).localeCompare(cle(b)));
+    $('#pl-liste').innerHTML = (crs.length ? `<p class="petit muted" style="margin:0 0 4px">Planning du séminaire${S.config.dateSpeed ? ' · ' + esc(dateFr(S.config.dateSpeed)) : ''}</p>` + crs.map(ligneCr).join('') : '') + (rdv.length ? (crs.length ? '<p class="petit muted" style="margin:12px 0 4px">Autres rendez-vous</p>' : '') + rdv.map(n => `<div class="note" data-note="${esc(n.id)}"><div class="ligne"><b>${esc(n.franchise)}</b><span class="pousse petit muted">${esc(dateFr(n.donnees.date))} ${esc(n.donnees.heure || '')}</span></div>
       <div class="petit">${n.donnees.realise ? '<span class="pastille ok">réalisé</span>' : '<span class="pastille att">à venir</span>'} ${emoji(n.donnees.humeur)} ${prepDe(n.franchise) ? '<span class="pastille">préparé</span>' : '<span class="pastille rouge">pas encore préparé</span>'}</div></div>`).join('')
-      : '<p class="muted petit">Aucun rendez-vous pour l’instant.</p>';
+      : crs.length ? '' : '<p class="muted petit">Aucun rendez-vous pour l’instant.</p>');
+    $('#pl-liste').querySelectorAll('[data-cr]').forEach(x => x.onclick = () => { const [d, ...pp] = x.dataset.cr.split('|'); ouvrirCreneau(crs.find(c => c.debut === d && c.participant === pp.join('|'))); });
     $('#pl-liste').querySelectorAll('[data-note]').forEach(x => x.onclick = () => ouvrirNote(S.notes.get(x.dataset.note)));
     const inf = mesNotes().filter(n => n.type === 'informel').sort((a, b) => String(b.donnees.date).localeCompare(String(a.donnees.date)));
     $('#pl-informels').innerHTML = inf.length ? inf.map(n => apercuNote(n).replace('<div class="t">', `<div class="t"><b>${esc(n.franchise)}</b> · `)).join('') : '<p class="muted petit">Aucun pour l’instant. Ajoutez-les depuis la fiche d’un franchisé.</p>';
@@ -384,11 +424,20 @@
     const actions = ech.flatMap(n => (n.donnees.actions || []).filter(a => a.quoi).map(a => ({ ...a, franchise: n.franchise, auteurNom: n.auteurNom, note: n.id })))
       .sort((a, b) => (a.statut === 'Fait') - (b.statut === 'Fait') || String(a.echeance || '9').localeCompare(String(b.echeance || '9')));
     const hum = h => h == null ? '–' : `${emoji(Math.round(h))} ${h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })}/5`;
+    // Avancement du planning par directeur (responsables)
+    const plan = resp() ? ((S.config && S.config.planning) || []) : [];
+    const avancement = plan.length ? `<div class="carte"><h2>Avancement des speed dating</h2><div class="defile"><table><tr><th>Directeur</th><th>Préparés</th><th>Réalisés</th></tr>${plan.map(x => {
+      const de = notesVisibles().filter(n => x.directeur && n.auteur === x.directeur), cs = x.creneaux || [];
+      const prep = cs.filter(c => de.some(n => n.type === 'preparation' && nomCle(n.franchise) === nomCle(c.participant))).length;
+      const real = cs.filter(c => de.some(n => n.type === 'speed' && n.donnees.realise && nomCle(n.franchise) === nomCle(c.participant))).length;
+      return `<tr><td><b>${esc(x.libelle)}</b>${x.directeur ? '' : ' <span class="pastille rouge">compte non associé</span>'}</td><td>${prep} / ${cs.length}</td><td><span class="pastille ${real === cs.length && cs.length ? 'ok' : real ? 'att' : ''}">${real} / ${cs.length}</span></td></tr>`;
+    }).join('')}</table></div></div>` : '';
     $('#sy-contenu').innerHTML = `
       <div class="carte"><h2>${esc((S.config && S.config.titre) || 'Séminaire')}${S.config.lieu ? ' · ' + esc(S.config.lieu) : ''}</h2>
         <div class="chiffres"><div><div class="v">${frTouches.size}</div><div class="l">Franchisés suivis</div></div><div><div class="v">${realises.length} / ${speed.length}</div><div class="l">Speed dating réalisés</div></div><div><div class="v">${ech.filter(n => n.type === 'informel').length}</div><div class="l">Échanges informels</div></div></div>
         <div class="chiffres" style="grid-template-columns:repeat(2,1fr)"><div><div class="v">${hum(hAvant)}</div><div class="l">Humeur avant (${preps.filter(n => n.donnees.humeur).length})</div></div><div><div class="v">${hum(hPendant)}</div><div class="l">Humeur pendant (${ech.filter(n => n.donnees.humeur).length})</div></div></div>
       </div>
+      ${avancement}
       <div class="carte"><h2>Sujets qui reviennent</h2>
         ${sujets.length ? sujets.map(([s, c]) => `<div class="barre"><span class="n" title="${esc(s)}">${esc(s)}</span><span class="b"><i style="width:${Math.round(c / maxS * 100)}%"></i></span><span class="c">${c}</span></div>`).join('') + '<p class="muted petit">Nombre de franchisés concernés (préparation et échanges).</p>' : '<p class="muted petit">Pas encore de sujets saisis.</p>'}
       </div>
@@ -429,56 +478,160 @@
   }
 
   // ---------- Réglages (responsables) ----------
+  // Réglages : une copie de l'édition choisie (cfg) est modifiée puis enregistrée en entier
+  let cfg = null, reglagesBranches = false;
   async function brancherReglages() {
     if (!resp()) return;
-    const remplir = c => {
-      $('#rg-titre').value = c.titre || ''; $('#rg-lieu').value = c.lieu || ''; $('#rg-du').value = c.du || ''; $('#rg-au').value = c.au || '';
-      $('#rg-sujets').value = (c.sujetsProposes || []).join('\n');
-      $('#rg-central').value = (c.sujetCentral || {}).titre || '';
-      $('#rg-questions').value = ((c.sujetCentral || {}).questions || []).map(q => [q.libelle, q.type, (q.options || []).join(', ')].filter((x, i) => i < 2 || x).join(' | ')).join('\n');
-      $('#rg-info').textContent = c._parDefaut ? 'Réglages proposés par défaut : pensez à enregistrer.' : c._maj ? `Enregistré le ${new Date(c._maj).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}` : '';
-    };
     const a0 = new Date().getFullYear();
-    $('#rg-annee').innerHTML = [...new Set([a0 + 1, a0, ...(S.moi.annees || [])])].sort((a, b) => b - a).map(a => `<option${a === S.annee ? ' selected' : ''}>${a}</option>`).join('');
-    remplir(S.config);
-    $('#rg-annee').onchange = async () => { try { const d = await appel('/seminaire/config?annee=' + $('#rg-annee').value); remplir(d.config); } catch (e) { $('#rg-info').textContent = e.message; } };
-    $('#rg-enregistrer').onclick = async () => {
-      const ancien = (S.config.sujetCentral || {}).questions || [];
-      const questions = $('#rg-questions').value.split('\n').map(l => l.trim()).filter(Boolean).map((l, i) => {
-        const [lib, type, opts] = l.split('|').map(x => (x || '').trim());
-        const t = /^choix/i.test(type) ? 'choix' : /^eti|^étiq|^tag/i.test(type) ? 'etiquettes' : 'texte';
-        const ex = ancien.find(q => norm(q.libelle) === norm(lib));
-        return { id: ex ? ex.id : 'q' + hash(lib + i).slice(0, 8), libelle: lib, type: t, options: t === 'texte' ? [] : (opts || '').split(',').map(x => x.trim()).filter(Boolean) };
-      });
-      const c = { ...S.config, annee: +$('#rg-annee').value, titre: $('#rg-titre').value.trim(), lieu: $('#rg-lieu').value.trim(), du: $('#rg-du').value, au: $('#rg-au').value,
-        sujetsProposes: $('#rg-sujets').value.split('\n').map(x => x.trim()).filter(Boolean), sujetCentral: { titre: $('#rg-central').value.trim(), questions } };
-      delete c._parDefaut; delete c._maj; delete c._par;
-      $('#rg-info').textContent = 'Enregistrement…';
-      try {
-        await appel('/seminaire/config', { method: 'PUT', body: JSON.stringify(c) });
-        if (c.annee === S.annee) S.config = c;
-        if (!(S.moi.annees || []).includes(c.annee)) S.moi.annees = [...(S.moi.annees || []), c.annee];
-        sauverCache(); rafraichir(); $('#rg-info').textContent = 'Enregistré ✓';
-      } catch (e) { $('#rg-info').textContent = e.horsLigne ? 'Hors ligne : réessayez quand le réseau sera revenu.' : e.message; }
-    };
-    const chargerComptes = async () => {
-      try {
-        const d = await appel('/seminaire/comptes?annee=' + S.annee); S.comptes = d.comptes;
-        $('#cp-liste').innerHTML = `<table><tr><th>Personne</th><th>Rôle</th><th>Notes ${S.annee}</th><th></th></tr>${S.comptes.map((c, i) => `<tr style="${c.actif ? '' : 'opacity:.5'}"><td><b>${esc(c.nom || '')}</b><br><span class="muted">${esc(c.email)}</span></td>
-          <td>${c.role === 'responsable' ? 'Responsable' : 'Directeur'}</td><td>${c.notes}${c.derniere ? `<br><span class="muted">${esc(new Date(c.derniere).toLocaleDateString('fr-FR'))}</span>` : ''}</td>
-          <td><button class="lien" data-r="${i}">${c.role === 'responsable' ? '→ directeur' : '→ responsable'}</button><button class="lien" data-a="${i}">${c.actif ? 'Désactiver' : 'Réactiver'}</button></td></tr>`).join('')}</table>`;
-        const maj = async (c, ch) => { try { await appel('/seminaire/comptes', { method: 'PUT', body: JSON.stringify({ ...c, ...ch, actif: ch.actif != null ? ch.actif : !!c.actif }) }); chargerComptes(); } catch (e) { $('#cp-info').textContent = e.message; } };
-        $('#cp-liste').querySelectorAll('[data-r]').forEach(b => b.onclick = () => { const c = S.comptes[+b.dataset.r]; maj(c, { role: c.role === 'responsable' ? 'directeur' : 'responsable' }); });
-        $('#cp-liste').querySelectorAll('[data-a]').forEach(b => b.onclick = () => { const c = S.comptes[+b.dataset.a]; maj(c, { actif: !c.actif }); });
-      } catch (e) { $('#cp-liste').innerHTML = `<p class="muted petit">${e.horsLigne ? 'Liste des comptes indisponible hors ligne.' : esc(e.message)}</p>`; }
-    };
+    $('#rg-annee').innerHTML = [...new Set([a0 + 1, a0, S.annee, ...(S.moi.annees || [])])].sort((a, b) => b - a).map(a => `<option${a === S.annee ? ' selected' : ''}>${a}</option>`).join('');
+    cfg = JSON.parse(JSON.stringify(S.config));
+    remplirReglages();
+    chargerComptes();
+    if (reglagesBranches) return; reglagesBranches = true;
+    $('#rg-annee').onchange = async () => { try { const d = await appel('/seminaire/config?annee=' + $('#rg-annee').value); cfg = d.config; remplirReglages(); } catch (e) { $('#rg-info').textContent = e.message; } };
+    $('#rg-enregistrer').onclick = () => enregistrerReglages('#rg-info');
+    $('#pp-enregistrer').onclick = () => enregistrerReglages('#pp-info');
+    $('#pp-q').oninput = rendreParticipantsReglages;
+    $('#pp-imp-json').onclick = () => $('#pp-fic-json').click();
+    $('#pp-imp-xlsx').onclick = () => $('#pp-fic-xlsx').click();
+    $('#pp-fic-json').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) try { importerDepart(JSON.parse(await f.text())); } catch (x) { $('#pp-imp-info').textContent = 'Fichier illisible : ' + x.message; } };
+    $('#pp-fic-xlsx').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) try { importerDev(await f.arrayBuffer()); } catch (x) { $('#pp-imp-info').textContent = 'Fichier illisible : ' + x.message; } };
+    $('#pp-auto').onclick = () => { const n = associerGroupes(false); rendreParticipantsReglages(); $('#pp-info').textContent = `${n} participant(s) associé(s) automatiquement : vérifiez puis enregistrez.`; };
     $('#cp-ajouter').onclick = async () => {
       const email = $('#cp-email').value.trim().toLowerCase();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $('#cp-info').textContent = 'Adresse e-mail invalide'; return; }
       try { await appel('/seminaire/comptes', { method: 'PUT', body: JSON.stringify({ email, nom: $('#cp-nom').value.trim(), role: $('#cp-role').value, actif: true }) }); $('#cp-email').value = ''; $('#cp-nom').value = ''; $('#cp-info').textContent = 'Ajouté ✓'; chargerComptes(); }
       catch (e) { $('#cp-info').textContent = e.message; }
     };
-    chargerComptes();
+  }
+  function remplirReglages() {
+    const c = cfg;
+    $('#rg-titre').value = c.titre || ''; $('#rg-lieu').value = c.lieu || ''; $('#rg-du').value = c.du || ''; $('#rg-au').value = c.au || '';
+    $('#rg-sujets').value = (c.sujetsProposes || []).join('\n');
+    $('#rg-central').value = (c.sujetCentral || {}).titre || '';
+    $('#rg-questions').value = ((c.sujetCentral || {}).questions || []).map(q => [q.libelle, q.type, (q.options || []).join(', ')].filter((x, i) => i < 2 || x).join(' | ')).join('\n');
+    $('#pp-date').value = c.dateSpeed || ''; $('#pp-partage').checked = !!c.partageInfosDepart;
+    $('#rg-info').textContent = c._parDefaut ? 'Réglages proposés par défaut : pensez à enregistrer.' : c._maj ? `Enregistré le ${new Date(c._maj).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}` : '';
+    $('#pp-groupes').innerHTML = S.franchises.map(f => `<option value="${esc(f.groupe)}">`).join('');
+    rendrePlanningReglages(); rendreParticipantsReglages();
+  }
+  function rendrePlanningReglages() {
+    const pl = cfg.planning || [];
+    $('#pp-planning').innerHTML = pl.length ? `<table><tr><th>Colonne du planning</th><th>Compte du directeur</th><th>Créneaux</th></tr>${pl.map((x, i) => `<tr><td><b>${esc(x.libelle)}</b></td>
+      <td><select data-pl="${i}"><option value="">— à associer —</option>${S.comptes.filter(c => c.actif).map(c => `<option value="${esc(c.email)}"${c.email === x.directeur ? ' selected' : ''}>${esc(c.nom || c.email)}</option>`).join('')}</select></td>
+      <td class="petit">${(x.creneaux || []).map(c => `${esc(c.debut)} ${esc(c.participant)}`).join('<br>')}</td></tr>`).join('')}</table>`
+      : '<p class="muted petit">Pas encore de planning : importez le fichier de départ.</p>';
+    $('#pp-planning').querySelectorAll('[data-pl]').forEach(sel => sel.onchange = () => { cfg.planning[+sel.dataset.pl].directeur = sel.value; });
+  }
+  function rendreParticipantsReglages() {
+    const q = norm($('#pp-q').value), ps = cfg.participants || [];
+    const ou = {}; (cfg.planning || []).forEach(x => (x.creneaux || []).forEach(c => { ou[nomCle(c.participant)] = `${x.libelle} ${c.debut}`; }));
+    const l = ps.map((p, i) => [p, i]).filter(([p]) => !q || norm(p.nom + ' ' + (p.groupe || '')).includes(q)).sort((a, b) => a[0].nom.localeCompare(b[0].nom, 'fr'));
+    $('#pp-participants').innerHTML = ps.length ? `<table><tr><th>Participant</th><th>Groupe (référentiel)</th><th>Infos</th></tr>${l.map(([p, i]) => `<tr><td><b>${esc(p.nom)}</b></td>
+      <td><input data-pg="${i}" list="pp-groupes" value="${esc(p.groupe || '')}" placeholder="—" style="min-width:170px;${p.groupe && !groupeDe(p.groupe) ? 'border-color:var(--accent)' : ''}"></td>
+      <td class="petit">${ou[nomCle(p.nom)] ? `<span class="pastille att">⏱️ ${esc(ou[nomCle(p.nom)])}</span>` : ''}${p.etatEsprit ? '<span class="pastille">état d’esprit</span>' : ''}${p.sujetsDemandes ? '<span class="pastille">sujets</span>' : ''}${p.dev && p.dev.length ? '<span class="pastille">développement</span>' : ''}</td></tr>`).join('')}</table>
+      <p class="muted petit">${ps.length} participants · ${ps.filter(p => p.groupe && groupeDe(p.groupe)).length} associés à un groupe</p>`
+      : '<p class="muted petit">Aucun participant : importez le fichier de départ et le Google Sheet « Développement 2030 ».</p>';
+    $('#pp-participants').querySelectorAll('[data-pg]').forEach(inp => inp.onchange = () => { cfg.participants[+inp.dataset.pg].groupe = inp.value.trim(); inp.style.borderColor = inp.value && !groupeDe(inp.value.trim()) ? 'var(--accent)' : ''; });
+  }
+  function participant(nom) {
+    cfg.participants = cfg.participants || [];
+    let p = cfg.participants.find(x => nomCle(x.nom) === nomCle(nom));
+    if (!p) { p = { nom: String(nom).trim(), groupe: '' }; cfg.participants.push(p); }
+    return p;
+  }
+  // Fichier préparé par Claude : { planning: [{ libelle, creneaux: [{ debut, fin, participant }] }], sujets: { nom: texte }, dateSpeed? }
+  function importerDepart(d) {
+    let nb = 0;
+    if (Array.isArray(d.planning)) {
+      const ancien = cfg.planning || [];
+      cfg.planning = d.planning.map(x => { const a = ancien.find(y => norm(y.libelle) === norm(x.libelle)); return { libelle: x.libelle, directeur: (a && a.directeur) || x.directeur || '', creneaux: x.creneaux || [] }; });
+      cfg.planning.forEach(x => x.creneaux.forEach(c => { participant(c.participant); nb++; }));
+    }
+    let ns = 0; for (const [nom, t] of Object.entries(d.sujets || {})) { participant(nom).sujetsDemandes = t; ns++; }
+    if (d.dateSpeed) cfg.dateSpeed = d.dateSpeed;
+    associerComptes(); const na = associerGroupes(true);
+    remplirReglages();
+    $('#pp-imp-info').textContent = `Importé : ${nb} créneaux, ${ns} demandes de sujets, ${na} groupe(s) associé(s) automatiquement. Vérifiez puis cliquez sur « Enregistrer ».`;
+  }
+  // Google Sheet « Développement 2030 » téléchargé en .xlsx : Franchisé, CA 2025, colonnes par année, Ouverture prévue, État d'esprit
+  function importerDev(buf) {
+    if (!window.XLSX) throw new Error('module Excel non chargé');
+    const wb = XLSX.read(buf, { type: 'array' });
+    const nomF = wb.SheetNames.find(n => /dev/i.test(n)) || wb.SheetNames[0];
+    const lignes = XLSX.utils.sheet_to_json(wb.Sheets[nomF], { header: 1, defval: '', raw: true });
+    const iEnt = lignes.findIndex(l => l.some(v => /^franchis/i.test(norm(v))));
+    if (iEnt < 0) throw new Error('colonne « Franchisé » introuvable');
+    const ent = lignes[iEnt].map(v => norm(v)), col = re => ent.findIndex(v => re.test(v));
+    const cNom = col(/^franchis/), cCa = col(/^ca\b/), cOuv = col(/ouverture/), cEsp = col(/esprit/);
+    const cAns = ent.map((v, i) => [v, i]).filter(([v]) => /^20\d\d$/.test(String(v).trim())).map(([v, i]) => [String(v).trim(), i]);
+    let nb = 0;
+    for (const l of lignes.slice(iEnt + 1)) {
+      const nom = String(l[cNom] || '').replace(/^\s*\d+[\s.)-]*/, '').trim();
+      if (!nom || /^(ouvertures?|zone|si petit|pas interess|en cours)\b/i.test(norm(nom))) continue;
+      const p = participant(nom);
+      if (cCa >= 0) { const v = typeof l[cCa] === 'number' ? l[cCa] : Number(String(l[cCa]).replace(/[^\d,.-]/g, '').replace(',', '.')); p.ca2025 = isFinite(v) && v ? Math.round(v) : null; }
+      p.dev = cAns.map(([a, i]) => ({ annee: a, villes: String(l[i] || '').trim() })).filter(x => x.villes);
+      if (cOuv >= 0) p.ouverture = String(l[cOuv] || '').trim();
+      if (cEsp >= 0) p.etatEsprit = String(l[cEsp] || '').trim();
+      nb++;
+    }
+    const na = associerGroupes(true);
+    remplirReglages();
+    $('#pp-imp-info').textContent = `Onglet « ${nomF} » : ${nb} franchisés lus (état d'esprit, CA 2025, développement par année)${na ? ', ' + na + ' groupe(s) associé(s)' : ''}. Vérifiez puis cliquez sur « Enregistrer ».`;
+  }
+  // Groupe du référentiel : le nom de famille du participant figure dans le nom du groupe (un seul groupe possible)
+  function associerGroupes(seulementVides) {
+    let n = 0;
+    for (const p of cfg.participants || []) {
+      if (p.groupe && (seulementVides || groupeDe(p.groupe))) continue;
+      const mots = String(p.nom).split(/\s+ET\s+/i).map(x => x.trim().split(/\s+/).pop()).flatMap(x => x.split('-')).map(nomCle).filter(x => x.length >= 3);
+      const cand = S.franchises.filter(f => { const g = ' ' + nomCle(f.groupe) + ' '; return mots.some(m => g.includes(' ' + m + ' ')); });
+      if (cand.length === 1) { p.groupe = cand[0].groupe; n++; }
+    }
+    return n;
+  }
+  function associerComptes() {
+    for (const x of cfg.planning || []) {
+      if (x.directeur) continue;
+      const l = nomCle(x.libelle), c = S.comptes.filter(c => c.actif && (nomCle(c.nom || '') === l || nomCle(c.nom || '').split(' ')[0] === l || nomCle(c.email.split('@')[0]) === l));
+      if (c.length === 1) x.directeur = c[0].email;
+    }
+  }
+  async function enregistrerReglages(cible) {
+    const ancien = (cfg.sujetCentral || {}).questions || [];
+    const questions = $('#rg-questions').value.split('\n').map(l => l.trim()).filter(Boolean).map((l, i) => {
+      const [lib, type, opts] = l.split('|').map(x => (x || '').trim());
+      const t = /^choix/i.test(type) ? 'choix' : /^eti|^étiq|^tag/i.test(type) ? 'etiquettes' : 'texte';
+      const ex = ancien.find(q => norm(q.libelle) === norm(lib));
+      return { id: ex ? ex.id : 'q' + hash(lib + i).slice(0, 8), libelle: lib, type: t, options: t === 'texte' ? [] : (opts || '').split(',').map(x => x.trim()).filter(Boolean) };
+    });
+    const c = { ...cfg, annee: +$('#rg-annee').value, titre: $('#rg-titre').value.trim(), lieu: $('#rg-lieu').value.trim(), du: $('#rg-du').value, au: $('#rg-au').value,
+      sujetsProposes: $('#rg-sujets').value.split('\n').map(x => x.trim()).filter(Boolean), sujetCentral: { titre: $('#rg-central').value.trim(), questions },
+      dateSpeed: $('#pp-date').value, partageInfosDepart: $('#pp-partage').checked };
+    delete c._parDefaut; delete c._maj; delete c._par;
+    $(cible).textContent = 'Enregistrement…';
+    try {
+      await appel('/seminaire/config', { method: 'PUT', body: JSON.stringify(c) });
+      cfg = { ...c, _maj: new Date().toISOString() };
+      if (c.annee === S.annee) S.config = JSON.parse(JSON.stringify(c));
+      if (!(S.moi.annees || []).includes(c.annee)) S.moi.annees = [...(S.moi.annees || []), c.annee];
+      sauverCache(); $(cible).textContent = 'Enregistré ✓';
+      const sansCompte = (c.planning || []).filter(x => !x.directeur).map(x => x.libelle);
+      if (sansCompte.length) $(cible).textContent += ` · colonnes sans compte : ${sansCompte.join(', ')}`;
+    } catch (e) { $(cible).textContent = e.horsLigne ? 'Hors ligne : réessayez quand le réseau sera revenu.' : e.message; }
+  }
+  async function chargerComptes() {
+    try {
+      const d = await appel('/seminaire/comptes?annee=' + S.annee); S.comptes = d.comptes;
+      $('#cp-liste').innerHTML = `<table><tr><th>Personne</th><th>Rôle</th><th>Notes ${S.annee}</th><th></th></tr>${S.comptes.map((c, i) => `<tr style="${c.actif ? '' : 'opacity:.5'}"><td><b>${esc(c.nom || '')}</b><br><span class="muted">${esc(c.email)}</span></td>
+        <td>${c.admin ? 'Responsable (administrateur)' : c.role === 'responsable' ? 'Responsable' : 'Directeur'}</td><td>${c.notes}${c.derniere ? `<br><span class="muted">${esc(new Date(c.derniere).toLocaleDateString('fr-FR'))}</span>` : ''}</td>
+        <td>${c.admin ? '' : `<button class="lien" data-r="${i}">${c.role === 'responsable' ? '→ directeur' : '→ responsable'}</button><button class="lien" data-a="${i}">${c.actif ? 'Désactiver' : 'Réactiver'}</button>`}</td></tr>`).join('')}</table>`;
+      const maj = async (c, ch) => { try { await appel('/seminaire/comptes', { method: 'PUT', body: JSON.stringify({ ...c, ...ch, actif: ch.actif != null ? ch.actif : !!c.actif }) }); chargerComptes(); } catch (e) { $('#cp-info').textContent = e.message; } };
+      $('#cp-liste').querySelectorAll('[data-r]').forEach(b => b.onclick = () => { const c = S.comptes[+b.dataset.r]; maj(c, { role: c.role === 'responsable' ? 'directeur' : 'responsable' }); });
+      $('#cp-liste').querySelectorAll('[data-a]').forEach(b => b.onclick = () => { const c = S.comptes[+b.dataset.a]; maj(c, { actif: !c.actif }); });
+      if (cfg) { associerComptes(); rendrePlanningReglages(); }
+    } catch (e) { $('#cp-liste').innerHTML = `<p class="muted petit">${e.horsLigne ? 'Liste des comptes indisponible hors ligne.' : esc(e.message)}</p>`; }
   }
 
   demarrer();
