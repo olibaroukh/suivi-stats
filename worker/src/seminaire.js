@@ -70,13 +70,21 @@ async function droit(env, p) {
 }
 
 const normNom = x => String(x == null ? '' : x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
-// Directeur : son planning seulement ; informations « avant le séminaire » (état d'esprit, CA, développement, sujets demandés)
-// seulement pour les franchisés de son planning, sauf si les responsables ont choisi de les partager à tous.
+// 08/11/2026 (décision d'Olivier) : tous les directeurs et AR voient tous les franchisés et leurs informations de départ.
+// Un directeur ne reçoit que sa propre colonne du planning ; ses notes restent privées (voir /seminaire/notes).
 function filtrerConfig(c, email, resp) {
   if (resp || !c) return c;
-  const mes = (c.planning || []).filter(p => p.directeur === email);
-  const noms = new Set(mes.flatMap(p => (p.creneaux || []).map(x => normNom(x.participant))));
-  return { ...c, planning: mes, participants: (c.participants || []).map(p => c.partageInfosDepart || noms.has(normNom(p.nom)) ? p : { nom: p.nom, groupe: p.groupe || '' }) };
+  return { ...c, planning: (c.planning || []).filter(p => p.directeur === email) };
+}
+// Remplace une adresse de directeur dans le planning de toutes les éditions (compte corrigé ou supprimé)
+async function remplacerDirecteur(env, ancien, nouveau) {
+  const r = await env.DB.prepare('SELECT annee, valeur FROM seminaire_config').all();
+  for (const x of r.results || []) {
+    let c; try { c = JSON.parse(x.valeur); } catch (e) { continue; }
+    let ch = false;
+    for (const pl of c.planning || []) if (pl.directeur === ancien) { pl.directeur = nouveau || ''; ch = true; }
+    if (ch) await env.DB.prepare('UPDATE seminaire_config SET valeur = ? WHERE annee = ?').bind(JSON.stringify(c), x.annee).run();
+  }
 }
 async function lireJSON(env, chemin) { const o = await env.FICHIERS.get(chemin); if (!o) return null; try { return await o.json(); } catch (e) { return null; } }
 
@@ -203,11 +211,35 @@ export async function routesSeminaire(request, env, p, chemin, url, h, json, err
       const c = await request.json().catch(() => null);
       const em = String(c && c.email || '').trim().toLowerCase();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return erreur('Adresse e-mail invalide', 400, h);
+      // Correction d'une adresse saisie par erreur : l'ancien compte est remplacé (planning et notes suivent)
+      const ancien = String(c.ancienEmail || '').trim().toLowerCase();
+      if (ancien && ancien !== em) {
+        if (await env.DB.prepare('SELECT 1 FROM seminaire_comptes WHERE email = ?').bind(em).first()) return erreur('Cette adresse a déjà un compte', 409, h);
+        await env.DB.prepare('DELETE FROM seminaire_comptes WHERE email = ?').bind(ancien).run();
+        await env.DB.prepare('UPDATE seminaire_notes SET auteur = ? WHERE auteur = ?').bind(em, ancien).run();
+        await remplacerDirecteur(env, ancien, em);
+      }
       await env.DB.prepare(`INSERT INTO seminaire_comptes (email, nom, role, actif, maj_le, par) VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(email) DO UPDATE SET nom = excluded.nom, role = excluded.role, actif = excluded.actif, maj_le = excluded.maj_le, par = excluded.par`)
         .bind(em, String(c.nom || '').slice(0, 120) || null, c.role === 'responsable' ? 'responsable' : 'directeur', c.actif === false ? 0 : 1, new Date().toISOString(), email).run();
       return json({ ok: true }, 200, h);
     }
+  }
+  // Suppression d'un compte saisi par erreur ; s'il a déjà des notes, il est seulement désactivé (rien n'est perdu)
+  if (chemin === '/seminaire/comptes/supprimer' && request.method === 'POST') {
+    if (!resp) return erreur('Réservé aux responsables du séminaire', 403, h);
+    const b = await request.json().catch(() => ({}));
+    const em = String(b.email || '').trim().toLowerCase();
+    if (!em) return erreur('Adresse requise', 400, h);
+    if (em === email) return erreur('Vous ne pouvez pas supprimer votre propre compte', 400, h);
+    const nb = (await env.DB.prepare('SELECT COUNT(*) AS n FROM seminaire_notes WHERE auteur = ? AND supprime = 0').bind(em).first()).n;
+    if (nb) {
+      await env.DB.prepare('UPDATE seminaire_comptes SET actif = 0, maj_le = ?, par = ? WHERE email = ?').bind(new Date().toISOString(), email, em).run();
+      return json({ ok: true, desactive: true, notes: nb }, 200, h);
+    }
+    await env.DB.prepare('DELETE FROM seminaire_comptes WHERE email = ?').bind(em).run();
+    await remplacerDirecteur(env, em, '');
+    return json({ ok: true, supprime: true }, 200, h);
   }
   return erreur('Introuvable', 404, h);
 }

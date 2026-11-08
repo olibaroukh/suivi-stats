@@ -29,6 +29,7 @@
       localStorage.setItem(cleFile(), JSON.stringify(S.file));
     } catch (e) { console.warn('cache', e); }
   }
+  function lireFileSeule() { try { S.file = JSON.parse(localStorage.getItem(cleFile()) || '[]'); } catch (e) { S.file = []; } }
   function lireCache() {
     try {
       const c = JSON.parse(localStorage.getItem(cleCache()) || 'null');
@@ -36,6 +37,26 @@
       S.file = JSON.parse(localStorage.getItem(cleFile()) || '[]');
       return !!c;
     } catch (e) { return false; }
+  }
+  // Reconnexion obligatoire toutes les 2 heures (informations sensibles) ; le serveur applique la même règle
+  const DUREE_SESSION_MS = 2 * 60 * 60 * 1000;
+  const debutSession = () => session ? (session.debut || (session.expire + 60000 - 12 * 60 * 60 * 1000)) : 0;
+  const sessionValide = () => !!session && session.jeton && Date.now() - debutSession() < DUREE_SESSION_MS;
+  function verrouiller(message) {
+    // Les notes non envoyées restent sur l'appareil (file d'attente) ; tout le reste est effacé de l'appareil
+    try { localStorage.removeItem(cleCache()); } catch (e) {}
+    S.moi = null; S.config = null; S.franchises = []; S.notes.clear(); S.comptes = []; cfg = null;
+    S.notes = new Map(S.file.map(n => [n.id, n]));
+    fenetreFr = null; $('#fenetre').innerHTML = '';
+    afficherConnexion();
+    $('#cx-info').textContent = message || 'Par sécurité, reconnectez-vous (toutes les 2 heures).';
+    if (S.file.length) $('#cx-info').textContent += ` ${S.file.length} note(s) en attente seront envoyées après la connexion.`;
+  }
+  function surveillerSession() {
+    if (!S.moi) return;
+    if (!sessionValide()) return verrouiller();
+    const reste = Math.max(0, DUREE_SESSION_MS - (Date.now() - debutSession())), min = Math.round(reste / 60000);
+    const el = $('#qui-duree'); if (el) el.textContent = ` · reconnexion dans ${min >= 60 ? Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0') : min + ' min'}`;
   }
   const resp = () => S.moi && S.moi.droit === 'responsable';
   const monEmail = () => session && session.profil ? session.profil.email : '';
@@ -89,7 +110,7 @@
       etatReseau = e.session ? 'session' : e.horsLigne ? 'hors' : etatReseau;
       S.erreur = e.message;
       if (!e.session && !e.horsLigne) console.warn(e);
-      if (e.session) $('#lien-deconnexion').textContent = 'Se reconnecter';
+      if (e.session) verrouiller(e.message);
     } finally { syncEnCours = false; afficherSync(); }
   }
   function enregistrerNote(n, silencieux) {
@@ -137,9 +158,12 @@
     window.addEventListener('offline', () => { etatReseau = 'hors'; afficherSync(); });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) synchroniser(false); });
     setInterval(() => synchroniser(false), 60000);
+    setInterval(surveillerSession, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) surveillerSession(); });
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
     if (!session) return afficherConnexion();
+    if (!sessionValide()) { lireFileSeule(); return verrouiller(); }
     const cache = lireCache();
     if (cache && S.moi) { ouvrirAppli(); }
     try { await synchroniser(true); if (!S.moi) throw new Error('profil'); ouvrirAppli(); }
@@ -157,10 +181,10 @@
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.ok) throw new Error(d.erreur && /pas accès à Suivi Stats/.test(d.erreur) ? 'Votre compte n’a pas accès au séminaire. Demandez l’accès à Olivier Baroukh.' : (d.erreur || 'Connexion impossible'));
       const ancien = session && session.profil && session.profil.email;
-      session = { jeton: d.session, expire: Date.now() + d.expireDansMs - 60000, profil: d.profil };
+      session = { jeton: d.session, expire: Date.now() + d.expireDansMs - 60000, debut: Date.now(), profil: d.profil };
       localStorage.setItem(CLE_SESSION, JSON.stringify(session));
       $('#cx-pass').value = ''; $('#cx-info').textContent = '';
-      if (ancien && ancien !== d.profil.email) { S.notes.clear(); S.file = []; }
+      if (ancien && ancien !== d.profil.email) { S.notes.clear(); S.file = []; } else lireFileSeule();
       lireCache(); etatReseau = 'ok';
       await synchroniser(true);
       if (!S.moi) throw new Error(S.erreur || 'Votre compte n’a pas accès au séminaire. Demandez l’accès à Olivier Baroukh.');
@@ -171,7 +195,8 @@
   function ouvrirAppli() {
     $('#ecran-connexion').hidden = true; $('#principal').hidden = false; $('#onglets').hidden = false;
     $('#lien-deconnexion').hidden = false;
-    $('#qui').textContent = (S.moi.nom || monEmail()) + (resp() ? ' · responsable' : '');
+    $('#qui').innerHTML = esc(S.moi.nom || monEmail()) + (resp() ? ' · responsable' : '') + '<span id="qui-duree"></span>';
+    surveillerSession();
     $('#onglet-reglages').hidden = !resp();
     afficherSync(); rafraichir();
   }
@@ -500,9 +525,15 @@
     $('#cp-ajouter').onclick = async () => {
       const email = $('#cp-email').value.trim().toLowerCase();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $('#cp-info').textContent = 'Adresse e-mail invalide'; return; }
-      try { await appel('/seminaire/comptes', { method: 'PUT', body: JSON.stringify({ email, nom: $('#cp-nom').value.trim(), role: $('#cp-role').value, actif: true }) }); $('#cp-email').value = ''; $('#cp-nom').value = ''; $('#cp-info').textContent = 'Ajouté ✓'; chargerComptes(); }
-      catch (e) { $('#cp-info').textContent = e.message; }
+      const modif = compteEnModif;
+      try {
+        await appel('/seminaire/comptes', { method: 'PUT', body: JSON.stringify({ email, ancienEmail: modif || undefined, nom: $('#cp-nom').value.trim(), role: $('#cp-role').value, actif: true }) });
+        if (modif && cfg) (cfg.planning || []).forEach(x => { if (x.directeur === modif) x.directeur = email; });
+        if (modif && S.config) (S.config.planning || []).forEach(x => { if (x.directeur === modif) x.directeur = email; });
+        finModifCompte(); $('#cp-info').textContent = modif ? 'Modifié ✓' : 'Ajouté ✓'; chargerComptes();
+      } catch (e) { $('#cp-info').textContent = e.message; }
     };
+    $('#cp-annuler').onclick = finModifCompte;
   }
   function remplirReglages() {
     const c = cfg;
@@ -510,7 +541,7 @@
     $('#rg-sujets').value = (c.sujetsProposes || []).join('\n');
     $('#rg-central').value = (c.sujetCentral || {}).titre || '';
     $('#rg-questions').value = ((c.sujetCentral || {}).questions || []).map(q => [q.libelle, q.type, (q.options || []).join(', ')].filter((x, i) => i < 2 || x).join(' | ')).join('\n');
-    $('#pp-date').value = c.dateSpeed || ''; $('#pp-partage').checked = !!c.partageInfosDepart;
+    $('#pp-date').value = c.dateSpeed || '';
     $('#rg-info').textContent = c._parDefaut ? 'Réglages proposés par défaut : pensez à enregistrer.' : c._maj ? `Enregistré le ${new Date(c._maj).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}` : '';
     $('#pp-groupes').innerHTML = S.franchises.map(f => `<option value="${esc(f.groupe)}">`).join('');
     rendrePlanningReglages(); rendreParticipantsReglages();
@@ -608,7 +639,8 @@
     });
     const c = { ...cfg, annee: +$('#rg-annee').value, titre: $('#rg-titre').value.trim(), lieu: $('#rg-lieu').value.trim(), du: $('#rg-du').value, au: $('#rg-au').value,
       sujetsProposes: $('#rg-sujets').value.split('\n').map(x => x.trim()).filter(Boolean), sujetCentral: { titre: $('#rg-central').value.trim(), questions },
-      dateSpeed: $('#pp-date').value, partageInfosDepart: $('#pp-partage').checked };
+      dateSpeed: $('#pp-date').value };
+    delete c.partageInfosDepart;
     delete c._parDefaut; delete c._maj; delete c._par;
     $(cible).textContent = 'Enregistrement…';
     try {
@@ -621,14 +653,25 @@
       if (sansCompte.length) $(cible).textContent += ` · colonnes sans compte : ${sansCompte.join(', ')}`;
     } catch (e) { $(cible).textContent = e.horsLigne ? 'Hors ligne : réessayez quand le réseau sera revenu.' : e.message; }
   }
+  let compteEnModif = null;
+  function finModifCompte() { compteEnModif = null; $('#cp-email').value = ''; $('#cp-nom').value = ''; $('#cp-role').value = 'directeur'; $('#cp-ajouter').textContent = 'Ajouter'; $('#cp-annuler').hidden = true; }
   async function chargerComptes() {
     try {
       const d = await appel('/seminaire/comptes?annee=' + S.annee); S.comptes = d.comptes;
       $('#cp-liste').innerHTML = `<table><tr><th>Personne</th><th>Rôle</th><th>Notes ${S.annee}</th><th></th></tr>${S.comptes.map((c, i) => `<tr style="${c.actif ? '' : 'opacity:.5'}"><td><b>${esc(c.nom || '')}</b><br><span class="muted">${esc(c.email)}</span></td>
         <td>${c.admin ? 'Responsable (administrateur)' : c.role === 'responsable' ? 'Responsable' : 'Directeur'}</td><td>${c.notes}${c.derniere ? `<br><span class="muted">${esc(new Date(c.derniere).toLocaleDateString('fr-FR'))}</span>` : ''}</td>
-        <td>${c.admin ? '' : `<button class="lien" data-r="${i}">${c.role === 'responsable' ? '→ directeur' : '→ responsable'}</button><button class="lien" data-a="${i}">${c.actif ? 'Désactiver' : 'Réactiver'}</button>`}</td></tr>`).join('')}</table>`;
+        <td>${c.admin ? '' : `<button class="lien" data-m="${i}">Modifier</button>${c.actif ? `<button class="lien" data-s="${i}">Supprimer</button>` : `<button class="lien" data-a="${i}">Réactiver</button>`}`}</td></tr>`).join('')}</table>`;
       const maj = async (c, ch) => { try { await appel('/seminaire/comptes', { method: 'PUT', body: JSON.stringify({ ...c, ...ch, actif: ch.actif != null ? ch.actif : !!c.actif }) }); chargerComptes(); } catch (e) { $('#cp-info').textContent = e.message; } };
-      $('#cp-liste').querySelectorAll('[data-r]').forEach(b => b.onclick = () => { const c = S.comptes[+b.dataset.r]; maj(c, { role: c.role === 'responsable' ? 'directeur' : 'responsable' }); });
+      $('#cp-liste').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const c = S.comptes[+b.dataset.m]; compteEnModif = c.email;
+        $('#cp-nom').value = c.nom || ''; $('#cp-email').value = c.email; $('#cp-role').value = c.role === 'responsable' ? 'responsable' : 'directeur';
+        $('#cp-ajouter').textContent = 'Enregistrer la modification'; $('#cp-annuler').hidden = false; $('#cp-info').textContent = 'Modification de ' + c.email; $('#cp-nom').focus(); });
+      $('#cp-liste').querySelectorAll('[data-s]').forEach(b => b.onclick = async () => { const c = S.comptes[+b.dataset.s];
+        if (!confirm(`Supprimer le compte de ${c.nom || c.email} ?`)) return;
+        try { const d = await appel('/seminaire/comptes/supprimer', { method: 'POST', body: JSON.stringify({ email: c.email }) });
+          $('#cp-info').textContent = d.desactive ? `${c.nom || c.email} a déjà ${d.notes} note(s) : compte désactivé (notes conservées).` : 'Supprimé ✓';
+          if (d.supprime && cfg) (cfg.planning || []).forEach(x => { if (x.directeur === c.email) x.directeur = ''; });
+          if (compteEnModif === c.email) finModifCompte(); chargerComptes();
+        } catch (e) { $('#cp-info').textContent = e.message; } });
       $('#cp-liste').querySelectorAll('[data-a]').forEach(b => b.onclick = () => { const c = S.comptes[+b.dataset.a]; maj(c, { actif: !c.actif }); });
       if (cfg) { associerComptes(); rendrePlanningReglages(); }
     } catch (e) { $('#cp-liste').innerHTML = `<p class="muted petit">${e.horsLigne ? 'Liste des comptes indisponible hors ligne.' : esc(e.message)}</p>`; }
