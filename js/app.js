@@ -10,7 +10,8 @@
   const REF_COLS = { 'Code site': 'code', 'Magasin': 'magasin', 'Type': 'type', 'Groupe': 'groupe', 'Date ouverture': 'ouverture', 'Pays': 'pays', 'Nature': 'nature', 'AR': 'ar', 'Langue': 'langue', 'Devise': 'devise', 'Serveur Cosium': 'serveur', 'Manager': 'manager', 'Nom Lyleoo': 'lyleoo', 'E-mail magasin': 'email', 'Actif': 'actif', 'Ancien code site': 'ancienCode',
     // Colonnes reprises du référentiel de bilan-passage (référentiel unique).
     // « Animateur terrain » : personne qui anime le magasin dans les applis terrain (bilans, accueil…) quand ce n'est pas l'AR (vide = l'AR).
-    'E-mail AR': 'arEmail', 'Animateur terrain': 'animateur', 'E-mail animateur terrain': 'animateurEmail', 'Google place id': 'googlePlaceId', 'Concept': 'concept', 'Meuble vitrine': 'meubleVitrine', 'Présentoir verres': 'presentoirVerres', 'Alsace-Moselle': 'alsaceMoselle', 'Libellé bilans': 'libelleBilans' };
+    // « Directeur pays » (08/11) : mêmes droits qu'un AR, sur tous les magasins où il est inscrit (ex. Israël : directrice pays + 3 AR).
+    'E-mail AR': 'arEmail', 'Directeur pays': 'directeurPays', 'E-mail directeur pays': 'directeurPaysEmail', 'Animateur terrain': 'animateur', 'E-mail animateur terrain': 'animateurEmail', 'Google place id': 'googlePlaceId', 'Concept': 'concept', 'Meuble vitrine': 'meubleVitrine', 'Présentoir verres': 'presentoirVerres', 'Alsace-Moselle': 'alsaceMoselle', 'Libellé bilans': 'libelleBilans' };
   const OBJ_COLS = { 'Type': 'type', 'Clé (pays ou franchisé)': 'cle', 'PM 1ère paire': 'pm1', '% Unif individualisés': 'unifIndiv', '% Anti-reflet HG': 'arHG', '% Transition': 'transition', '% SOP': 'sop', 'Nb Lyleoo': 'lyleoo', '% Pack confort': 'pcPct', '€ Pack confort': 'pcEur', '% Taux de concrétisation': 'tc', 'Panier moyen': 'panier', '% MdC': 'mdc', 'Devise': 'devise', 'Prix moyen prothèse': 'pmProthese', '% Garantie audio': 'garantieAudio', '% Ventes additionnelles': 'ventesAdd', '% TC audio': 'tcAudio', 'Durée moyenne d’essai': 'dureeEssai', '% Dépistage': 'depistage', 'PM vente audio': 'pmVente', '% Ouiezen premium': 'ouiezen' };
 
   // ---------- Démarrage ----------
@@ -1368,6 +1369,7 @@
     const morceaux = [libTypes(p)].filter(Boolean);
     if (p.pays && p.pays.length) morceaux.push(p.pays.join(', '));
     if (p.ar && p.ar.length) morceaux.push('AR : ' + p.ar.join(', '));
+    if (p.directeursPays && p.directeursPays.length) morceaux.push('Directeur pays : ' + p.directeursPays.join(', '));
     if (p.groupes && p.groupes.length) morceaux.push('Groupes : ' + p.groupes.join(', '));
     if (p.codes && p.codes.length) morceaux.push('+ ' + p.codes.join(', '));
 
@@ -1378,7 +1380,7 @@
   function nbMagasins(p) {
     const n = x => String(x == null ? '' : x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
     const dans = (l, v) => Array.isArray(l) && l.some(x => n(x) === n(v));
-    return S.ref.filter(m => { let ok = !!p.tous || dans(p.codes, m.code) || dans(p.pays, m.pays) || dans(p.groupes, m.groupe) || dans(p.ar, m.ar); if (Array.isArray(p.types) && p.types.length && !dans(p.types, m.type) && !dans(p.codes, m.code)) ok = false; if (dans(p.exclurePays, m.pays) || dans(p.exclureCodes, m.code)) ok = false; return ok && m.actif === 'Oui'; }).length;
+    return S.ref.filter(m => { let ok = !!p.tous || dans(p.codes, m.code) || dans(p.pays, m.pays) || dans(p.groupes, m.groupe) || dans(p.ar, m.ar) || dans(p.directeursPays, m.directeurPays); if (Array.isArray(p.types) && p.types.length && !dans(p.types, m.type) && !dans(p.codes, m.code)) ok = false; if (dans(p.exclurePays, m.pays) || dans(p.exclureCodes, m.code)) ok = false; return ok && m.actif === 'Oui'; }).length;
   }
   function cases(id, valeurs, cochees) { $(id).innerHTML = valeurs.map(v => `<label><input type="checkbox" value="${esc(v)}"${cochees.includes(v) ? ' checked' : ''}> ${esc(v)}</label>`).join(''); }
   const coches = id => [...document.querySelectorAll(id + ' input:checked')].map(i => i.value);
@@ -1386,7 +1388,7 @@
     const t = [...document.querySelectorAll('.ac-type:checked')].map(c => c.value);
     const types = t.length === 1 ? t : undefined; // les deux cochés = pas de restriction
     if ($('#ac-tous').checked) return { tous: true, types, exclureCodes: listeCodes($('#ac-exclure-codes').value) };
-    return { pays: coches('#ac-pays'), ar: coches('#ac-ar'), groupes: coches('#ac-groupes'), codes: listeCodes($('#ac-codes').value), types, exclureCodes: listeCodes($('#ac-exclure-codes').value) };
+    return { pays: coches('#ac-pays'), ar: coches('#ac-ar'), directeursPays: coches('#ac-dp'), groupes: coches('#ac-groupes'), codes: listeCodes($('#ac-codes').value), types, exclureCodes: listeCodes($('#ac-exclure-codes').value) };
   }
   function majApercu() {
     if (!document.querySelectorAll('.ac-type:checked').length) { $('#ac-apercu').textContent = 'Cochez au moins un type de magasins'; return; }
@@ -1398,7 +1400,7 @@
     $('#ac-tous').checked = !!p.tous;
     cases('#ac-pays', uniq('pays'), p.pays || []);
     document.querySelectorAll('.ac-type').forEach(c => c.checked = !(p.types && p.types.length) || p.types.includes(c.value));
-    cases('#ac-ar', uniq('ar'), p.ar || []); cases('#ac-groupes', uniq('groupe').filter(g => !/^optical center$/i.test(g)), p.groupes || []);
+    cases('#ac-ar', uniq('ar'), p.ar || []); cases('#ac-dp', uniq('directeurPays'), p.directeursPays || []); if (!uniq('directeurPays').length) $('#ac-dp').innerHTML = '<span class="muted">Aucun directeur pays dans le référentiel (colonne « Directeur pays »)</span>'; cases('#ac-groupes', uniq('groupe').filter(g => !/^optical center$/i.test(g)), p.groupes || []);
     $('#ac-codes').value = (p.codes || []).join(', '); $('#ac-exclure-codes').value = (p.exclureCodes || []).join(', ');
     document.querySelectorAll('.ac-ecran').forEach(c => c.checked = !u.ecrans || u.ecrans.includes(c.value));
     $('#ac-actif').checked = u.actif !== 0 && u.actif !== false; $('#ac-info').textContent = '';
