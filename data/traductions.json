@@ -1744,6 +1744,15 @@
    "es": "Clasificado",
    "nl": "Gekwalificeerd",
    "de": "Qualifiziert"
+  },
+  {
+   "base": "Score santé annuel",
+   "fr": "Score santé annuel",
+   "he": "מדד בריאות שנתי",
+   "en": "Annual health score",
+   "es": "Índice de salud anual",
+   "nl": "Jaarlijkse gezondheidsscore",
+   "de": "Jährlicher Gesundheitsscore"
   }
  ],
  "mois": [

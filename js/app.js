@@ -163,6 +163,31 @@
       return { magasins: out, apercu: !!d.apercu, statut: d.statut, version: d.version, dims: d.dims };
     } catch (e) { return { erreur: String(e) }; }
   }
+  // Score santé ANNUEL (08/11/2026) : calculé par zimbra-relay sur les mois validés de l'année jusqu'au mois traité,
+  // figé dans la photo du mois (photo.santeAnnuel). C'est lui qu'affichent la fiche et le dossier de visite.
+  // Évolution : score annuel à fin du mois validé précédent.
+  async function santeAnnuelWorker(annee, mois) {
+    const lire = async m => {
+      let r;
+      if (viaServeur()) r = await Store.api('/relais/sante-annuel?mois=' + annee + '-' + pad(m));
+      else {
+        const { url, cle } = paramsWorker(); if (!url || !cle) return null;
+        const ses = sessionSante(); if (!ses) return { erreur: 'session' };
+        r = await fetch(url.replace(/\/$/, '') + '/sante-mensuel?annee=' + annee + '&jusqua=' + annee + '-' + pad(m), { headers: { 'X-Store-Token': cle, 'X-AR-Session': ses.token } });
+      }
+      const d = await r.json(); return d.ok ? d : { erreur: d.error || ('HTTP ' + r.status) };
+    };
+    try {
+      const d = await lire(mois); if (!d || d.erreur) return d;
+      const mv = (d.moisValides || []).map(x => x.mois).sort();
+      if (!mv.length) return { magasins: {}, moisValides: [], vide: true, annee };
+      const prec = {};
+      if (mv.length > 1) { const dp = await lire(+mv[mv.length - 2].slice(5)); if (dp && !dp.erreur) (dp.magasins || []).forEach(m => { prec[String(m.code)] = m.score; }); }
+      const out = {}; (d.magasins || []).forEach(m => { out[String(m.code)] = { score: m.score, precedent: prec[String(m.code)] ?? null, couverture: m.couverture, sous: m.sous || {}, exclusions: m.exclusions || {}, neutralisations: {}, nbMois: m.nbMoisRetenus, rang: m.rangReseau ?? null }; });
+      return { magasins: out, moisValides: mv, dernierMois: mv[mv.length - 1], poidsMois: d.poidsMois, dims: d.dims, annee };
+    } catch (e) { return { erreur: String(e) }; }
+  }
+  const detailAnnuel = saa => saa.vide ? 'aucun mois validé pour l’année' : `${Object.values(saa.magasins).filter(x => x.score != null).length} magasins, ${saa.moisValides.length} mois validé(s), à fin ${MOIS[+saa.dernierMois.slice(5) - 1].toLowerCase()}`;
   // Cumul des points Kaizen de l'année par magasin (Magasin d'Excellence › KAIZEN), lu dans zimbra-relay
   async function genreWorker(annee, mois) {
     if (!viaServeur()) return null;
@@ -235,6 +260,9 @@
         res.photo.sante = sa; const n = Object.values(sa.magasins).filter(x => x.score != null).length;
         res.rapport.sources.sante = { statut: 'recu', detail: `${n} magasins notés – ${sa.apercu ? 'aperçu indicatif (mois pas encore calculé dans le dashboard)' : 'mois ' + (sa.statut === 'valide' ? 'validé' : 'calculé') + ', version ' + sa.version}` };
         if (sa.apercu) res.rapport.alertes.push('Score santé : le mois n’est pas encore calculé dans le dashboard, les scores affichés sont indicatifs.');
+        const saa = await santeAnnuelWorker(annee, mois);
+        if (saa && !saa.erreur) { res.photo.santeAnnuel = saa; res.rapport.sources.sante.detail += ' · annuel : ' + detailAnnuel(saa); if (saa.vide) res.rapport.alertes.push('Score santé annuel : aucun mois validé dans le dashboard, la fiche affiche le score du mois.'); }
+        else res.rapport.alertes.push('Score santé annuel non récupéré (' + (saa ? saa.erreur : 'worker non configuré') + ') : la fiche affiche le score du mois.');
         const kz = await kaizenWorker(annee, mois); if (kz) res.photo.mlme = { ...(res.photo.mlme || {}), kaizen: kz, kaizenMaj: new Date().toISOString() }; const hf = await genreWorker(annee, mois); if (hf) res.photo.mlme = { ...(res.photo.mlme || {}), genre: hf };
         const bp = await bilansWorker(annee, mois);
         if (bp && !bp.erreur) { res.photo.bilans = bp; res.rapport.sources.bilans = { statut: 'recu', detail: `${Object.keys(bp.magasins).length} magasins (dernier passage avant le ${bp.fin.split('-').reverse().join('/')})` }; }
@@ -755,6 +783,9 @@
       if (!sa) { $('#s-maj-info').textContent = 'Clé du worker manquante : saisis-la dans le cadre « Avis Google – Worker » et clique sur Enregistrer.'; return; }
       if (sa.erreur) { $('#s-maj-info').textContent = sa.erreur === 'session' ? 'Connecte-toi d’abord (ci-dessus).' : 'Erreur : ' + sa.erreur; return; }
       ph.sante = sa; ph.sources = ph.sources || {}; ph.sources.sante = { statut: 'recu', detail: `${Object.values(sa.magasins).filter(x => x.score != null).length} magasins notés${sa.apercu ? ' – aperçu indicatif' : ''}` };
+      const saa = await santeAnnuelWorker(a, m);
+      if (saa && !saa.erreur) { ph.santeAnnuel = saa; ph.sources.sante.detail += ' · annuel : ' + detailAnnuel(saa); }
+      else ph.sources.sante.detail += ' · annuel non récupéré (' + (saa ? saa.erreur : 'worker non configuré') + ')';
       const kz = await kaizenWorker(a, m); if (kz) ph.mlme = { ...(ph.mlme || {}), kaizen: kz, kaizenMaj: new Date().toISOString() }; const hf = await genreWorker(a, m); if (hf) ph.mlme = { ...(ph.mlme || {}), genre: hf };
       const bp = await bilansWorker(a, m);
       if (bp && !bp.erreur) { ph.bilans = bp; ph.sources.bilans = { statut: 'recu', detail: `${Object.keys(bp.magasins).length} magasins` }; }
