@@ -616,6 +616,10 @@
     let n = 0;
     for (const p of cfg.participants || []) {
       if (p.groupe && (seulementVides || groupeDe(p.groupe))) continue;
+      // 1) même nom que le groupe (les groupes du référentiel portent souvent le nom du franchisé)
+      const exact = S.franchises.filter(f => nomCle(f.groupe) === nomCle(p.nom));
+      if (exact.length === 1) { p.groupe = exact[0].groupe; n++; continue; }
+      // 2) sinon, nom de famille contenu dans le nom du groupe (un seul groupe possible)
       const mots = String(p.nom).split(/\s+ET\s+/i).map(x => x.trim().split(/\s+/).pop()).flatMap(x => x.split('-')).map(nomCle).filter(x => x.length >= 3);
       const cand = S.franchises.filter(f => { const g = ' ' + nomCle(f.groupe) + ' '; return mots.some(m => g.includes(' ' + m + ' ')); });
       if (cand.length === 1) { p.groupe = cand[0].groupe; n++; }
