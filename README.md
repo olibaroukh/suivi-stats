@@ -40,3 +40,10 @@ Suivi Stats/
 ## Publier une mise à jour
 
 Chaque modification incrémente `version.json` (format `AAAA.MM.JJ-n`). L'appli charge ses fichiers avec `?v=<version>` et vérifie `version.json` toutes les 3 minutes et au retour sur l'onglet : si la version a changé, un bandeau « Mettre à jour » apparaît (aucun rafraîchissement manuel nécessaire, y compris sur téléphone).
+
+
+## Séminaire franchisés (08/11/2026)
+Page à part : https://olibaroukh.github.io/suivi-stats/seminaire-franchises/ (dossier `seminaire-franchises/`), même connexion Zimbra, même Worker (`worker/src/seminaire.js`, tables `seminaire_*` dans la base D1, créées automatiquement).
+- Directeurs de pôle : ne voient que leurs notes. Responsables (administrateurs + Sacha Assola, Laurent Levy) : voient tout, gèrent l'édition de l'année et les comptes.
+- Franchisés = référentiel (Type Franchise, actifs, regroupés par Groupe) + chiffres de la dernière photo en €.
+- Saisie hors connexion sur téléphone (notes gardées sur l'appareil, envoyées au retour du réseau).
