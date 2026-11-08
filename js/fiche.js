@@ -202,11 +202,17 @@
     const c = calculer(photo, mag, objectifs);
     const ch = challenges(photo, mag, c, opts.challenges, { taux: opts.taux });
     const eq = equipe(photo, mag, c.o);
-    const sa = photo.sante && photo.sante.magasins && photo.sante.magasins[String(mag.code)];
+    // Score santé : version ANNUELLE (mois validés de l'année jusqu'au mois traité) ; score du mois en secours (anciennes photos)
+    const saA = photo.santeAnnuel && photo.santeAnnuel.magasins && photo.santeAnnuel.magasins[String(mag.code)];
+    const santeAn = !!(saA && saA.score != null);
+    const sa = santeAn ? saA : photo.sante && photo.sante.magasins && photo.sante.magasins[String(mag.code)];
     const santeOk = sa && sa.score != null;
+    const santeApercu = !santeAn && photo.sante && photo.sante.apercu;
+    const santeDims = (santeAn ? photo.santeAnnuel.dims : photo.sante && photo.sante.dims) || null;
+    const perSante = santeAn && photo.santeAnnuel.dernierMois ? `01 → ${photo.santeAnnuel.dernierMois.slice(5)}/${photo.santeAnnuel.dernierMois.slice(0, 4)}` : '';
     const santeCl = v => v == null ? '' : v >= 75 ? 'vert' : v >= 50 ? 'orange' : 'rouge';
     const SANTE_LIB = { actions: 'Actions', effectif: 'Effectif', absenteisme: 'Absentéisme', positionnement: 'Positionnement', pedlv: 'Pedlv', avis: 'Avis', equipe: 'Équipe', kaizen: 'Kaizen', entretiens: 'Entretiens', lancements: 'Lancements' };
-    const badgeSante = () => !santeOk ? '' : `<div class="sante-badge ${santeCl(sa.score)}"><div class="v">${sa.score}<small>/100</small></div><div class="l">${esc(t('Score santé'))}${photo.sante.apercu ? ' *' : ''}</div>${sa.precedent != null ? `<div class="e">${sa.score > sa.precedent ? '▲' : sa.score < sa.precedent ? '▼' : '='} ${sa.score - sa.precedent > 0 ? '+' : ''}${sa.score - sa.precedent} pts</div>` : ''}</div>`;
+    const badgeSante = () => !santeOk ? '' : `<div class="sante-badge ${santeCl(sa.score)}"><div class="v">${sa.score}<small>/100</small></div><div class="l">${esc(t('Score santé'))}${santeApercu ? ' *' : ''}</div>${perSante ? `<div class="p">${perSante}</div>` : ''}${sa.precedent != null ? `<div class="e">${sa.score > sa.precedent ? '▲' : sa.score < sa.precedent ? '▼' : '='} ${sa.score - sa.precedent > 0 ? '+' : ''}${sa.score - sa.precedent} pts</div>` : ''}</div>`;
     const bil = photo.bilans && photo.bilans.magasins && photo.bilans.magasins[String(mag.code)];
     const blocBilan = () => {
       if (!bil || !bil.actions || !bil.actions.length) return '';
@@ -216,11 +222,11 @@
         ${bil.actions.map((a, i) => `<tr><td><b>${i + 1}. ${esc(a.texte)}</b>${a.commentaire ? `<small>${esc(a.commentaire)}</small>` : ''}</td><td>${esc(a.qui || '–')}</td><td class="${a.echeance && finM && String(a.echeance).slice(0, 10) < finM ? 'ko' : ''}">${esc(dfr(a.echeance) || '–')}</td></tr>`).join('')}
       </tbody></table>`, '', `${t('passage du')} ${dfr(bil.date)}${bil.ar ? ' · ' + bil.ar : ''}`);
     };
-    const blocSante = () => !santeOk ? '' : section('Score santé', `<div class="sante-l">
+    const blocSante = () => !santeOk ? '' : section(santeAn ? 'Score santé annuel' : 'Score santé', `<div class="sante-l">
       ${badgeSante()}
-      <div class="sante-dims">${(photo.sante.dims || Object.keys(SANTE_LIB)).map(d => { const v = sa.sous[d], off = v == null || sa.exclusions[d] || sa.neutralisations[d];
+      <div class="sante-dims">${(santeDims || Object.keys(SANTE_LIB)).map(d => { const v = (sa.sous || {})[d], off = v == null || (sa.exclusions || {})[d] || (sa.neutralisations || {})[d];
         return `<div class="${off ? 'off' : santeCl(v)}"><div class="j"><div style="width:${off ? 0 : Math.max(2, Math.min(100, v))}%"></div></div><b>${off ? '–' : Math.round(v)}</b><span>${esc(t(SANTE_LIB[d] || d))}</span></div>`; }).join('')}</div>
-    </div>${photo.sante.apercu ? '<div class="autres">* Aperçu indicatif : le mois n’était pas encore calculé dans le dashboard au moment de l’import.</div>' : ''}`, '', `${t('couverture')} ${nb(sa.couverture, 0)} %`);
+    </div>${santeApercu ? '<div class="autres">* Aperçu indicatif : le mois n’était pas encore calculé dans le dashboard au moment de l’import.</div>' : ''}`, '', `${perSante ? perSante + ' · ' : ''}${t('couverture')} ${nb(sa.couverture, 0)} %`);
     const loc = lang === 'he' ? 'he-IL' : lang === 'en' ? 'en-GB' : lang === 'es' ? 'es-ES' : 'fr-FR';
     const nb = (v, d = 0) => v == null ? '–' : Number(v).toLocaleString(loc, { maximumFractionDigits: d, minimumFractionDigits: d });
     const eur = v => v == null ? '–' : nb(Math.round(v)) + ' ' + dev;

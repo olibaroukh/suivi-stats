@@ -99,7 +99,10 @@
     const puces = (ls, vide) => ls.length ? ls.map(l => `<li><b>${esc(l.lib)}</b> ${fmt(l.v, l.f, dev)} <small>· ${l.rang}${l.rang === 1 ? 'er' : 'e'} sur ${l.n} · ${l.f === 'evol' ? 'médiane' : 'moy.'} ${fmt(l.moy, l.f, dev)}</small></li>`).join('') : `<li class="muted">${vide}</li>`;
 
     // Score santé et bilan de passage (mêmes sources que la fiche)
-    const sa = photo.sante && photo.sante.magasins && photo.sante.magasins[String(mag.code)];
+    const saA = photo.santeAnnuel && photo.santeAnnuel.magasins && photo.santeAnnuel.magasins[String(mag.code)];
+    const santeAn = !!(saA && saA.score != null);
+    const sa = santeAn ? saA : photo.sante && photo.sante.magasins && photo.sante.magasins[String(mag.code)];
+    const perSante = santeAn && photo.santeAnnuel.dernierMois ? `01 → ${photo.santeAnnuel.dernierMois.slice(5)}/${photo.santeAnnuel.dernierMois.slice(0, 4)}` : '';
     const bil = photo.bilans && photo.bilans.magasins && photo.bilans.magasins[String(mag.code)];
     const dfr = d => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '';
     const finM = (photo.bilans && photo.bilans.fin) || '';
@@ -119,7 +122,7 @@
     ${tuile('Positionnement', fmt(c.ca.posit, 'pct0'), lp.rang ? `${lp.rang}${lp.rang === 1 ? 'er' : 'e'} sur ${lp.n} · ${esc(grp.lib)}` : '', c.ca.posit == null ? '' : c.ca.posit >= 1 ? 'fort ok' : 'fort ko')}
     ${tuile('CA manquant', c.ca.manquant == null ? '–' : nb(c.ca.manquant / 1000) + '\u202fk' + dev, c.ca.restant == null ? '' : `restant par mois ${nb(c.ca.restant / 1000)}\u202fk${dev}`, c.ca.manquant ? 'rouge' : '')}
     ${tuile('Potentiel CA', c.ca.potentiel == null ? '–' : nb(c.ca.potentiel / 1000) + '\u202fk' + dev, 'pertes sur objectifs qualité')}
-    ${tuile('Score santé', sa && sa.score != null ? nb(sa.score) + '<small style="font-size:9px;opacity:.6">/100</small>' : '–', sa && sa.precedent != null ? `${sa.score >= sa.precedent ? '▲' : '▼'} ${sa.score - sa.precedent > 0 ? '+' : ''}${sa.score - sa.precedent} pts` : '')}
+    ${tuile(santeAn ? 'Score santé annuel' : 'Score santé', sa && sa.score != null ? nb(sa.score) + '<small style="font-size:9px;opacity:.6">/100</small>' : '–', (sa && sa.precedent != null ? `${sa.score >= sa.precedent ? '▲' : '▼'} ${sa.score - sa.precedent > 0 ? '+' : ''}${sa.score - sa.precedent} pts` : '') + (sa && sa.precedent != null && perSante ? ' · ' : '') + perSante)}
   </div>
   <section class="f-sec"><h2><span>Le magasin face à ${esc(grp.lib)} <small>rang 1 = meilleur · repère : à gauche = en tête du groupe · Mois : tendance vs mois précédent</small></span></h2>${tableau}</section>
   <div class="grille2">

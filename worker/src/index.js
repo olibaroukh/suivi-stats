@@ -622,11 +622,12 @@ async function routes(request, env) {
     try { return json(await env.RELAIS.cleUsage(), 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
   }
   // Données de zimbra-relay lues côté serveur par le lien interne RELAIS (administrateurs)
-  if (chemin === '/relais/google' || chemin === '/relais/sante' || chemin === '/relais/bilans') {
+  if (chemin === '/relais/google' || chemin === '/relais/sante' || chemin === '/relais/sante-annuel' || chemin === '/relais/bilans') {
     if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
     try {
       let d;
       if (chemin === '/relais/google') d = await env.RELAIS.googleRatings();
+      else if (chemin === '/relais/sante-annuel') { const m = url.searchParams.get('mois') || ''; if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois (AAAA-MM) requis', 400, h); if (typeof env.RELAIS.santeAnnuel !== 'function') return erreur('zimbra-relay pas encore à jour (score annuel)', 502, h); d = await env.RELAIS.santeAnnuel(m); }
       else if (chemin === '/relais/sante') { const m = url.searchParams.get('mois') || ''; if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois (AAAA-MM) requis', 400, h); d = await env.RELAIS.santeMensuel(m); }
       else { const du = url.searchParams.get('du') || '', au = url.searchParams.get('au') || ''; if (!/^\d{4}-\d{2}-\d{2}$/.test(du) || !/^\d{4}-\d{2}-\d{2}$/.test(au)) return erreur('Paramètres du / au (AAAA-MM-JJ) requis', 400, h); d = await env.RELAIS.bilans(du, au); }
       return json(d, 200, h);

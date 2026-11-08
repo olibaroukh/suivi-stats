@@ -212,6 +212,7 @@ main{max-width:1240px;margin:0 auto;padding:24px 28px 10px}
 .fiche .sante-badge .v small{font-size:9px;font-weight:600;opacity:.7}
 .fiche .sante-badge .l{font-size:7px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--n);margin-top:3px;white-space:nowrap}
 .fiche .sante-badge .e{font-size:7.5px;font-weight:700;margin-top:1px}
+.fiche .sante-badge .p{font-size:6.5px;font-weight:600;color:var(--n);opacity:.65;margin-top:1px;white-space:nowrap}
 .fiche .sante-badge.vert{color:var(--ok);background:#EEF7F1}.fiche .sante-badge.orange{color:#D98A00;background:#FDF5E6}.fiche .sante-badge.rouge{color:var(--r);background:var(--rose)}
 .fiche .sante-l{display:flex;gap:14px;align-items:center}
 .fiche .sante-dims{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:6px 12px}
