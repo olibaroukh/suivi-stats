@@ -57,10 +57,9 @@
   async function sessionPrete() {
     document.body.classList.remove('non-connecte'); $('#ecran-connexion').hidden = true;
     const p = Store.profil(), admin = Store.estAdmin();
-    // 08/11/2026 : compte « séminaire franchisés » seul → page du séminaire
-    if (p && p.role === 'seminaire') { location.href = 'seminaire-franchises/'; return; }
+    // Compte « séminaire franchisés » seul : aucun accès à Suivi Stats, et aucun lien entre les deux applis (choix d'Olivier)
+    if (p && p.role === 'seminaire') { Store.deconnecter(); document.body.classList.add('non-connecte'); $('#ecran-connexion').hidden = false; $('#cx-info').textContent = "Votre compte n'a pas accès à Suivi Stats."; return; }
     $('#lien-deconnexion').hidden = false;
-    $('#lien-seminaire').hidden = !admin;
     $('#pied-stockage').textContent = 'Données stockées sur Cloudflare, accès par connexion personnelle.' + (window.APP_VERSION ? ' · version ' + window.APP_VERSION : '');
     // Lecteurs : ni import ni réglages ; écrans éventuellement limités par leur profil
     document.querySelectorAll('.app-head nav button').forEach(b => {
