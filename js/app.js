@@ -163,6 +163,12 @@
       return { magasins: out, apercu: !!d.apercu, statut: d.statut, version: d.version, dims: d.dims };
     } catch (e) { return { erreur: String(e) }; }
   }
+  // Liste des mois enregistrés pour « Mettre à jour le score santé » (Réglages), le plus récent en premier
+  function remplirMoisSante() {
+    const sel = $('#s-maj-mois'); if (!sel) return; const v = sel.value, ks = S.moisDispo || [];
+    sel.innerHTML = ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join('');
+    if (v && ks.includes(v)) sel.value = v;
+  }
   // Score santé ANNUEL (08/11/2026) : calculé par zimbra-relay sur les mois validés de l'année jusqu'au mois traité,
   // figé dans la photo du mois (photo.santeAnnuel). C'est lui qu'affichent la fiche et le dossier de visite.
   // Évolution : score annuel à fin du mois validé précédent.
@@ -346,7 +352,7 @@
   }
   async function listerPhotos() {
     const ks = (await Store.lister('donnees')).filter(n => /^\d{4}-\d{2}$/.test(n)).sort().reverse();
-    S.moisDispo = ks;
+    S.moisDispo = ks; remplirMoisSante();
     if (S.majCompleter) S.majCompleter();
     remplirMoisDiffusion();
     $('#ck-photo').innerHTML = ks.length ? ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)} (cumul depuis janvier)</option>`).join('') : '<option value="">Aucun mois enregistré</option>';
@@ -775,8 +781,10 @@
         majSante();
       } catch (e) { $('#s-info').textContent = 'Erreur : ' + e.message; }
     };
+    $('#s-maj-mois').addEventListener('mousedown', remplirMoisSante);
     $('#btn-s-maj').onclick = async () => {
-      const a = +$('#imp-annee').value, m = +$('#imp-mois').value, k = `${a}-${pad(m)}`;
+      const choix = $('#s-maj-mois').value || `${$('#imp-annee').value}-${pad(+$('#imp-mois').value)}`;
+      const a = +choix.slice(0, 4), m = +choix.slice(5, 7), k = choix;
       const ph = await Store.lireJSON(`donnees/${k}/photo.json`); if (!ph) { $('#s-maj-info').textContent = `Aucun mois enregistré pour ${MOIS[m - 1]} ${a}.`; return; }
       $('#s-maj-info').textContent = 'Récupération…';
       const sa = await santeWorker(a, m);
