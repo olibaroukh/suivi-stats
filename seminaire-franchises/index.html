@@ -24,7 +24,7 @@
 <section id="ecran-connexion" hidden>
   <div class="carte">
     <h2>Connexion</h2>
-    <p class="aide">Connectez-vous avec votre adresse e-mail et votre mot de passe Zimbra (les mêmes que pour Suivi Stats). Vos notes ne sont visibles que par vous et par les responsables du séminaire.</p>
+    <p class="aide">Connectez-vous avec votre adresse e-mail et votre mot de passe Zimbra (les mêmes que pour Suivi Stats). Vos notes ne sont visibles que par vous et par les responsables du séminaire. Par sécurité, la connexion est à refaire toutes les 2 heures.</p>
     <label for="cx-user">Adresse e-mail Zimbra</label><input id="cx-user" type="email" autocomplete="username" placeholder="prenom.nom@optical-center.com">
     <label for="cx-pass">Mot de passe</label><input id="cx-pass" type="password" autocomplete="current-password">
     <button class="primaire" id="btn-connexion" style="width:100%;margin-top:14px">Se connecter</button>
@@ -97,7 +97,6 @@
         <div style="flex:2;min-width:220px"><label>Importer</label><div class="ligne"><button id="pp-imp-json">Fichier de départ (.json)</button><button id="pp-imp-xlsx">Développement 2030 (.xlsx)</button></div></div>
       </div>
       <input type="file" id="pp-fic-json" accept=".json,application/json" hidden><input type="file" id="pp-fic-xlsx" accept=".xlsx,.xls" hidden>
-      <label class="ligne" style="font-weight:600"><input type="checkbox" id="pp-partage" style="width:auto"> Montrer à tous les directeurs les informations de départ de tous les franchisés (sinon : seulement ceux de leur planning)</label>
       <p class="muted petit" id="pp-imp-info"></p>
       <label>Planning</label>
       <div class="defile" id="pp-planning"></div>
@@ -109,13 +108,13 @@
     </div>
     <div class="carte">
       <h2>Comptes</h2>
-      <p class="aide">Directeur : ne voit que ses notes. Responsable : voit toutes les notes et gère ces réglages. Les administrateurs de Suivi Stats sont responsables d'office. Connexion avec l'adresse Zimbra.</p>
+      <p class="aide">Directeur / AR : voit tous les franchisés et ne voit que ses propres notes. Responsable : voit toutes les notes et gère ces réglages. Les administrateurs de Suivi Stats sont responsables d'office. Connexion avec l'adresse Zimbra, à refaire toutes les 2 heures.</p>
       <div class="defile" id="cp-liste"></div>
       <div class="ligne" style="margin-top:10px">
         <input id="cp-nom" placeholder="Prénom Nom" style="flex:1;min-width:140px">
         <input id="cp-email" type="email" placeholder="prenom.nom@optical-center.com" style="flex:2;min-width:200px">
-        <select id="cp-role" style="width:auto"><option value="directeur">Directeur</option><option value="responsable">Responsable</option></select>
-        <button class="primaire" id="cp-ajouter">Ajouter</button>
+        <select id="cp-role" style="width:auto"><option value="directeur">Directeur / AR</option><option value="responsable">Responsable</option></select>
+        <button class="primaire" id="cp-ajouter">Ajouter</button><button id="cp-annuler" hidden>Annuler</button>
       </div>
       <p class="muted petit" id="cp-info"></p>
     </div>
@@ -125,6 +124,6 @@
 <div id="fenetre"></div>
 
 <script src="../lib/xlsx.full.min.js" defer></script>
-<script src="sem.js?v=2026.11.08-5"></script>
+<script src="sem.js?v=2026.11.08-6"></script>
 </body>
 </html>

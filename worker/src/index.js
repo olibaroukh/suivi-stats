@@ -63,6 +63,11 @@ async function lireSession(env, request) {
   return p.e;
 }
 
+// Âge de la session (depuis la connexion), pour la règle des 2 h du séminaire franchisés
+function ageSession(request) {
+  try { const t = (request.headers.get('Authorization') || '').slice(7).split('.')[0]; const p = JSON.parse(deB64u(t)); return Date.now() - (p.x - SESSION_TTL_MS); } catch (e) { return Infinity; }
+}
+const SESSION_SEMINAIRE_MS = 2 * 60 * 60 * 1000;
 const estAdminEnv = (env, email) => String(env.ADMINS || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean).includes(email);
 
 // ---------- Base D1 (tables créées au premier appel) ----------
@@ -436,6 +441,8 @@ async function routes(request, env) {
   if (chemin === '/auth/moi') return json({ ok: true, profil: p }, 200, h);
 
   // 08/11/2026 : séminaire franchisés (tables à part, droits propres)
+  // Informations sensibles : reconnexion obligatoire toutes les 2 heures (session vérifiée et signée plus haut)
+  if (chemin.startsWith('/seminaire/') && ageSession(request) > SESSION_SEMINAIRE_MS) return erreur('Par sécurité, reconnectez-vous (toutes les 2 heures).', 401, h);
   if (chemin.startsWith('/seminaire/')) return routesSeminaire(request, env, p, chemin, url, h, json, erreur);
   if (p.role === 'seminaire') return erreur('Ce compte n’a accès qu’au séminaire franchisés', 403, h);
 
