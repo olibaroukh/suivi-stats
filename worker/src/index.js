@@ -171,6 +171,8 @@ function typePiece(nom, sujet, ct) {
   if ((/\.zip$/i.test(nom) || /zip/i.test(ct || '')) && /\d{2}\s*OPTI\s*\d+|r.sultats des statistiques/i.test(nom + ' ' + (sujet || ''))) return 'cosium';
   if (/^confidence-dashboard.*\.xlsx$/i.test(nom)) return 'confidence';
   if (/\.xlsx?$/i.test(nom) && /(taux.?d.?indus|restes?.?dus)/i.test(nom)) return 'restes';
+  // % Recommande verres (fichier de Yan : Taux_Succ_Mai-Octobre_2026.xlsx) ; type confirmé par le contenu dans l'appli
+  if (/\.xlsx?$/i.test(nom) && /(^taux.?succ|recommand)/i.test(nom)) return 'autre';
   if (/\.xlsx?$/i.test(nom) && /^(T07.?MARGES|T12.?RENTASAL|T20|T21|T10)(?!\d)|CONSODETAIL|AVIS.?SUR.?GOOGLE|MR.?QUALIT|TCD/i.test(nom)) return 'autre';
   if (/\.zip$/i.test(nom) && /EXTERNAL.?RELATIONS?/i.test(nom)) return 'autre';
   if (/\.csv$/i.test(nom) && /(AVOIR|FACTURE)/i.test(nom)) return 'autre';

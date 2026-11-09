@@ -140,6 +140,32 @@
     }
     return { out };
   }
+  // % Recommande verres (08/11/2026) : tableau « Taux de recommande <mois> à <mois> AAAA » envoyé par mail (fichier Taux_Succ_….xlsx).
+  // Colonnes lues par leur nom : Code Site, Verres recommandés, Verres vendu, Taux de recommande. Taux = recommandés / (recommandés + vendus).
+  // Période lue dans le titre (ex. « Mai à Octobre 2026 ») ; le taux est stocké en % dans AL (colonne de l'ancien Numbers).
+  const MOIS_FR = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','decembre'];
+  function recommande(XLSX, wb) {
+    const R = rows(XLSX, wb.Sheets[wb.SheetNames[0]]);
+    const sans = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    let periode = null, titre = '';
+    for (const r of R.slice(0, 6)) for (const v of r || []) {
+      const m = sans(v).match(/taux de recommande\s+(\w+)\s+(?:a|au)\s+(\w+)\s+(\d{4})/);
+      if (m) { titre = String(v).trim(); const d = MOIS_FR.indexOf(m[1]), f = MOIS_FR.indexOf(m[2]), a = +m[3];
+        if (d >= 0 && f >= 0) { const ad = f < d ? a - 1 : a; periode = { du: `${ad}-${String(d + 1).padStart(2, '0')}-01`, au: `${a}-${String(f + 1).padStart(2, '0')}-${String(new Date(a, f + 1, 0).getDate()).padStart(2, '0')}` }; } }
+    }
+    const hi = R.findIndex(r => (r || []).some(v => sans(v) === 'code site'));
+    const out = {}; if (hi < 0) return { out, periode, titre };
+    const H = R[hi].map(sans), col = re => H.findIndex(v => re.test(v));
+    const ci = col(/^code site$/), cr = col(/^verres recommandes?$/), cv = col(/^verres vendus?$/), ct = col(/^taux de recommande/);
+    for (const r of R.slice(hi + 1)) {
+      const c = code(r[ci]); if (!c) continue;
+      const rec = num(r[cr]), ven = num(r[cv]);
+      let taux = rec != null && ven != null && rec + ven > 0 ? rec / (rec + ven) : num(r[ct]);
+      if (taux == null) continue;
+      out[c] = { AL: Math.round(taux * 100000) / 1000 };
+    }
+    return { out, periode, titre };
+  }
   function avisGoogle(XLSX, wb, nomFichier) {
     const m = String(nomFichier || '').match(/(\d{2})(\d{2})(\d{4})/);
     const date = m ? `${m[3]}-${m[2]}-${m[1]}` : null;
@@ -167,6 +193,6 @@
     return { avis: res, sources: src };
   }
 
-  const api = { marges, rentaSal, restesDus, confidence, visites, avoirs, rentabilites, mrQualite, avisGoogle, fusionAvis, LISTES };
+  const api = { marges, rentaSal, restesDus, confidence, visites, avoirs, rentabilites, mrQualite, recommande, avisGoogle, fusionAvis, LISTES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Sources = api;
 })(typeof self !== 'undefined' ? self : this);

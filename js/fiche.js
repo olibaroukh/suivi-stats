@@ -243,7 +243,7 @@
     const perSrc = s => { const x = photo.sources && photo.sources[s]; if (!x) return null; if (x.periode) return x.periode;
       const m = String(x.detail || '').match(/FIN\s*(\d{4})-(\d{2})/i); return m ? { du: `${m[1]}-01-01`, au: `${m[1]}-${m[2]}-${String(new Date(+m[1], +m[2], 0).getDate()).padStart(2, '0')}` } : null; };
     const plage = p => { if (!p) return ''; const d = p.du.split('-').reverse(), a = p.au.split('-').reverse(); return `${d[0]}/${d[1]} → ${a.join('/')}`; };
-    const perRestes = plage(perSrc('restes_dus')), perReporting = plage(perSrc('rentabilites'));
+    const perRestes = plage(perSrc('restes_dus')), perReporting = plage(perSrc('rentabilites')), perReco = plage(perSrc('recommande'));
     const nd = `<div class="nd">${esc(lang === 'fr' ? 'Non disponible pour ce magasin' : '–')}</div>`;
 
     const evo = (d, dp, f) => d == null && dp == null ? '' : `<span class="evo ${cls(d != null ? d : dp)}">${d == null ? '' : sg(d, f)}${dp == null ? '' : ` (${sg(dp, pc)})`} <i>N-1</i></span>`;
@@ -385,7 +385,7 @@
     ${tuile(t('%MdC'), pc(c.renta.mdc), etatPct(c.renta.mdc, c.o.mdc))}
     ${tuile(t('% Lukkas'), pc(c.renta.lukkas))}
     ${tuile(t('% Ouiezen Premium'), pc(c.renta.ouiezen), etatPct(c.renta.ouiezen, c.o.ouiezen))}
-    ${tuile(t('% Recommande Verres'), pc(c.renta.recommande))}
+    ${tuile(t('% Recommande Verres'), pc(c.renta.recommande), '', perReco)}
     ${tuile(t('Seuil de Performance'), pc(c.renta.seuil), etatPct(c.renta.seuil, 1))}
     ${tuile(t('Total des Avoirs'), eur(c.renta.avoirs))}
     ${tuile(t('Tx de Récupération'), pc(c.renta.recup))}
