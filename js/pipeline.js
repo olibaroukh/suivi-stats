@@ -20,11 +20,12 @@
     rentabilites: ['CP','CQ','CR','CS','CT','CU','CV','CW','CX','CY','CZ'],
     avis_google: ['BJ','BK','BL','BM','BN','BO'],
     mr_qualite: ['CK'],
+    recommande: ['AL'],
   };
   const LIBELLE_SOURCE = {
     cosium_n: 'Cosium – année en cours', cosium_n1: 'Cosium – année précédente (N-1)', marges: 'Marges produits', renta_sal: 'Renta salariale',
     restes_dus: 'Restes dus (taux d’indus)', confidence: 'Confidence', visites_presc: 'Visites prescripteurs', visites_ce: 'Visites CE',
-    avoirs: 'Avoirs', mr_qualite: 'Mr Qualité (score global)', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', ocm_act: 'Activité OC Mobile (artefact)', site: 'Site internet', rh: 'Export RH', stat_indiv: 'Cosium – stats par vendeur', sante: 'Score santé (dashboard)', bilans: 'Bilans de passage (actions)',
+    avoirs: 'Avoirs', mr_qualite: 'Mr Qualité (score global)', recommande: '% Recommande verres', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', ocm_act: 'Activité OC Mobile (artefact)', site: 'Site internet', rh: 'Export RH', stat_indiv: 'Cosium – stats par vendeur', sante: 'Score santé (dashboard)', bilans: 'Bilans de passage (actions)',
   };
   // Colonnes N-1 utiles à la fiche (évolutions)
   const COLS_N1 = ['P','Q','R','U','V','AF','AW','AY','AX'];
@@ -69,6 +70,9 @@
     if (h.includes('code_site') && h.includes('visite_effectuee')) return h.includes('specialite') ? 'visites_presc' : 'visites_ce';
     if (h.includes('Matricule') && h.includes('Poste')) return 'rh';
     if (h.some(v => /^score global$/i.test(v))) return 'mr_qualite';
+    // % Recommande verres : titre « Taux de recommande … » dans les 2 premières lignes (lecture partielle sheetRows: 2 pour Zimbra)
+    const tete = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: null }).slice(0, 6).flat().map(v => String(v || ''));
+    if (tete.some(v => /taux de recommande/i.test(v))) return 'recommande';
     return null;
   }
 
@@ -161,6 +165,9 @@
       // « FIN 2026-06 » → reporting arrêté à fin juin 2026
       const mP = String(per || '').match(/(\d{4})\D(\d{1,2})/); if (mP) { const a = +mP[1], mm = +mP[2]; sources.rentabilites.periode = { du: `${a}-01-01`, au: `${a}-${String(mm).padStart(2, '0')}-${String(new Date(a, mm, 0).getDate()).padStart(2, '0')}` }; } }
     if (un('visites_presc')) { for (const c in mag) Object.assign(mag[c].N, { DV: 0, DW: 0, DX: 0, DY: 0 }); poser('visites_presc', Sources.visites(XLSX, un('visites_presc').wb).out); }
+    if (un('recommande')) { const rv = Sources.recommande(XLSX, un('recommande').wb);
+      poser('recommande', rv.out, rv.titre || un('recommande').nom);
+      if (rv.periode) sources.recommande.periode = rv.periode; else alertes.push('% Recommande verres : période introuvable dans le titre (« Taux de recommande Mai à Octobre 2026 »).'); }
     if (un('mr_qualite')) poser('mr_qualite', Sources.mrQualite(XLSX, un('mr_qualite').wb).out, un('mr_qualite').nom);
     if (un('visites_ce')) { for (const c in mag) mag[c].N.DZ = 0; poser('visites_ce', Sources.visites(XLSX, un('visites_ce').wb).out); }
     // 07/11/2026 : un tableau des avoirs par serveur Cosium → additionnés (un même fichier déposé deux fois n'est compté qu'une fois)
