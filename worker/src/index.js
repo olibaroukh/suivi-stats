@@ -287,7 +287,7 @@ async function rappelPreparation(env) {
   const mois = moisDecale(new Date(), 0), [a, m] = mois.split('-').map(Number), lib = `${MOIS_LIB[m - 1]} ${a}`;
   const texte = [
     `Bonjour Olivier,`, ``,
-    `La fin de ${lib} approche : voici ce qui doit être à jour avant le 1er pour que le calcul et la diffusion de 15 h se passent bien.`, ``,
+    `La fin de ${lib} approche : voici ce qui doit être à jour avant le 1er pour que le calcul du mois se passe bien.`, ``,
     `👉 Suivi Stats : https://olibaroukh.github.io/suivi-stats`, ``,
     `D'ici la fin du mois :`,
     `  1. Référentiel magasins — dans SUIVI STATS › Réglages › Référentiel (c'est le référentiel unique : bilan-passage, PEDLV, Suivi magasin, Kaizen… le lisent automatiquement) : exporter l'Excel, corriger, réimporter. Ouvertures / fermetures (colonne Actif), manager, AR, e-mail magasin ; nouveau code site → « Ancien code site » pour garder le N-1.`,
@@ -324,14 +324,14 @@ async function rappelMensuel(env, par = 'auto') {
     `  - Restes dus : ${vu('restes') ? 'reçu ✓' : 'pas encore (vers le 7)'}`,
     autres.length ? `  - Autres fichiers : ${autres.join(', ')}` : `  - Autres fichiers (marges, renta salariale, rentabilités, avis Google) : arrivent au fil du mois`,
     dejaEnregistre ? `${L}(${lib} est déjà enregistré : il suffira d'intégrer les fichiers arrivés depuis.)` : '', ``,
-    `À faire aujourd'hui (avant 15 h, heure de l'envoi automatique aux destinataires) :`,
+    `À faire aujourd'hui :`,
     `  0. Si ce n'est pas fait : import RH dans BILAN-PASSAGE (export effectif + « Rapport agenda validés » du mois écoulé) et référentiel magasins à jour dans SUIVI STATS.`,
     `  1. Accueil › « Relever maintenant », puis attendre « Cosium complet (28 / 28) ».`,
     `  2. Import du mois › « 🚐 Préparer l'activité OC Mobile avec Claude » → récupérer le fichier ocm-activite_${mois}.json.`,
     `  3. Accueil › « Préparer et calculer ».`,
     `  4. Déposer les fichiers manuels : tableaux des avoirs (un par serveur Cosium), exports des visites (External Relations), fichier OC Mobile ; coller Lyleoo si besoin.`,
     `  5. Cocher les listes Confidence à compter, cliquer « Calculer le mois », vérifier le rapport.`,
-    `  6. « Enregistrer la photo du mois » → les PDF de diffusion se préparent ; envoi automatique à 15 h.`, ``,
+    `  6. « Enregistrer la photo du mois » → les PDF de diffusion se préparent (envoi depuis l'écran Diffusion, quand tu le décides).`, ``,
     `Ensuite : quand un fichier arrive plus tard (restes dus, Confidence…), le bandeau orange de l'accueil le signale → « Préparer et calculer » → « Enregistrer ».`, ``,
     `Mode d'emploi complet : PDF « Suivi statistique – mode d'emploi mensuel ».`, ``,
     `— Suivi statistique (message automatique)`].filter(x => x !== '').join(L).replace(/\n\n\n+/g, L + L);
@@ -697,7 +697,10 @@ export default {
     }
     else if (event.cron === '0 13 1-10 * *' || event.cron === '0 14 1-10 * *') {
       const hParis = +new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date(event.scheduledTime || Date.now()));
-      if (hParis === 15) ctx.waitUntil(diffuser(env, moisDecale(new Date(), -1)).then(r => console.log('diffusion', JSON.stringify(r))).catch(e => console.error('diffusion', e)));
+      // 10/11/2026 : envoi automatique DÉSACTIVÉ tant que la variable DIFFUSION_AUTO ne vaut pas « oui » (décision d'Olivier :
+      // pas d'envoi automatique aux destinataires pour le moment ; envoi manuel par « Envoyer maintenant »).
+      if (hParis === 15 && !/^(oui|1|true)$/i.test(String(env.DIFFUSION_AUTO || ''))) console.log('diffusion automatique désactivée (DIFFUSION_AUTO)');
+      else if (hParis === 15) ctx.waitUntil(diffuser(env, moisDecale(new Date(), -1)).then(r => console.log('diffusion', JSON.stringify(r))).catch(e => console.error('diffusion', e)));
     }
     else ctx.waitUntil(releverBoite(env, 'nuit').catch(e => console.error('relève', e)));
   },

@@ -818,3 +818,13 @@ a.bouton[hidden]{display:none}
 .fiche[lang=he] .chal.compact .crit b{letter-spacing:0}
 @page fp{size:A4 landscape;margin:0}
 @media print{.fiche.paysage{page:fp}}
+
+/* Voile pendant la préparation des PDF de diffusion (10/11/2026) */
+#voile-diffusion{position:fixed;inset:0;z-index:9999;background:rgba(35,31,32,.86);display:flex;align-items:center;justify-content:center;color:#fff;font-family:Montserrat,Arial,sans-serif}
+#voile-diffusion>div{background:#231F20;border:1px solid #E22F2A;border-radius:14px;padding:26px 30px;width:min(460px,90vw);text-align:center}
+#voile-diffusion .vd-t{font-size:17px;font-weight:800;margin-bottom:8px}
+#voile-diffusion .vd-n{font-size:12px;opacity:.85;min-height:16px;margin-bottom:12px}
+#voile-diffusion .vd-b{height:8px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden}
+#voile-diffusion .vd-b i{display:block;height:100%;width:0;background:#E22F2A;transition:width .3s}
+#voile-diffusion .vd-a{font-size:11px;opacity:.7;margin-top:12px}
+@media print{#voile-diffusion{display:none}}
