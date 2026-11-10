@@ -337,7 +337,7 @@
     if (Store.cloud() && Store.estAdmin()) { const now = new Date(), dp = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       if (k === `${dp.getFullYear()}-${pad(dp.getMonth() + 1)}`) { S.moisDispo = [...new Set([k, ...(S.moisDispo || [])])].sort().reverse();
         $('#calc-info').textContent += ' Préparation des PDF de diffusion…';
-        try { const n = await genererDiffusion(k); $('#calc-info').textContent = `Photo de ${MOIS[photo.mois - 1]} ${photo.annee} enregistrée · ${n} PDF de diffusion prêts (envoi automatique à 15 h).`; }
+        try { const n = await genererDiffusion(k); $('#calc-info').textContent = `Photo de ${MOIS[photo.mois - 1]} ${photo.annee} enregistrée · ${n} PDF de diffusion prêts (à envoyer depuis Réglages › Diffusion quand tu le décides).`; }
         catch (e) { $('#calc-info').textContent += ' PDF de diffusion : ' + e.message; } } }
     await listerPhotos(); $('#fi-photo').value = k; await chargerPhoto(k); afficherAccueil();
   }
@@ -632,6 +632,12 @@
     const { jsPDF } = window.jspdf, index = { mois: k, genereLe: new Date().toISOString(), destinataires: [] };
     // les écrans doivent être affichés pour que la mise en page (ajustement à une page A3) soit calculée
     const vueAvant = ((document.querySelector('.vue.actif') || {}).id || 'vue-accueil').replace('vue-', '');
+    // 10/11/2026 : voile pendant la préparation — les écrans défilent derrière (nécessaire pour la mise en page A3)
+    const total = conf.destinataires.reduce((t, d) => t + (d.ecrans || []).length, 0); let fait = 0;
+    const voile = document.createElement('div'); voile.id = 'voile-diffusion';
+    voile.innerHTML = '<div><div class="vd-t">Préparation des PDF de diffusion…</div><div class="vd-n"></div><div class="vd-b"><i></i></div><div class="vd-a">Les écrans défilent derrière : merci de ne rien toucher, l’appli revient toute seule où tu étais.</div></div>';
+    if (total) document.body.appendChild(voile);
+    const info0 = info; info = msg => { info0(msg); fait++; voile.querySelector('.vd-n').textContent = `${Math.min(fait, total)} / ${total} · ${msg}`; voile.querySelector('.vd-b i').style.width = Math.round(100 * Math.min(fait, total) / total) + '%'; };
     try {
       for (const d of conf.destinataires) {
         const doc = new jsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' }), libs = [];
@@ -665,6 +671,7 @@
       }
       await Store.ecrireJSON(`diffusion/${k}/index.json`, index);
     } finally {
+      voile.remove();
       CK.exclusPays = null; CK.diffusion = false; CHG.vue = avant.chgVue; vue(vueAvant);
       if (avant.photo) { $('#ck-photo').value = avant.photo; $('#ck-perim').value = avant.perim; remplirThemes(); $('#ck-theme').value = avant.theme; $('#ck-tri').value = avant.tri; }
       if (avant.chgMois) $('#chg-mois').value = avant.chgMois;
