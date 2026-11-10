@@ -141,7 +141,7 @@
     return { out };
   }
   // % Recommande verres (08/11/2026) : tableau « Taux de recommande <mois> à <mois> AAAA » envoyé par mail (fichier Taux_Succ_….xlsx).
-  // Colonnes lues par leur nom : Code Site, Verres recommandés, Verres vendu, Taux de recommande. Taux = recommandés / (recommandés + vendus).
+  // Colonnes lues par leur nom : Code Site, Verres recommandés, Verres vendu, Taux de recommande (repris tel quel ; sinon recommandés / vendus).
   // Période lue dans le titre (ex. « Mai à Octobre 2026 ») ; le taux est stocké en % dans AL (colonne de l'ancien Numbers).
   const MOIS_FR = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','decembre'];
   function recommande(XLSX, wb) {
@@ -159,8 +159,11 @@
     const ci = col(/^code site$/), cr = col(/^verres recommandes?$/), cv = col(/^verres vendus?$/), ct = col(/^taux de recommande/);
     for (const r of R.slice(hi + 1)) {
       const c = code(r[ci]); if (!c) continue;
+      // 10/11/2026 : le taux du fichier fait foi (Taux de recommande = verres recommandés / verres vendus, ex. 89 / 972 = 9,16 %) ;
+      // à défaut de colonne Taux, il est recalculé de la même façon.
       const rec = num(r[cr]), ven = num(r[cv]);
-      let taux = rec != null && ven != null && rec + ven > 0 ? rec / (rec + ven) : num(r[ct]);
+      let taux = ct >= 0 ? num(r[ct]) : null;
+      if (taux == null && rec != null && ven != null && ven > 0) taux = rec / ven;
       if (taux == null) continue;
       out[c] = { AL: Math.round(taux * 100000) / 1000 };
     }
