@@ -736,3 +736,85 @@ a.bouton[hidden]{display:none}
 .dif-ed label input{margin-top:2px}
 .dif-e{display:flex;gap:8px;align-items:center;padding:2px 0}.dif-e span{flex:1}.dif-e a{text-decoration:none;color:var(--muted,#888)}
 .dif-aj{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.dif-aj select{max-width:240px}
+
+/* ---------------- Fiche magasin – version paysage (A4 paysage, 2 pages) – 10/11/2026 ----------------
+   Mêmes blocs que le portrait, autre disposition : page 1 = performance commerciale, page 2 = équipe, rentabilité et pilotage. */
+.fiche.paysage{width:1123px;height:794px;padding:24px 36px 18px;gap:10px}
+.fiche.paysage .f-head{padding-bottom:8px;gap:16px}
+.fiche.paysage .f-logo{height:46px}
+.fiche.paysage .f-head.petit .f-logo{height:32px}
+.fiche.paysage h1{font-size:23px;margin:2px 0 3px}
+.fiche.paysage .chiffres .tuile{padding:9px 12px 8px}
+.fiche.paysage .pg-cols{display:grid;grid-template-columns:290px minmax(0,1fr) minmax(0,1fr);gap:22px;min-height:0}
+.fiche.paysage .pg-col{display:flex;flex-direction:column;gap:11px;min-width:0}
+.fiche.paysage .legende-ca{flex-direction:column;gap:3px;margin-top:7px}
+.fiche.paysage .legende-ca>div{display:flex;align-items:center;gap:4px}
+.fiche.paysage .legende-ca>div .evo{margin-left:auto}
+.fiche.paysage .gros-kpi{padding:4px 10px;flex-wrap:wrap;row-gap:0;column-gap:8px;min-width:0}
+.fiche.paysage .gros-kpi .l{width:100%}
+.fiche.paysage .gros-kpi .v{font-size:17px}
+.fiche.paysage table.kpi th,.fiche.paysage table.kpi td{padding:3.4px 5px}
+.fiche.paysage table.kpi tbody th{width:38%}
+.fiche.paysage table.kpi td.jauge{width:16%}
+.fiche.paysage .mini>div{padding:7px 8px}
+.fiche.paysage .mini .v{font-size:15px}
+.fiche.paysage .courbe-mois{display:block;direction:ltr}
+/* Page 2 */
+.fiche.paysage table.equipe th,.fiche.paysage table.equipe td{font-size:8.8px;padding:2.2px 3px}
+.fiche.paysage table.equipe thead th,.fiche.paysage table.equipe tbody.bloc-audio tr.tete th{padding-bottom:2px}
+.fiche.paysage table.equipe tbody.bloc-audio tr.grp th{padding-top:4px}
+.fiche.paysage table.equipe thead th,.fiche.paysage table.equipe tbody.bloc-audio tr.tete th{font-size:7.2px}
+.fiche.paysage table.equipe thead tr:first-child th:first-child,.fiche.paysage table.equipe thead tr:last-child th:first-child{width:170px}
+.fiche.paysage table.equipe tbody th{white-space:nowrap}
+.fiche.paysage table.equipe tbody th b{display:inline;font-size:9px}
+.fiche.paysage table.equipe tbody th small{display:inline;margin-left:5px;font-size:7.4px}
+.fiche.paysage table.equipe.dense th,.fiche.paysage table.equipe.dense td{padding-top:1.4px;padding-bottom:1.4px}
+.fiche.paysage table.equipe.tres-dense th,.fiche.paysage table.equipe.tres-dense td{padding-top:.6px;padding-bottom:.6px;font-size:8.2px}
+.fiche.paysage .pg-r1{display:grid;grid-template-columns:470px minmax(0,1fr) 190px;gap:16px}
+.fiche.paysage .pg-r1 .tuiles8{gap:5px}
+.fiche.paysage .pg-r1 .tuiles8 .tuile{padding:6px 8px;gap:1px}
+.fiche.paysage .pg-r1 .tuiles8 .tuile .l{font-size:6.8px;letter-spacing:.6px;line-height:1.15}
+.fiche.paysage .pg-r1 .tuiles8 .tuile .s{font-size:7.5px;padding-top:1px}
+.fiche.paysage .pg-r1 .tuiles8 .tuile .v{font-size:13.5px}
+.fiche.paysage .pg-r1 .mini.six{grid-template-columns:repeat(3,1fr);gap:5px}
+.fiche.paysage .pg-r1 .mini{gap:5px}
+.fiche.paysage .pg-r1 .mini>div{padding:5px 8px}
+.fiche.paysage .pg-r1 .mini .v{font-size:14px}
+.fiche.paysage .pg-r1 .f-sec:last-child .mini{grid-template-columns:1fr}
+.fiche.paysage .pg-r2{display:flex;gap:12px;align-items:stretch}
+.fiche.paysage .pg-carte{border:1px solid #D9D2D1;border-radius:10px;padding:7px 10px 7px;min-width:0}
+.fiche.paysage .pg-carte .f-sec h2{margin-bottom:5px}
+.fiche.paysage .pc-marges{flex:0 0 172px}.fiche.paysage .pc-conf{flex:0 0 220px}.fiche.paysage .pc-sante{flex:0 0 300px}.fiche.paysage .pc-bilan{flex:1 1 0}
+.fiche.paysage .pc-marges .mini.cinq{grid-template-columns:repeat(2,1fr);gap:4px}
+.fiche.paysage .pc-marges .mini.cinq>div{padding:3px 6px}
+.fiche.paysage .pc-marges .mini.cinq>div.fort{grid-column:span 2}
+.fiche.paysage .pc-marges .mini .v{font-size:13px}
+.fiche.paysage .pc-conf .barres .b{grid-template-columns:1fr 58px 30px;gap:6px;padding:3px 0;line-height:1.15}
+.fiche.paysage .pc-sante .sante-l{gap:8px;align-items:flex-start}
+.fiche.paysage .pc-sante .sante-badge{min-width:60px;padding:5px 6px}
+.fiche.paysage .pc-sante .sante-badge .v{font-size:18px}
+.fiche.paysage .pc-sante .sante-dims{grid-template-columns:repeat(2,1fr);gap:1px 10px}
+.fiche.paysage .pc-sante .sante-dims span{font-size:6.6px}
+.fiche.paysage .pc-sante .sante-dims b{font-size:8.5px}
+.fiche.paysage .pc-sante .autres{font-size:6.5px}
+.fiche.paysage .pc-bilan table.bilan th,.fiche.paysage .pc-bilan table.bilan td{padding:2.5px 5px;font-size:8.5px}
+.fiche.paysage .pc-bilan table.bilan td:first-child{width:auto}
+.fiche.paysage .pc-bilan table.bilan td:nth-child(n+2),.fiche.paysage .pc-bilan table.bilan th:nth-child(n+2){white-space:nowrap}
+/* Challenges en vignettes (10 critères sur 2 lignes) */
+.fiche .chal.compact{padding:7px 9px}
+.fiche .chal.compact .chal-h{align-items:center;margin-bottom:5px}
+.fiche .chal.compact .chal-t{font-size:11px}
+.fiche .chal.compact .chal-sc{font-size:16px;padding:4px 8px;display:flex;align-items:center;gap:6px}
+.fiche .chal.compact .chal-q{font-size:7px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.fiche .chal.compact .crit{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.fiche .chal.compact .crit>div{border-radius:5px;padding:3px 5px;height:36px;background:#F7F4F3;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.fiche .chal.compact .crit b{font-size:7px;font-weight:700;line-height:1.15;letter-spacing:.2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.fiche .chal.compact .crit em{font-style:normal;font-size:8px;font-weight:700;display:flex;justify-content:space-between;gap:4px;white-space:nowrap}
+.fiche .chal.compact .crit em span{overflow:hidden;text-overflow:ellipsis}
+.fiche .chal.compact .crit em i{font-style:normal;font-weight:800}
+.fiche .chal.compact .crit .ok{background:#EAF4EE}.fiche .chal.compact .crit .ok em{color:var(--ok)}
+.fiche .chal.compact .crit .ko{background:var(--rose)}.fiche .chal.compact .crit .ko em{color:var(--r)}
+.fiche .chal.compact .crit .na em{color:#8a8384;font-weight:500;font-style:italic}
+.fiche[lang=he] .chal.compact .crit b{letter-spacing:0}
+@page fp{size:A4 landscape;margin:0}
+@media print{.fiche.paysage{page:fp}}
