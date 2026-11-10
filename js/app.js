@@ -347,6 +347,9 @@
     $('#fi-photo').onchange = e => chargerPhoto(e.target.value);
     ['#fi-recherche', '#fi-filtre-pays', '#fi-filtre-type', '#fi-filtre-nature'].forEach(s => $(s).oninput = listerMagasins);
     $('#fi-langue').onchange = () => S.magSel && afficherFiche(S.magSel);
+    // 10/11/2026 : portrait par défaut à chaque ouverture (aucune mémorisation) ; le dossier de visite reste en portrait
+    $('#fi-format').value = 'portrait';
+    $('#fi-format').onchange = () => S.magSel && afficherFiche(S.magSel);
     $('#btn-pdf-un').onclick = async () => { if (!S.magSel) return; const m = S.magSel; const b = await pdfMagasin(m); telecharger(b, nomPdf(m)); };
     $('#btn-pdf-tous').onclick = pdfSelection;
     $('#btn-visite').onclick = async () => { if (!S.magSel) return; const b = $('#btn-visite'); b.disabled = true; b.textContent = 'Préparation…';
@@ -386,6 +389,7 @@
     $('#liste-mag').querySelectorAll('div[data-code]').forEach(d => d.onclick = () => { S.magSel = S.ref.find(r => String(r.code) === d.dataset.code); listerMagasins(); afficherFiche(S.magSel); });
     $('#pdf-info').textContent = `${l.length} magasin(s) dans la sélection`;
   }
+  const formatFiche = () => ($('#fi-format') && $('#fi-format').value === 'paysage') ? 'paysage' : 'portrait';
   function langues(m) { const forcer = $('#fi-langue').value; if (forcer) return [forcer]; const l = Fiche.LANGUES[m.langue] || 'fr'; return l === 'fr' ? ['fr'] : [l, 'fr']; }
   // Si une page déborde (grosse équipe, police locale plus haute), on resserre le tableau équipe
   // Petits écrans : les pages A4 (fiches) et A3 (cockpits) sont réduites à la largeur disponible
@@ -417,7 +421,7 @@
   async function afficherFiche(m) {
     const serie = await serieMagasin(m.code);
     const tel = window.innerWidth <= 820;
-    $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l, serie , challenges: S.chal, taux: S.tauxCh })).join('');
+    $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l, serie, challenges: S.chal, taux: S.tauxCh, format: formatFiche() })).join('');
     ajuster($('#apercu')); adapterEchelle();
     // 06/11/2026 : sur téléphone, la police (Montserrat) arrive souvent après le premier calcul et rallonge la page →
     // bas de page coupé. On recale une fois les polices chargées.
@@ -464,19 +468,20 @@
   async function serieMagasin(code) { try { return (await series())[String(code)] || []; } catch (e) { console.warn(e); return []; } }
   const nomPdf = m => `${m.code} - ${String(m.magasin).replace(/[\\/:*?"<>|]/g, '-')} - ${S.photo.annee}-${pad(S.photo.mois)}.pdf`;
   async function pdfMagasin(m) {
-    const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const { jsPDF } = window.jspdf; const fmt = formatFiche(), pay = fmt === 'paysage';
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: pay ? 'landscape' : 'portrait' });
     const hote = document.createElement('div'); hote.style.cssText = 'position:fixed;left:-10000px;top:0'; document.body.appendChild(hote);
     const ls = langues(m);
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
     let n = 0;
     for (let i = 0; i < ls.length; i++) {
-      hote.innerHTML = Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: ls[i], serie: await serieMagasin(m.code) , challenges: S.chal, taux: S.tauxCh });
+      hote.innerHTML = Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: ls[i], serie: await serieMagasin(m.code) , challenges: S.chal, taux: S.tauxCh, format: fmt });
       ajuster(hote);
       await Promise.all([...hote.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
       for (const page of hote.querySelectorAll('.fiche')) {
         const canvas = await html2canvas(page, { scale: 2, backgroundColor: '#ffffff', logging: false });
         if (n++) doc.addPage();
-        doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
+        doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pay ? 297 : 210, pay ? 210 : 297);
       }
     }
     hote.remove();
