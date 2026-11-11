@@ -20,7 +20,7 @@
     const now = new Date(); const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     $('#imp-mois').innerHTML = MOIS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join(''); $('#imp-mois').value = prev.getMonth() + 1;
     $('#imp-annee').innerHTML = [0, 1, 2].map(k => `<option>${now.getFullYear() - k}</option>`).join(''); $('#imp-annee').value = prev.getFullYear();
-    document.querySelectorAll('.app-head nav button').forEach(b => b.onclick = () => vue(b.dataset.vue));
+    document.querySelectorAll('.app-head nav button').forEach(b => b.onclick = () => b.dataset.vue === 'recrutement' ? ouvrirRecrutement() : vue(b.dataset.vue));
     brancherImport(); brancherFiches(); brancherReglages(); brancherCockpits(); brancherSelCockpit(); brancherConfCockpit();
     $('#ac-mois').onchange = afficherActions; ['#chg-mois', '#chg-pays', '#chg-ar'].forEach(x => $(x).onchange = afficherChallenges); $('#chg-v-saisie').onclick = () => { CHG.vue = 'saisie'; $('#chg-v-saisie').classList.add('actif'); $('#chg-v-cockpit').classList.remove('actif'); afficherChallenges(); }; $('#chg-v-cockpit').onclick = () => { CHG.vue = 'cockpit'; $('#chg-v-cockpit').classList.add('actif'); $('#chg-v-saisie').classList.remove('actif'); afficherChallenges(); }; $('#chg-pdf').onclick = pdfMlme; $('#chg-q').oninput = () => afficherChallenges(); $('#ac-param').onclick = editeurActions; $('#ac-pdf').onclick = pdfActions;
     $('#w-url').value = localStorage.getItem('workerUrl') || 'https://zimbra-relay.oli-baroukh.workers.dev';
@@ -65,8 +65,9 @@
     document.querySelectorAll('.app-head nav button').forEach(b => {
       const v = b.dataset.vue; let ok = admin || (v !== 'import' && v !== 'reglages');
       if (!admin && v !== 'accueil' && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
-      b.hidden = !ok;
+      b.hidden = !ok || v === 'recrutement'; // Recrutement : affiché seulement si un lien est enregistré
     });
+    brancherLiens(admin, p);
     $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherIddigital(); if (admin) brancherDiffusion(); if (admin) brancherEcrans(); $('#zone-zimbra').hidden = !admin;
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
@@ -1057,6 +1058,27 @@
   }
 
   // ---------- Réglages : composition du cockpit Paris ----------
+  // ---------- Lien externe : carte des besoins en recrutement (11/11/2026) ----------
+  // Adresse gardée dans config/liens.json sur Cloudflare (jamais dans le dépôt public)
+  let LIENS = {};
+  const lienValide = u => /^https:\/\/[^\s"'<>]+$/.test(u || '');
+  function ouvrirRecrutement() { if (lienValide(LIENS.recrutement)) window.open(LIENS.recrutement, '_blank', 'noopener'); }
+  async function brancherLiens(admin, p) {
+    LIENS = (await Store.lireJSON('config/liens.json').catch(() => null)) || {};
+    const b = document.querySelector('.app-head nav button[data-vue="recrutement"]');
+    const autorise = admin || !(Array.isArray(p.ecrans) && p.ecrans.length) || p.ecrans.includes('recrutement');
+    if (b) b.hidden = !(autorise && lienValide(LIENS.recrutement));
+    if (!admin) return;
+    $('#carte-liens').hidden = false; $('#lien-recrutement').value = LIENS.recrutement || '';
+    $('#btn-liens').onclick = async () => {
+      const u = $('#lien-recrutement').value.trim();
+      if (u && !lienValide(u)) return alert('L’adresse doit commencer par https://');
+      LIENS = { ...LIENS, recrutement: u, maj: new Date().toISOString().slice(0, 10) };
+      await Store.ecrireJSON('config/liens.json', LIENS);
+      if (b) b.hidden = !u; $('#liens-info').textContent = u ? '✓ Enregistré · onglet « Recrutement » affiché' : '✓ Lien retiré · onglet masqué';
+    };
+  }
+
   async function brancherParis() {
     if (!(Store.estAdmin() || !Store.cloud())) return;
     $('#carte-paris').hidden = false;

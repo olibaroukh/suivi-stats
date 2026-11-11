@@ -25,6 +25,7 @@
     <button data-vue="cockpits">Cockpits</button>
     <button data-vue="actions">Actions de l’année</button>
     <button data-vue="challenges">Managers Leaders &amp; Magasins d’Excellence</button>
+    <button data-vue="recrutement" hidden title="Carte des besoins en recrutement (s’ouvre dans un nouvel onglet)">Recrutement ↗</button>
     <button data-vue="reglages">Réglages</button>
   </nav>
   <div class="recherche-globale"><input id="rg-q" type="search" name="recherche-magasin" placeholder="🔍 Magasin, code, manager…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute('readonly')"><div id="rg-res" hidden></div></div>
@@ -279,6 +280,12 @@
         <button id="btn-idd-test">Tester la connexion</button> <span class="muted" id="idd-info"></span>
         <div id="idd-resultat" style="margin-top:8px;max-height:320px;overflow:auto"></div>
       </div>
+      <div class="carte" id="carte-liens" hidden>
+        <h2>Recrutement</h2>
+        <p class="aide">Adresse de la carte des besoins en recrutement. L’onglet « Recrutement » l’ouvre dans un nouvel onglet ; il n’apparaît que si une adresse est enregistrée. L’adresse est gardée sur Cloudflare (pas dans le code public).</p>
+        <input id="lien-recrutement" type="url" style="width:100%" placeholder="https://script.google.com/macros/s/…/exec">
+        <div style="margin-top:6px"><button id="btn-liens">Enregistrer</button> <span class="muted" id="liens-info"></span></div>
+      </div>
       <div class="carte" id="carte-paris" hidden>
         <h2>Cockpit Paris</h2>
         <p class="aide">Codes des magasins du cockpit « Paris » (même contenu que les cockpits par AR). Séparez les codes par des virgules.</p>
@@ -320,7 +327,7 @@
             </div>
           </div>
           <label style="margin-top:10px">Écrans visibles</label>
-          <div class="chk"><label><input type="checkbox" class="ac-ecran" value="fiches" checked> Fiches magasins</label><label><input type="checkbox" class="ac-ecran" value="cockpits" checked> Cockpits</label><label><input type="checkbox" class="ac-ecran" value="actions"> Actions de l’année</label><label><input type="checkbox" class="ac-ecran" value="challenges"> Managers Leaders &amp; Magasins d’Excellence</label></div>
+          <div class="chk"><label><input type="checkbox" class="ac-ecran" value="fiches" checked> Fiches magasins</label><label><input type="checkbox" class="ac-ecran" value="cockpits" checked> Cockpits</label><label><input type="checkbox" class="ac-ecran" value="actions"> Actions de l’année</label><label><input type="checkbox" class="ac-ecran" value="challenges"> Managers Leaders &amp; Magasins d’Excellence</label><label><input type="checkbox" class="ac-ecran" value="recrutement"> Recrutement</label></div>
           <label style="margin-top:10px"><input type="checkbox" id="ac-actif" checked> Compte actif</label>
           <p class="muted" id="ac-apercu"></p>
           <button class="primaire" id="btn-acces-enregistrer">Enregistrer</button> <button id="btn-acces-annuler">Annuler</button>
