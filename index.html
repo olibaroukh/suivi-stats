@@ -23,7 +23,6 @@
     <button data-vue="import">Import du mois</button>
     <button data-vue="fiches">Fiches magasins</button>
     <button data-vue="cockpits">Cockpits</button>
-    <button data-vue="actions">Actions de l’année</button>
     <button data-vue="challenges">Managers Leaders &amp; Magasins d’Excellence</button>
     <button data-vue="recrutement" hidden title="Carte des besoins en recrutement (s’ouvre dans un nouvel onglet)">Recrutement ↗</button>
     <button data-vue="reglages">Réglages</button>
@@ -70,20 +69,6 @@
   </section>
 
   <!-- ACTIONS DE L'ANNÉE -->
-  <section class="vue" id="vue-actions">
-    <div class="carte">
-      <div class="ligne-outils">
-        <select id="ac-mois"></select>
-        <span style="flex:1"></span>
-        <button id="ac-param" hidden>Paramétrer les actions</button>
-        <button class="primaire" id="ac-pdf">PDF (A3 paysage)</button>
-      </div>
-      <p class="aide" id="ac-info"></p>
-      <div id="ac-editeur" hidden></div>
-    </div>
-    <div class="ck-cadre"><div id="ac-apercu"></div></div>
-  </section>
-
   <!-- CHALLENGES -->
   <section class="vue" id="vue-challenges">
     <div class="carte">
@@ -223,6 +208,20 @@
       <p class="aide" id="ck-info"></p>
     </div>
     <div class="apercu ck-apercu" id="ck-apercu"><p class="muted" style="padding:20px">Choisis un mois enregistré, un périmètre puis un thème.</p></div>
+    <!-- 11/11/2026 : Actions de l’année = thème de « Réseau – vue Siège » (plus d’onglet propre) -->
+    <div id="ck-actions" hidden>
+    <div class="carte">
+      <div class="ligne-outils">
+        <select id="ac-mois" hidden></select>
+        <span style="flex:1"></span>
+        <button id="ac-param" hidden>Paramétrer les actions</button>
+        <button class="primaire" id="ac-pdf">PDF (A3 paysage)</button>
+      </div>
+      <p class="aide" id="ac-info"></p>
+      <div id="ac-editeur" hidden></div>
+    </div>
+    <div class="ck-cadre"><div id="ac-apercu"></div></div>
+    </div>
   </section>
 
   <!-- RÉGLAGES -->
