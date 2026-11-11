@@ -355,7 +355,7 @@
     $('#btn-pdf-tous').onclick = pdfSelection;
     $('#btn-visite').onclick = async () => { if (!S.magSel) return; const b = $('#btn-visite'); b.disabled = true; b.textContent = 'Préparation…';
       try { telecharger(await pdfVisite(S.magSel), 'Visite - ' + nomPdf(S.magSel)); } finally { b.disabled = false; b.textContent = 'Dossier de visite (PDF)'; } };
-    $('#btn-visite-voir').onclick = async () => { if (!S.magSel) return; $('#apercu').innerHTML = await htmlVisite(S.magSel); ajuster($('#apercu')); adapterEchelle(); };
+    $('#btn-visite-voir').onclick = async () => { if (!S.magSel) return; $('#apercu').innerHTML = await htmlVisite(S.magSel); ajuster($('#apercu'), true); adapterEchelle(); };
   }
   async function listerPhotos() {
     const ks = (await Store.lister('donnees')).filter(n => /^\d{4}-\d{2}$/.test(n)).sort().reverse();
@@ -402,8 +402,10 @@
     }
   }
   window.addEventListener('resize', () => { clearTimeout(S.tEchelle); S.tEchelle = setTimeout(adapterEchelle, 150); });
-  function ajuster(hote) {
+  // ecran = aperçu à l'écran (pas un PDF) : en dernier recours la page s'allonge au lieu de couper le bas
+  function ajuster(hote, ecran) {
     hote.querySelectorAll('.fiche').forEach(f => {
+      if (f.classList.contains('etendue')) { f.classList.remove('etendue'); f.style.height = ''; f.style.minHeight = ''; }
       const tb = f.querySelector('table.equipe');
       if (tb && f.scrollHeight > f.clientHeight + 1) tb.classList.add('dense');
       if (tb && f.scrollHeight > f.clientHeight + 1) tb.classList.add('tres-dense');
@@ -412,22 +414,25 @@
       // 06/11/2026 : dernier recours (page 2 coupée sur téléphone, police plus large) : on réduit légèrement le
       // contenu jusqu'à ce qu'il tienne dans la page, plutôt que de couper le bas
       let z = parseFloat(f.dataset.reduc || '1');
-      for (let i = 0; i < 4 && f.scrollHeight > f.clientHeight + 1; i++) {
-        z = Math.max(0.75, z * Math.min(0.99, (f.clientHeight - 6) / f.scrollHeight));
+      // 11/11/2026 : page 2 plus riche (score santé annuel, % Recommande, Managers Leaders…) → plancher abaissé à 0,6
+      for (let i = 0; i < 8 && z > 0.6 && f.scrollHeight > f.clientHeight + 1; i++) {
+        z = Math.max(0.6, z * Math.min(0.99, (f.clientHeight - 6) / f.scrollHeight));
         [...f.children].forEach(c => { c.style.zoom = z; });
         f.dataset.reduc = z.toFixed(3);
       }
+      // Toujours trop long à l'écran (téléphone, polices plus larges) : la page s'allonge, rien n'est coupé
+      if (ecran && f.scrollHeight > f.clientHeight + 1) { f.style.minHeight = f.clientHeight + 'px'; f.style.height = 'auto'; f.classList.add('etendue'); }
     });
   }
   async function afficherFiche(m) {
     const serie = await serieMagasin(m.code);
     const tel = window.innerWidth <= 820;
     $('#apercu').innerHTML = langues(m).map(l => Fiche.rendre(S.photo, m, S.objectifs, S.trad, { langue: l, serie, challenges: S.chal, taux: S.tauxCh, format: formatFiche() })).join('');
-    ajuster($('#apercu')); adapterEchelle();
+    ajuster($('#apercu'), true); adapterEchelle();
     // 06/11/2026 : sur téléphone, la police (Montserrat) arrive souvent après le premier calcul et rallonge la page →
     // bas de page coupé. On recale une fois les polices chargées.
     const hote = $('#apercu');
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if ($('#apercu') === hote) { ajuster(hote); adapterEchelle(); } });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if ($('#apercu') === hote) { ajuster(hote, true); adapterEchelle(); } });
     if (tel) $('#apercu').scrollIntoView({ behavior: 'smooth', block: 'start' }); // téléphone : on descend directement sur la fiche
   }
   // ---------- Historique de l'année : séries mensuelles (CA du mois, N-1, positionnement) ----------
