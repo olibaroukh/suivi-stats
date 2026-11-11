@@ -44,7 +44,7 @@ main{max-width:1240px;margin:0 auto;padding:24px 28px 10px}
 .carte p.aide{color:#6d6566;font-size:12.5px;margin:4px 0 12px;line-height:1.45}
 .grille2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .grille3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-@media (max-width:900px){.grille2,.grille3{grid-template-columns:1fr}}
+@media (max-width:900px){.grille2:not(.fiche *),.grille3:not(.fiche *){grid-template-columns:1fr}}
 .depot{border:2px dashed #E6CFCD;border-radius:14px;padding:28px;text-align:center;color:#6d6566;background:#FDF9F8}
 .depot.survol{border-color:var(--accent);background:var(--soft)}
 .depot label{color:var(--accent)!important}
@@ -530,7 +530,7 @@ body.non-connecte .recherche-globale{display:none}
   .app-head nav button{padding:11px 10px;font-size:11px;letter-spacing:.8px;flex:none}
   main{padding:12px 10px calc(10px + env(safe-area-inset-bottom))}
   .carte{padding:14px 14px;border-radius:14px}
-  .grille2,.grille3{grid-template-columns:1fr !important}
+  .grille2:not(.fiche *),.grille3:not(.fiche *){grid-template-columns:1fr !important} /* 11/11/2026 : pas dans les fiches (page A4 à l'échelle) */
   .ligne-outils{flex-wrap:wrap}
   .ligne-outils select,.ligne-outils input{flex:1 1 140px;min-width:0 !important;font-size:16px}
   .sources-mois{grid-template-columns:1fr}
