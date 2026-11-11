@@ -64,7 +64,7 @@
     // Lecteurs : ni import ni réglages ; écrans éventuellement limités par leur profil
     document.querySelectorAll('.app-head nav button').forEach(b => {
       const v = b.dataset.vue; let ok = admin || (v !== 'import' && v !== 'reglages');
-      if (!admin && v !== 'accueil' && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && p.ecrans.includes(v);
+      if (!admin && v !== 'accueil' && Array.isArray(p.ecrans) && p.ecrans.length) ok = ok && (p.ecrans.includes(v) || (v === 'cockpits' && p.ecrans.includes('actions')));
       b.hidden = !ok || v === 'recrutement'; // Recrutement : affiché seulement si un lien est enregistré
     });
     brancherLiens(admin, p);
@@ -93,7 +93,7 @@
   }
   // Lien direct (mail mensuel aux AR) : …/suivi-stats/#mlme ouvre l'écran de saisie
   window.addEventListener('hashchange', () => { if (location.hash === '#mlme') vue('challenges'); });
-  function vue(v) { if (v === 'cockpits' && !$('#ck-apercu .cockpit')) setTimeout(afficherCockpit, 0); if (v === 'actions') setTimeout(afficherActions, 0); if (v === 'challenges') setTimeout(afficherChallenges, 0); document.querySelectorAll('.vue').forEach(x => x.classList.toggle('actif', x.id === 'vue-' + v)); document.querySelectorAll('.app-head nav button').forEach(b => b.classList.toggle('actif', b.dataset.vue === v)); }
+  function vue(v) { if (v === 'actions') { ouvrirActions(); return; } if (v === 'cockpits' && !$('#ck-apercu .cockpit')) setTimeout(afficherCockpit, 0); if (v === 'actions') setTimeout(afficherActions, 0); if (v === 'challenges') setTimeout(afficherChallenges, 0); document.querySelectorAll('.vue').forEach(x => x.classList.toggle('actif', x.id === 'vue-' + v)); document.querySelectorAll('.app-head nav button').forEach(b => b.classList.toggle('actif', b.dataset.vue === v)); }
 
   // ---------- Import ----------
   function brancherImport() {
@@ -534,19 +534,34 @@
     CK.perims = Cockpit.perimetres(S.ref);
     // Comptes à périmètre limité : pas de vue Siège (elle supposerait tout le réseau)
     const pr = Store.cloud() && Store.profil();
-    if (pr && pr.role !== 'admin' && !(pr.perimetre && pr.perimetre.tous)) CK.perims = CK.perims.filter(p => p.id !== 'siege');
+    const dr = droitsCk();
+    if (!dr.cockpits) CK.perims = CK.perims.filter(p => p.id === 'siege' && dr.actions);
+    else if (!dr.siegeComplet && !dr.actions) CK.perims = CK.perims.filter(p => p.id !== 'siege');
     const groupes = [...new Set(CK.perims.map(p => p.groupeLib))];
     const avant = $('#ck-perim').value;
     $('#ck-perim').innerHTML = groupes.map(g => `<optgroup label="${esc(g)}">${CK.perims.filter(p => p.groupeLib === g).map(p => `<option value="${esc(p.id)}">${esc(p.lib)}</option>`).join('')}</optgroup>`).join('');
     if (avant && CK.perims.some(p => p.id === avant)) $('#ck-perim').value = avant;
     remplirThemes();
   }
+  // 11/11/2026 : « Actions de l’année » n'a plus d'onglet : c'est un thème de « Réseau – vue Siège »
+  function droitsCk() {
+    const pr = Store.cloud() && Store.profil();
+    if (!pr || pr.role === 'admin') return { cockpits: true, actions: true, siegeComplet: true };
+    const lim = Array.isArray(pr.ecrans) && pr.ecrans.length;
+    return { cockpits: !lim || pr.ecrans.includes('cockpits'), actions: !lim || pr.ecrans.includes('actions'), siegeComplet: !!(pr.perimetre && pr.perimetre.tous) };
+  }
+  function themesPerim(p) {
+    if (p.id !== 'siege') return p.themes;
+    const dr = droitsCk();
+    return (dr.cockpits && dr.siegeComplet ? p.themes : []).concat(dr.actions ? ['actions'] : []);
+  }
+  const libTheme = t => t === 'siege' ? 'Synthèse réseau' : t === 'actions' ? 'Actions de l’année' : Cockpit.THEMES[t].lib;
   function remplirThemes() {
     const p = CK.perims.find(x => x.id === $('#ck-perim').value); if (!p) return;
-    const avant = $('#ck-theme').value;
-    $('#ck-theme').innerHTML = p.themes.map(t => `<option value="${t}">${t === 'siege' ? 'Synthèse réseau' : Cockpit.THEMES[t].lib}</option>`).join('');
-    if (p.themes.includes(avant)) $('#ck-theme').value = avant;
-    $('#ck-theme').disabled = p.themes.length < 2; $('#ck-tri').disabled = !!p.special;
+    const avant = $('#ck-theme').value, themes = themesPerim(p);
+    $('#ck-theme').innerHTML = themes.map(t => `<option value="${t}">${libTheme(t)}</option>`).join('');
+    if (themes.includes(avant)) $('#ck-theme').value = avant;
+    $('#ck-theme').disabled = themes.length < 2; $('#ck-tri').disabled = !!p.special;
     // 07/11/2026 : lien vers l'artefact « Activité OCM » quand le périmètre OCM est choisi
     if ($('#ck-ocm-lien')) $('#ck-ocm-lien').hidden = p.id !== 'ocm';
   }
@@ -556,8 +571,25 @@
     ['serre', 'tres-serre', 'ultra-serre'].forEach(c => { if (deborde()) page.classList.add(c); });
     return !deborde();
   }
+  function modeActions(on) {
+    $('#ck-actions').hidden = !on; $('#ck-apercu').hidden = on;
+    ['#ck-tri', '#ck-print', '#ck-pdf'].forEach(x => $(x).hidden = on);
+    if (on) { $('#ck-sel-btn').hidden = true; $('#ck-conf-btn').hidden = true; $('#ck-sel').hidden = true; $('#ck-conf').hidden = true; $('#ck-info').textContent = ''; }
+  }
+  // Ouvre Cockpits › Réseau – vue Siège › Actions de l'année (diffusion, anciens liens)
+  async function ouvrirActions(k) {
+    vue('cockpits');
+    if (!CK.perims.some(p => p.id === 'siege')) return;
+    $('#ck-perim').value = 'siege'; remplirThemes();
+    if (![...$('#ck-theme').options].some(o => o.value === 'actions')) return;
+    $('#ck-theme').value = 'actions';
+    if (k && [...$('#ck-photo').options].some(o => o.value === k)) $('#ck-photo').value = k;
+    await afficherCockpit();
+  }
   async function afficherCockpit() {
     const k = $('#ck-photo').value; if (!k) return;
+    if ($('#ck-theme').value === 'actions') { modeActions(true); await afficherActions(k); return true; }
+    modeActions(false);
     if (CK.cle !== k) { CK.photo = await Store.lireJSON(`donnees/${k}/photo.json`); CK.cle = k; }
     const p = CK.perims.find(x => x.id === $('#ck-perim').value); if (!p || !CK.photo) return;
     const th = $('#ck-theme').value; let tri = $('#ck-tri').value;
@@ -645,7 +677,7 @@
         for (const e of d.ecrans) {
           info(`${d.nom} : ${libEcran(e)}…`);
           if (e.special === 'actions') {
-            vue('actions'); await afficherActions(); if ([...$('#ac-mois').options].some(o => o.value === k)) { $('#ac-mois').value = k; await afficherActions(); }
+            await ouvrirActions(k);
             const pg = $('#ac-apercu .actions-page'); if (pg) { await capturerA3([pg], doc); libs.push(libEcran(e)); }
             continue;
           }
@@ -925,9 +957,10 @@
     if (!c && annee === 2026) { try { c = await (await fetch('data/actions-modele-2026.json?v=' + (window.APP_VERSION || ''))).json(); c._modele = true; } catch (e) {} }
     ACT.conf = c || { titre: `Les Actions ${annee}`, actions: [] }; ACT.annee = annee; return ACT.conf;
   }
-  async function afficherActions() {
+  async function afficherActions(kForce) {
     const ks = S.moisDispo || [];
     if (!$('#ac-mois').options.length || $('#ac-mois').options.length !== ks.length) $('#ac-mois').innerHTML = ks.map(k => `<option value="${k}">${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join('');
+    if (typeof kForce === 'string' && ks.includes(kForce)) $('#ac-mois').value = kForce;
     const k = $('#ac-mois').value || ks[0]; if (!k) { $('#ac-info').textContent = 'Aucun mois enregistré.'; return; }
     const photo = k === `${S.photo && S.photo.annee}-${pad(S.photo && S.photo.mois)}` ? S.photo : await photoMois(k);
     const conf = await confActions(+k.slice(0, 4));
