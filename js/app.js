@@ -193,7 +193,7 @@
       if (!mv.length) return { magasins: {}, moisValides: [], vide: true, annee };
       const prec = {};
       if (mv.length > 1) { const dp = await lire(+mv[mv.length - 2].slice(5)); if (dp && !dp.erreur) (dp.magasins || []).forEach(m => { prec[String(m.code)] = m.score; }); }
-      const out = {}; (d.magasins || []).forEach(m => { out[String(m.code)] = { score: m.score, precedent: prec[String(m.code)] ?? null, couverture: m.couverture, sous: m.sous || {}, exclusions: m.exclusions || {}, neutralisations: {}, nbMois: m.nbMoisRetenus, rang: m.rangReseau ?? null }; });
+      const out = {}; (d.magasins || []).forEach(m => { out[String(m.code)] = { score: m.score, precedent: prec[String(m.code)] ?? null, couverture: m.couverture, sous: m.sous || {}, exclusions: m.exclusions || {}, neutralisations: {}, nbMois: m.nbMoisRetenus, rang: m.rangReseau ?? null, niveauEquipe: m.niveauEquipe ?? null, dernierControleEquipe: m.dernierControleEquipe ?? null }; });
       return { magasins: out, moisValides: mv, dernierMois: mv[mv.length - 1], poidsMois: d.poidsMois, dims: d.dims, annee };
     } catch (e) { return { erreur: String(e) }; }
   }

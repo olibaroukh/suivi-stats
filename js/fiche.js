@@ -139,7 +139,10 @@
     const re = n.CQ != null ? n.CQ / 100 : null;
     const eqp = equipe(photo, mag, c.o);
     const ecartEff = eqp.connu && eqp.effTheo != null ? eqp.effOpt + eqp.effAud - eqp.effTheo : null;
-    const entr = ent.entretiens || null, niveau = ent.equipe ? ent.equipe.niveau : null;
+    // Niveau d'équipe (12/11/2026) : cumul depuis la 1re évaluation de l'année, au dernier contrôle remonté
+    // (score annuel, comme Évaluation équipe) ; niveau du score du mois en secours (anciennes photos).
+    const saEq = photo.santeAnnuel && photo.santeAnnuel.magasins && photo.santeAnnuel.magasins[code];
+    const entr = ent.entretiens || null, niveau = saEq && saEq.niveauEquipe != null ? saEq.niveauEquipe : (ent.equipe ? ent.equipe.niveau : null);
     const entOk = entr && entr.eligibles != null ? (entr.eligibles > 0 ? entr.vus >= entr.eligibles : null) : null;
     const indus = n.BV != null ? n.BV : null;
     // Objectif annuel atteint ≥ 3 fois sur les 5 dernières années (historique + année en cours en projection)
