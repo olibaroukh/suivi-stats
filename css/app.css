@@ -166,6 +166,11 @@ main{max-width:1240px;margin:0 auto;padding:24px 28px 10px}
 .fiche .chal li b{display:block;font-size:8px;font-weight:700;letter-spacing:.4px}
 .fiche .chal li small{display:block;font-size:7.5px;color:var(--g)}
 .fiche .chal li em{font-style:normal;font-size:8px;font-weight:700;white-space:nowrap}
+.fiche .chal li em.multi{white-space:normal;display:flex;flex-wrap:wrap;justify-content:flex-end;justify-self:end;gap:0 7px;max-width:230px;line-height:1.35}
+.fiche .chal li em.multi .cd{white-space:nowrap}
+.fiche[dir=rtl] .chal li em.multi{justify-content:flex-start}
+.fiche .chal.compact .crit em span.multi{font-size:6.5px;letter-spacing:-.1px}
+.fiche .chal .cd.ok{color:var(--ok)}.fiche .chal .cd.ko{color:var(--r)}.fiche .chal .cd.na{color:#b3acad;font-weight:500}
 .fiche .chal .ic{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800}
 .fiche .chal li.ok .ic{background:#E3F2EA;color:var(--ok)}.fiche .chal li.ok em{color:var(--ok)}
 .fiche .chal li.ko .ic{background:var(--rose2);color:var(--r)}.fiche .chal li.ko em{color:var(--r)}
