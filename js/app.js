@@ -292,8 +292,13 @@
   // Complément d'un mois déjà enregistré : seules les sources reçues remplacent leurs colonnes, tout le reste est conservé
   function completerPhoto(base, res) {
     const np = res.photo, srcs = res.rapport.sources, maj = [];
-    if ((srcs.cosium_n && srcs.cosium_n.statut === 'recu') || (srcs.cosium_n1 && srcs.cosium_n1.statut === 'recu'))
-      throw new Error('les exports Cosium demandent un import complet : décochez « Compléter le mois déjà enregistré ».');
+    // 13/11/2026 : les exports Cosium (ex. ramenés par « Récupérer dans Zimbra ») sont ignorés au lieu de bloquer :
+    // ils demandent un import complet ; tout le reste est complété normalement.
+    const COSIUM = ['cosium_n', 'cosium_n1', 'stat_indiv'];
+    if (COSIUM.some(k => srcs[k] && srcs[k].statut === 'recu')) {
+      COSIUM.forEach(k => { delete srcs[k]; });
+      res.rapport.alertes.unshift('Exports Cosium présents mais ignorés (mode « Compléter ») : les chiffres Cosium du mois enregistré sont conservés. Pour les remplacer, décochez « Compléter » et refaites un import complet.');
+    }
     const photo = JSON.parse(JSON.stringify(base)); photo.sources = photo.sources || {};
     const EXTRAS = { confidence: ['_listes'], avis_google: ['_avisSource'] };
     for (const src in Pipeline.COLONNES_SOURCE) {
