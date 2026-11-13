@@ -135,6 +135,11 @@
     const man = k => sai[k] === true; // critère manuel : « Non » tant qu'il n'est pas validé (consigne d'Olivier, 05/11)
     // Plusieurs conditions obligatoires : non atteint dès qu'une est fausse, à renseigner tant qu'une manque
     const toutes = l => l.some(x => x === false) ? false : l.every(x => x === true) ? true : null;
+    // 13/11/2026 : critères à plusieurs conditions → chaque résultat affiché séparément, vert si atteint, rouge sinon
+    // (t = texte complet, c = libellé court pour la vignette du paysage)
+    const cond = (c, ok, t) => ({ c, t: t || c, s: ok == null ? 'na' : ok ? 'ok' : 'ko' });
+    const vm = parts => v(toutes(parts.map(x => x.s === 'na' ? null : x.s === 'ok')), parts);
+    const nbFr = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toString().replace('.', ',');
     const sante = (photo.sante && photo.sante.magasins && photo.sante.magasins[code]) || {}, ent = sante.entrees || {};
     const re = n.CQ != null ? n.CQ / 100 : null;
     const eqp = equipe(photo, mag, c.o);
@@ -152,17 +157,22 @@
     const ophta = (n.DX || 0) + (n.DW || 0), orl = (n.DV || 0) + (n.DY || 0), ce = n.DZ, objCe = cm.objCe != null ? cm.objCe : (n.EA != null ? n.EA : 50);
     const ml = [
       ['LA PRISE DE DECISION', 'RE ≥ 20 %', v(re == null ? null : re >= 0.2, pc(re))],
-      ['CONSTRUIRE EQUIPE GAGNANTE', 'Effectif / 1 entretien par collaborateur et par mois / Niveau de l’équipe ≥ 8',
-        v(toutes([ecartEff == null ? null : Math.abs(ecartEff) < 0.5, entOk, niveau == null ? null : niveau >= 8]),
-          [ecartEff == null ? null : 'eff. ' + (ecartEff > 0 ? '+' : '') + (Math.round(ecartEff * 10) / 10), entr && entr.eligibles != null ? 'entr. ' + entr.vus + '/' + entr.eligibles : null, niveau != null ? 'niv. ' + niveau : null].filter(Boolean).join(' · ') || null)],
+      ['CONSTRUIRE EQUIPE GAGNANTE', 'Effectif / 1 entretien par collaborateur et par mois / Niveau de l’équipe ≥ 8', vm([
+        cond('Eff.', ecartEff == null ? null : Math.abs(ecartEff) < 0.5, 'eff. ' + (ecartEff == null ? '–' : (ecartEff > 0 ? '+' : '') + nbFr(ecartEff))),
+        cond('Entr.', entOk, 'entr. ' + (entr && entr.eligibles != null ? entr.vus + '/' + entr.eligibles : '–')),
+        cond('Niv.', niveau == null ? null : niveau >= 8, 'niv. ' + (niveau == null ? '–' : nbFr(niveau)))])],
       ['FORMATION', '3 jours de formation par collaborateur', v(man('formation'))],
       ['L’INTELLIGENCE ORGANISATIONNELLE', 'Retour terrain AR + Siège', v(man('intelligence'))],
-      ['GESTIONNAIRE', 'Planning / Retours / Taux d’indus ≤ 1 %', v(toutes([man('planning'), man('retours'), indus == null ? null : indus <= 0.01]), indus != null ? 'indus ' + pc(indus) : null)],
+      ['GESTIONNAIRE', 'Planning / Retours / Taux d’indus ≤ 1 %', vm([cond('Plan.', man('planning'), 'planning'), cond('Ret.', man('retours'), 'retours'),
+        cond('Indus', indus == null ? null : indus <= 0.01, 'indus ' + (indus == null ? '–' : pc(indus)))])],
       ['LA COMPÉTENCE ÉMOTIONNELLE', 'Objectif annuel atteint 3 fois sur les 5 dernières années', v(anneesOk == null ? null : anneesOk >= 3, anneesOk != null ? anneesOk + ' / 5' : null)],
       ['LA NÉGOCIATION GAGNANTE', 'Taux de concrétisation ≥ 95 %', v(n.AF == null ? null : n.AF >= 95, n.AF != null ? n.AF.toFixed(1) + ' %' : null)],
       ['DÉVELOPPER SA CRÉATIVITÉ', 'Évolution du CA', v(n.P == null || !p.P ? null : n.P > p.P, c.ca.evol != null ? (c.ca.evol > 0 ? '+' : '') + pc(c.ca.evol) : null)],
       ['NOTORIÉTÉ', 'Nombre d’avis Google ≥ 300', v(n.BL == null ? null : n.BL >= 300, n.BL != null ? String(n.BL) : null)],
-      ['COMMUNIQUER EFFICACEMENT', 'Ophta ≥ 10 / ORL ≥ 10 / CE ≥ objectif', v(ce == null ? null : ophta >= 10 && orl >= 10 && ce >= objCe, ce != null ? `${ophta} / ${orl} / ${ce} (obj. ${objCe})` : null)],
+      ['COMMUNIQUER EFFICACEMENT', 'Ophta ≥ 10 / ORL ≥ 10 / CE ≥ objectif', vm([
+        cond('Ophta', ce == null ? null : ophta >= 10, 'ophta ' + (ce == null ? '–' : ophta)),
+        cond('ORL', ce == null ? null : orl >= 10, 'ORL ' + (ce == null ? '–' : orl)),
+        cond('CE', ce == null ? null : ce >= objCe, 'CE ' + (ce == null ? '–' : ce) + '/' + objCe)])],
     ];
     const score = l => ({ ok: l.filter(x => x[2].s === 'ok').length, connus: l.filter(x => x[2].s !== 'na').length });
     const sml = score(ml);
@@ -179,13 +189,20 @@
       ['COMMERCE', 'CA TTC ≥ 2 M€ (projection)', v(caAnnuel == null ? null : caAnnuel >= seuil, caAnnuel != null ? Math.round(caAnnuel / 1000).toLocaleString('fr-FR') + ' k' + (DEVISES[devise] || '€') + ' (proj.)' : null)],
       ['LEADERSHIP', '7/10 à l’évaluation Manager Leader', v(sml.ok >= 7 ? true : sml.connus === 10 ? false : null, sml.ok + ' / 10')],
       ['NOTORIÉTÉ', 'Note Google ≥ 4,5', v(n.BK == null || !n.BL ? null : n.BK >= 4.5, n.BL ? (Math.round(n.BK * 10) / 10).toString().replace('.', ',') : null)],
-      ['RESSOURCES HUMAINES', 'Niveau de l’équipe ≥ 8 / Équilibre H/F / 3 jours de formation', v(toutes([niveau == null ? null : niveau >= 8, hf == null ? null : hf >= 0.4 && hf <= 0.6, man('formation')]), [niveau != null ? 'niv. ' + niveau : null, hf != null ? Math.round(hf * 100) + ' % F' : null].filter(Boolean).join(' · ') || null)],
+      ['RESSOURCES HUMAINES', 'Niveau de l’équipe ≥ 8 / Équilibre H/F / 3 jours de formation', vm([
+        cond('Niv.', niveau == null ? null : niveau >= 8, 'niv. ' + (niveau == null ? '–' : nbFr(niveau))),
+        cond('H/F', hf == null ? null : hf >= 0.4 && hf <= 0.6, 'H/F ' + (hf == null ? '–' : Math.round(hf * 100) + ' % F')),
+        cond('Form.', man('formation'), 'formation')])],
       ['GESTION', 'Taux d’indus ≤ 1 %', v(indus == null ? null : indus <= 0.01, pc(indus))],
       ['FIDÉLISATION', '60 %', v(fid == null ? null : fid >= 0.6, fid != null ? Math.round(fid * 100) + ' %' : null)],
       ['KAIZEN', '400 points cumulés sur l’année', v(kz == null ? null : kz >= 400, kz != null ? String(Math.round(kz)) + ' pts' : null)],
       ['RENTABILITÉ', 'RE ≥ 20 %', v(re == null ? null : re >= 0.2, pc(re))],
-      ['PERFORMANCE', 'TC / SOP / PM / MdC / Test audio (3 sur 5)', v(perf.length < 3 && perfOk < 3 ? null : perfOk >= 3, perf.length ? perfOk + ' / ' + perf.length : null)],
-      ['VALEUR OC', 'Dress code / Vocabulaire / Savoir-être', v(toutes([man('dressCode'), man('vocabulaire'), man('savoirEtre')]))],
+      ['PERFORMANCE', 'TC / SOP / PM / MdC / Test audio (3 sur 5)', (() => {
+        const o = c.o, ps = [['TC', n.AF, o.tc], ['SOP', n.AC, o.sop], ['PM', n.V, o.panier, 1], ['MdC', n.AN, o.mdc], ['Test', n.BE, o.depistage]]
+          .map(([l, x, ob, abs]) => cond(l, x == null || ob == null ? null : (abs ? x : x / 100) >= ob, l + ' ' + (x == null ? '–' : abs ? Math.round(x) : nbFr(x) + ' %')));
+        return v(perf.length < 3 && perfOk < 3 ? null : perfOk >= 3, ps);
+      })()],
+      ['VALEUR OC', 'Dress code / Vocabulaire / Savoir-être', vm([cond('Dress', man('dressCode'), 'dress code'), cond('Voc.', man('vocabulaire'), 'vocabulaire'), cond('S.-être', man('savoirEtre'), 'savoir-être')])],
     ];
     // Détail des critères composés (cockpit)
     const details = {
@@ -281,14 +298,18 @@
       return `<div class="barre-ca">${parts.map(([l, x], i) => `<div class="seg s${i}" style="width:${Math.max(4, 100 * (x.ca || 0) / tot)}%"></div>`).join('')}</div>
       <div class="legende-ca">${parts.map(([l, x], i) => `<div><i class="s${i}"></i><b>${esc(t(l))}</b> ${eur(x.ca)} <span class="muted">${pc(x.part, 0)}</span> ${evo(x.evol, null, pc)}</div>`).join('')}</div>`;
     };
+    // Valeur d'un critère : texte simple, ou liste des conditions colorées (vert atteint / rouge non atteint)
+    const valCrit = (st, court) => Array.isArray(st.val)
+      ? st.val.map(x => `<span class="cd ${x.s}">${esc(court ? x.c : x.t)}</span>`).join(' ')
+      : st.val == null ? (st.s === 'na' ? esc(t('à renseigner')) : '') : esc(st.val);
     const challenge = (titre, gain, lignes, sc, compact) => compact ? `
       <div class="chal compact">
         <div class="chal-h"><div><div class="chal-t">« ${esc(t(titre))} »</div><div class="chal-g">${esc(t(gain))}</div></div><div class="chal-sc">${sc.ok}<small>/10</small>${sc.ok >= 7 ? `<div class="chal-q">${esc(t('Qualifié'))}</div>` : ''}</div></div>
-        <div class="crit">${lignes.map(([l, crit, st]) => `<div class="${st.s}" title="${esc(t(crit))}"><b>${esc(t(l))}</b><em><span>${st.val == null ? (st.s === 'na' ? esc(t('à renseigner')) : '') : esc(st.val)}</span><i class="ic">${st.s === 'ok' ? '✓' : st.s === 'ko' ? '✕' : '•'}</i></em></div>`).join('')}</div>
+        <div class="crit">${lignes.map(([l, crit, st]) => `<div class="${st.s}" title="${esc(t(crit))}"><b>${esc(t(l))}</b><em><span${Array.isArray(st.val) ? ' class="multi"' : ''}>${valCrit(st, true)}</span><i class="ic">${st.s === 'ok' ? '✓' : st.s === 'ko' ? '✕' : '•'}</i></em></div>`).join('')}</div>
       </div>` : `
       <div class="chal">
         <div class="chal-h"><div><div class="chal-t">« ${esc(t(titre))} »</div><div class="chal-g">${esc(t(gain))}</div></div><div class="chal-sc">${sc.ok}<small>/10</small>${sc.ok >= 7 ? `<div class="chal-q">${esc(t('Qualifié'))}</div>` : ''}</div></div>
-        <ol>${lignes.map(([l, crit, st]) => `<li class="${st.s}"><span class="ic">${st.s === 'ok' ? '✓' : st.s === 'ko' ? '✕' : '•'}</span><div><b>${esc(t(l))}</b><small>${esc(t(crit))}</small></div><em>${st.val == null ? (st.s === 'na' ? esc(t('à renseigner')) : '') : esc(st.val)}</em></li>`).join('')}</ol>
+        <ol>${lignes.map(([l, crit, st]) => `<li class="${st.s}"><span class="ic">${st.s === 'ok' ? '✓' : st.s === 'ko' ? '✕' : '•'}</span><div><b>${esc(t(l))}</b><small>${esc(t(crit))}</small></div><em${Array.isArray(st.val) ? ' class="multi"' : ''}>${valCrit(st, false)}</em></li>`).join('')}</ol>
       </div>`;
 
     const posteCourt = p => ({ 'optométriste/contactologue': 'Opto/Contacto', 'opticien/vendeur': 'Opticien', 'audioprothésiste': 'Audioprothésiste', 'technicien audio': 'Tech. audio', 'monteur': 'Monteur', 'manager': 'Manager' }[String(p || '').toLowerCase()] || p);

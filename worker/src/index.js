@@ -794,6 +794,21 @@ export class SuiviStatsInterne extends WorkerEntrypoint {
     const d = await lireJSON(this.env, `donnees/rh-etp/${mois}.json`);
     return d && d.coefs ? d.coefs : null;
   }
+  // 13/11/2026 : positionnement annuel de tous les magasins (score santé de zimbra-relay) = CA cumulé projeté sur 12 mois
+  // / objectif annuel, lu dans la photo du mois demandé, sinon la plus récente antérieure (une seule lecture pour tout le réseau).
+  async positionnementsAnnuels(mois) {
+    await schema(this.env);
+    const dispo = await this.moisDisponibles();
+    const m = mois ? dispo.find(x => x <= mois) : dispo[0];
+    if (!m) return { mois: null, parCode: {} };
+    const photo = await lireJSON(this.env, `donnees/${m}/photo.json`);
+    const nbMois = (photo && photo.mois) || Number(m.slice(5)), parCode = {};
+    for (const [c, d] of Object.entries((photo && photo.magasins) || {})) {
+      const N = d && d.N;
+      if (N && N.P != null && N.O && nbMois) parCode[c] = Math.round(N.P * 12 / nbMois / (N.O * 1000) * 1000) / 10;
+    }
+    return { mois: m, parCode };
+  }
   async statsMagasin(code, mois) {
     await schema(this.env);
     const m = mois || (await this.moisDisponibles())[0];
