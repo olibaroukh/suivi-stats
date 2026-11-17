@@ -17,6 +17,7 @@
  */
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { routesSeminaire, compteSeminaire } from './seminaire.js';
+import { routesRestesDus, compteRestesDus } from './restesdus.js';
 
 const ZIMBRA_SOAP_URL = 'https://zimbra.oc-pratique.com/service/soap';
 const ORIGINES = ['https://olibaroukh.github.io'];
@@ -96,7 +97,10 @@ async function profil(env, email) {
   if (!u) {
     // 08/11/2026 : compte « séminaire franchisés » seul (directeur de pôle sans accès à Suivi Stats)
     const s = await compteSeminaire(env, email);
-    return s ? { email, nom: s.nom, role: 'seminaire', perimetre: {}, ecrans: ['seminaire'] } : null;
+    if (s) return { email, nom: s.nom, role: 'seminaire', perimetre: {}, ecrans: ['seminaire'] };
+    // 17/11/2026 : compte « restes dus » seul (franchisé, adresse Zimbra donnée par Olivier)
+    const r = await compteRestesDus(env, email);
+    return r ? { email, nom: r.nom, role: 'restesdus', perimetre: {}, ecrans: ['restesdus'] } : null;
   }
   return { email, nom: u.nom, role: u.role === 'admin' ? 'admin' : 'lecteur', perimetre: JSON.parse(u.perimetre || '{}'), ecrans: u.ecrans ? JSON.parse(u.ecrans) : null };
 }
@@ -417,7 +421,7 @@ async function connexion(env, request, h) {
   }
   await env.DB.prepare('DELETE FROM echecs WHERE identifiant = ?').bind(email).run();
   const p = await profil(env, email);
-  if (!p) { await journal('non-autorise'); return erreur("Votre compte n'a pas accès à Suivi Stats. Demandez l'accès à Olivier Baroukh.", 403, h); }
+  if (!p) { await journal('non-autorise'); return erreur("Votre compte n'a pas accès à cette application. Demandez l'accès à Olivier Baroukh.", 403, h); }
   await journal('ok');
   // Administrateurs : le jeton Zimbra est gardé côté serveur (jamais renvoyé) pour récupérer les pièces jointes du mois
   if (p.role === 'admin') await env.DB.prepare('INSERT INTO jetons_zimbra (email, jeton, expire) VALUES (?, ?, ?) ON CONFLICT(email) DO UPDATE SET jeton = excluded.jeton, expire = excluded.expire')
@@ -447,6 +451,9 @@ async function routes(request, env) {
   if (chemin.startsWith('/seminaire/') && ageSession(request) > SESSION_SEMINAIRE_MS) return erreur('Par sécurité, reconnectez-vous (toutes les 2 heures).', 401, h);
   if (chemin.startsWith('/seminaire/')) return routesSeminaire(request, env, p, chemin, url, h, json, erreur);
   if (p.role === 'seminaire') return erreur('Ce compte n’a accès qu’au séminaire franchisés', 403, h);
+  // 17/11/2026 : restes dus des franchisés (tables à part, droits propres)
+  if (chemin.startsWith('/restes-dus/')) return routesRestesDus(request, env, p, chemin, url, h, json, erreur, lireJSON);
+  if (p.role === 'restesdus') return erreur('Ce compte n’a accès qu’aux restes dus', 403, h);
 
   // Lecture filtrée (tous les comptes)
   if (chemin === '/donnees/mois') {
