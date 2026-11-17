@@ -179,7 +179,7 @@
     try {
       const r = await fetch(API + '/auth/connexion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identifiant: $('#cx-user').value.trim(), motDePasse: $('#cx-pass').value }) });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.ok) throw new Error(d.erreur && /pas accès à Suivi Stats/.test(d.erreur) ? 'Votre compte n’a pas accès au séminaire. Demandez l’accès à Olivier Baroukh.' : (d.erreur || 'Connexion impossible'));
+      if (!r.ok || !d.ok) throw new Error(d.erreur && /pas accès à (Suivi Stats|cette application)/.test(d.erreur) ? 'Votre compte n’a pas accès au séminaire. Demandez l’accès à Olivier Baroukh.' : (d.erreur || 'Connexion impossible'));
       const ancien = session && session.profil && session.profil.email;
       session = { jeton: d.session, expire: Date.now() + d.expireDansMs - 60000, debut: Date.now(), profil: d.profil };
       localStorage.setItem(CLE_SESSION, JSON.stringify(session));
