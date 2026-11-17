@@ -13,7 +13,10 @@
  *
  * Droits (relus à chaque appel) :
  *  - administrateurs de Suivi Stats : tous les magasins, suivi, comptes ;
- *  - comptes « restes dus » (adresse Zimbra donnée par Olivier) : uniquement leurs codes magasins.
+ *  - comptes « restes dus » (adresse Zimbra donnée par Olivier) : uniquement leurs codes magasins ;
+ *    rôle « franchise » (le franchisé) : suivi et récapitulatifs de ses magasins, acceptation / refus des motifs ;
+ *    rôle « magasin » (boîte du magasin) : dépôt et justification seulement.
+ *  - Un motif refusé par le franchisé redevient « à justifier » ; toute nouvelle saisie du magasin efface la décision.
  */
 
 export const MOTIFS = ['En livraison', 'Relancé auprès de l’organisme', 'Rejet de l’organisme, dossier renvoyé', 'Prise en charge en attente',
@@ -28,6 +31,13 @@ async function schemaRD(env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS restes_dus_depots (code TEXT PRIMARY KEY, le TEXT NOT NULL, par TEXT, date_edition TEXT, nb_lignes INTEGER, dossiers TEXT NOT NULL)`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS restes_dus_justifs (code TEXT NOT NULL, cle TEXT NOT NULL, motif TEXT, commentaire TEXT, date_action TEXT, par TEXT, maj_le TEXT, PRIMARY KEY (code, cle))`),
   ]);
+  // 17/11/2026 (2) : rôle du compte et décision du franchisé sur chaque motif
+  const ajouter = async (table, col, def) => {
+    const cols = await env.DB.prepare(`PRAGMA table_info(${table})`).all();
+    if (!(cols.results || []).some(c => c.name === col)) await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`).run();
+  };
+  await ajouter('restes_dus_comptes', 'role', "TEXT NOT NULL DEFAULT 'franchise'");
+  for (const c of ['decision', 'decision_com', 'decision_par', 'decision_le']) await ajouter('restes_dus_justifs', c, 'TEXT');
   schemaPret = true;
 }
 
@@ -40,14 +50,15 @@ export async function compteRestesDus(env, email) {
 const nomDepuisEmail = e => String(e || '').split('@')[0].split(/[._-]+/).filter(Boolean).map(x => x[0].toUpperCase() + x.slice(1)).join(' ');
 const codeNorm = c => String(c == null ? '' : c).trim().replace(/^0+(?=\d)/, '');
 const auj = () => new Date().toISOString().slice(0, 10);
-const estJustifie = j => !!(j && j.motif) && (!j.date_action || j.date_action >= auj());
+const estJustifie = j => !!(j && j.motif) && j.decision !== 'refuse' && (!j.date_action || j.date_action >= auj());
 
 async function droit(env, p) {
-  if (p.role === 'admin') return { admin: true, nom: p.nom || nomDepuisEmail(p.email), codes: null };
+  if (p.role === 'admin') return { admin: true, franchise: true, role: 'admin', nom: p.nom || nomDepuisEmail(p.email), codes: null };
   const c = await compteRestesDus(env, p.email);
   if (!c) return null;
   let codes = []; try { codes = JSON.parse(c.codes || '[]').map(codeNorm); } catch (e) {}
-  return { admin: false, nom: c.nom || nomDepuisEmail(p.email), codes };
+  const role = c.role === 'magasin' ? 'magasin' : 'franchise';
+  return { admin: false, franchise: role === 'franchise', role, nom: c.nom || nomDepuisEmail(p.email), codes };
 }
 
 function valideDossier(d) {
@@ -75,21 +86,25 @@ export async function routesRestesDus(request, env, p, chemin, url, h, json, err
   const ref = (await lireJSON(env, 'config/referentiel.json')) || [];
   const parCode = new Map(ref.map(m => [codeNorm(m.code), m]));
   const autorise = code => d.admin || d.codes.includes(codeNorm(code));
+  const lireJustifs = async code => {
+    const js = await env.DB.prepare('SELECT * FROM restes_dus_justifs WHERE code = ?').bind(code).all();
+    return Object.fromEntries((js.results || []).map(j => [j.cle, { motif: j.motif || '', commentaire: j.commentaire || '', dateAction: j.date_action || '', par: j.par, majLe: j.maj_le,
+      decision: j.decision || '', decisionCom: j.decision_com || '', decisionPar: j.decision_par || '', decisionLe: j.decision_le || '' }]));
+  };
   const infoMag = code => { const m = parCode.get(codeNorm(code)) || {}; return { code: codeNorm(code), magasin: m.magasin || '', groupe: m.groupe || '', pays: m.pays || '', type: m.type || '' }; };
 
   if (chemin === '/restes-dus/moi') {
     const codes = d.admin
       ? ref.filter(m => m.type === 'Franchise' && m.actif === 'Oui').map(m => codeNorm(m.code))
       : d.codes;
-    return json({ ok: true, moi: { email, nom: d.nom, admin: d.admin }, motifs: MOTIFS, magasins: codes.map(infoMag).sort((a, b) => (a.groupe + a.magasin).localeCompare(b.groupe + b.magasin)) }, 200, h);
+    return json({ ok: true, moi: { email, nom: d.nom, admin: d.admin, role: d.role, franchise: d.franchise }, motifs: MOTIFS, magasins: codes.map(infoMag).sort((a, b) => (a.groupe + a.magasin).localeCompare(b.groupe + b.magasin)) }, 200, h);
   }
 
   if (chemin === '/restes-dus/magasin' && request.method === 'GET') {
     const code = codeNorm(url.searchParams.get('code'));
     if (!code || !autorise(code)) return erreur('Magasin non autorisé', 403, h);
     const dep = await env.DB.prepare('SELECT * FROM restes_dus_depots WHERE code = ?').bind(code).first();
-    const js = await env.DB.prepare('SELECT cle, motif, commentaire, date_action, par, maj_le FROM restes_dus_justifs WHERE code = ?').bind(code).all();
-    const justifs = Object.fromEntries((js.results || []).map(j => [j.cle, { motif: j.motif || '', commentaire: j.commentaire || '', dateAction: j.date_action || '', par: j.par, majLe: j.maj_le }]));
+    const justifs = await lireJustifs(code);
     return json({ ok: true, magasin: infoMag(code), depot: dep ? { le: dep.le, par: dep.par, dateEdition: dep.date_edition, nbLignes: dep.nb_lignes, dossiers: JSON.parse(dep.dossiers) } : null, justifs }, 200, h);
   }
 
@@ -130,36 +145,67 @@ export async function routesRestesDus(request, env, p, chemin, url, h, json, err
     if (motif && !MOTIFS.includes(motif)) return erreur('Motif inconnu', 400, h);
     const da = String(b.dateAction || '');
     if (da && !/^\d{4}-\d{2}-\d{2}$/.test(da)) return erreur('Date d’action invalide', 400, h);
-    const maj = new Date().toISOString();
+    const maj = new Date().toISOString(), com = String(b.commentaire || '').slice(0, 1000);
+    // Nouvelle saisie (motif, date ou commentaire changés) : la décision du franchisé est effacée, il revoit le dossier
+    const ex = await env.DB.prepare('SELECT motif, commentaire, date_action, decision FROM restes_dus_justifs WHERE code = ? AND cle = ?').bind(code, String(b.cle)).first();
+    const change = !ex || ex.motif !== motif || (ex.commentaire || '') !== com || (ex.date_action || '') !== da;
     await env.DB.prepare(`INSERT INTO restes_dus_justifs (code, cle, motif, commentaire, date_action, par, maj_le) VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(code, cle) DO UPDATE SET motif = excluded.motif, commentaire = excluded.commentaire, date_action = excluded.date_action, par = excluded.par, maj_le = excluded.maj_le`)
-      .bind(code, String(b.cle), motif, String(b.commentaire || '').slice(0, 1000), da, email, maj).run();
-    return json({ ok: true, majLe: maj, par: email }, 200, h);
+      .bind(code, String(b.cle), motif, com, da, email, maj).run();
+    if (change && ex && ex.decision) await env.DB.prepare('UPDATE restes_dus_justifs SET decision = NULL, decision_com = NULL, decision_par = NULL, decision_le = NULL WHERE code = ? AND cle = ?').bind(code, String(b.cle)).run();
+    return json({ ok: true, majLe: maj, par: email, decisionEffacee: !!(change && ex && ex.decision) }, 200, h);
   }
 
-  // ---------- Administrateurs ----------
-  if (!d.admin) return erreur('Réservé aux administrateurs', 403, h);
+  // Décision du franchisé sur un motif : accepté, refusé (avec commentaire), ou rien
+  if (chemin === '/restes-dus/decision' && request.method === 'PUT') {
+    if (!d.franchise) return erreur('Réservé au franchisé', 403, h);
+    const b = await request.json().catch(() => ({}));
+    const code = codeNorm(b.code);
+    if (!code || !autorise(code)) return erreur('Magasin non autorisé', 403, h);
+    const dec = ['accepte', 'refuse'].includes(b.decision) ? b.decision : '';
+    const ex = await env.DB.prepare('SELECT motif FROM restes_dus_justifs WHERE code = ? AND cle = ?').bind(code, String(b.cle)).first();
+    if (!ex || !ex.motif) return erreur('Aucun motif saisi sur ce dossier', 400, h);
+    const le = new Date().toISOString();
+    await env.DB.prepare('UPDATE restes_dus_justifs SET decision = ?, decision_com = ?, decision_par = ?, decision_le = ? WHERE code = ? AND cle = ?')
+      .bind(dec || null, dec ? String(b.commentaire || '').slice(0, 1000) : null, dec ? email : null, dec ? le : null, code, String(b.cle)).run();
+    return json({ ok: true, decisionLe: le, decisionPar: email }, 200, h);
+  }
+
+  // Détail de tous les magasins autorisés (récapitulatifs du franchisé)
+  if (chemin === '/restes-dus/detail') {
+    if (!d.franchise) return erreur('Réservé au franchisé', 403, h);
+    const deps = await env.DB.prepare('SELECT code, le, date_edition, dossiers FROM restes_dus_depots').all();
+    const out = [];
+    for (const x of deps.results || []) if (autorise(x.code)) out.push({ ...infoMag(x.code), le: x.le, dateEdition: x.date_edition, dossiers: JSON.parse(x.dossiers), justifs: await lireJustifs(x.code) });
+    return json({ ok: true, magasins: out }, 200, h);
+  }
 
   if (chemin === '/restes-dus/suivi') {
-    const deps = await env.DB.prepare('SELECT code, le, par, date_edition, dossiers FROM restes_dus_depots').all();
-    const js = await env.DB.prepare('SELECT code, cle, motif, date_action FROM restes_dus_justifs').all();
+    if (!d.franchise) return erreur('Réservé au franchisé', 403, h);
+    const deps = { results: ((await env.DB.prepare('SELECT code, le, par, date_edition, dossiers FROM restes_dus_depots').all()).results || []).filter(x => autorise(x.code)) };
+    const js = await env.DB.prepare('SELECT code, cle, motif, date_action, decision FROM restes_dus_justifs').all();
     const jParCode = new Map();
     for (const j of js.results || []) { if (!jParCode.has(j.code)) jParCode.set(j.code, new Map()); jParCode.get(j.code).set(j.cle, j); }
     const lignes = (deps.results || []).map(x => {
       const ds = JSON.parse(x.dossiers), jm = jParCode.get(x.code) || new Map();
       const mt = y => y.lignes.reduce((a, l) => a + l.montant, 0);
       const just = ds.filter(y => estJustifie(jm.get(y.cle)));
+      const refuses = ds.filter(y => (jm.get(y.cle) || {}).decision === 'refuse');
       const parMotif = {};
       for (const y of ds) { const j = jm.get(y.cle); if (j && j.motif) parMotif[j.motif] = (parMotif[j.motif] || 0) + mt(y); }
       return { ...infoMag(x.code), le: x.le, par: x.par, dateEdition: x.date_edition, nb: ds.length, montant: Math.round(ds.reduce((a, y) => a + mt(y), 0) * 100) / 100,
-        nbJustifies: just.length, montantJustifie: Math.round(just.reduce((a, y) => a + mt(y), 0) * 100) / 100, parMotif };
+        nbJustifies: just.length, montantJustifie: Math.round(just.reduce((a, y) => a + mt(y), 0) * 100) / 100,
+        nbRefuses: refuses.length, montantRefuse: Math.round(refuses.reduce((a, y) => a + mt(y), 0) * 100) / 100, parMotif };
     });
     return json({ ok: true, suivi: lignes }, 200, h);
   }
 
+  // ---------- Administrateurs ----------
+  if (!d.admin) return erreur('Réservé aux administrateurs', 403, h);
+
   if (chemin === '/restes-dus/comptes') {
     if (request.method === 'GET') {
-      const r = await env.DB.prepare('SELECT email, nom, codes, actif, maj_le FROM restes_dus_comptes ORDER BY nom, email').all();
+      const r = await env.DB.prepare('SELECT email, nom, role, codes, actif, maj_le FROM restes_dus_comptes ORDER BY nom, email').all();
       return json({ ok: true, comptes: (r.results || []).map(c => ({ ...c, codes: JSON.parse(c.codes || '[]'), actif: !!c.actif })) }, 200, h);
     }
     if (request.method === 'PUT') {
@@ -170,9 +216,9 @@ export async function routesRestesDus(request, env, p, chemin, url, h, json, err
       const inconnus = codes.filter(x => !parCode.has(x));
       if (inconnus.length) return erreur('Codes absents du référentiel : ' + inconnus.join(', '), 400, h);
       if (!codes.length) return erreur('Choisissez au moins un magasin', 400, h);
-      await env.DB.prepare(`INSERT INTO restes_dus_comptes (email, nom, codes, actif, maj_le, par) VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(email) DO UPDATE SET nom = excluded.nom, codes = excluded.codes, actif = excluded.actif, maj_le = excluded.maj_le, par = excluded.par`)
-        .bind(em, String(c.nom || '').slice(0, 120) || null, JSON.stringify(codes), c.actif === false ? 0 : 1, new Date().toISOString(), email).run();
+      await env.DB.prepare(`INSERT INTO restes_dus_comptes (email, nom, role, codes, actif, maj_le, par) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(email) DO UPDATE SET nom = excluded.nom, role = excluded.role, codes = excluded.codes, actif = excluded.actif, maj_le = excluded.maj_le, par = excluded.par`)
+        .bind(em, String(c.nom || '').slice(0, 120) || null, c.role === 'magasin' ? 'magasin' : 'franchise', JSON.stringify(codes), c.actif === false ? 0 : 1, new Date().toISOString(), email).run();
       return json({ ok: true }, 200, h);
     }
   }
