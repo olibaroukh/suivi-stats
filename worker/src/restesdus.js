@@ -38,6 +38,8 @@ async function schemaRD(env) {
   };
   await ajouter('restes_dus_comptes', 'role', "TEXT NOT NULL DEFAULT 'franchise'");
   for (const c of ['decision', 'decision_com', 'decision_par', 'decision_le']) await ajouter('restes_dus_justifs', c, 'TEXT');
+  // 18/11/2026 : compte franchisé rattaché à un groupe du référentiel (magasins du groupe pris automatiquement)
+  await ajouter('restes_dus_comptes', 'groupe', 'TEXT');
   schemaPret = true;
 }
 
@@ -52,11 +54,16 @@ const codeNorm = c => String(c == null ? '' : c).trim().replace(/^0+(?=\d)/, '')
 const auj = () => new Date().toISOString().slice(0, 10);
 const estJustifie = j => !!(j && j.motif) && j.decision !== 'refuse' && (!j.date_action || j.date_action >= auj());
 
-async function droit(env, p) {
+// Magasins d'un groupe franchisé dans le référentiel (franchises actives) : suivent le référentiel automatiquement
+const normG = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+const magasinsDuGroupe = (ref, groupe) => !groupe ? [] : ref.filter(m => m.type === 'Franchise' && m.actif === 'Oui' && normG(m.groupe) === normG(groupe)).map(m => codeNorm(m.code));
+
+async function droit(env, p, ref) {
   if (p.role === 'admin') return { admin: true, franchise: true, role: 'admin', nom: p.nom || nomDepuisEmail(p.email), codes: null };
   const c = await compteRestesDus(env, p.email);
   if (!c) return null;
   let codes = []; try { codes = JSON.parse(c.codes || '[]').map(codeNorm); } catch (e) {}
+  if (c.groupe) codes = [...new Set([...magasinsDuGroupe(ref, c.groupe), ...codes])];
   const role = c.role === 'magasin' ? 'magasin' : 'franchise';
   return { admin: false, franchise: role === 'franchise', role, nom: c.nom || nomDepuisEmail(p.email), codes };
 }
@@ -80,10 +87,10 @@ const propre = d => ({
 
 export async function routesRestesDus(request, env, p, chemin, url, h, json, erreur, lireJSON) {
   await schemaRD(env);
-  const d = await droit(env, p);
+  const ref = (await lireJSON(env, 'config/referentiel.json')) || [];
+  const d = await droit(env, p, ref);
   if (!d) return erreur('Ce compte n’a pas accès aux restes dus. Demandez l’accès à Olivier Baroukh.', 403, h);
   const email = p.email;
-  const ref = (await lireJSON(env, 'config/referentiel.json')) || [];
   const parCode = new Map(ref.map(m => [codeNorm(m.code), m]));
   const autorise = code => d.admin || d.codes.includes(codeNorm(code));
   const lireJustifs = async code => {
@@ -205,20 +212,26 @@ export async function routesRestesDus(request, env, p, chemin, url, h, json, err
 
   if (chemin === '/restes-dus/comptes') {
     if (request.method === 'GET') {
-      const r = await env.DB.prepare('SELECT email, nom, role, codes, actif, maj_le FROM restes_dus_comptes ORDER BY nom, email').all();
-      return json({ ok: true, comptes: (r.results || []).map(c => ({ ...c, codes: JSON.parse(c.codes || '[]'), actif: !!c.actif })) }, 200, h);
+      const r = await env.DB.prepare('SELECT email, nom, role, groupe, codes, actif, maj_le FROM restes_dus_comptes ORDER BY groupe, nom, email').all();
+      return json({ ok: true, comptes: (r.results || []).map(c => { const codes = JSON.parse(c.codes || '[]');
+        return { ...c, codes, magasinsGroupe: magasinsDuGroupe(ref, c.groupe), actif: !!c.actif }; }) }, 200, h);
     }
     if (request.method === 'PUT') {
       const c = await request.json().catch(() => null);
       const em = String(c && c.email || '').trim().toLowerCase();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return erreur('Adresse e-mail invalide', 400, h);
+      const role = c.role === 'magasin' ? 'magasin' : 'franchise';
+      const groupe = String(c.groupe || '').trim();
+      if (groupe && !magasinsDuGroupe(ref, groupe).length) return erreur('Groupe inconnu ou sans magasin franchisé actif : ' + groupe, 400, h);
+      // Franchisé : les magasins viennent du groupe (codes ajoutés à l'unité possibles) ; magasin : codes choisis
       const codes = [...new Set((Array.isArray(c.codes) ? c.codes : []).map(codeNorm).filter(Boolean))];
       const inconnus = codes.filter(x => !parCode.has(x));
       if (inconnus.length) return erreur('Codes absents du référentiel : ' + inconnus.join(', '), 400, h);
-      if (!codes.length) return erreur('Choisissez au moins un magasin', 400, h);
-      await env.DB.prepare(`INSERT INTO restes_dus_comptes (email, nom, role, codes, actif, maj_le, par) VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(email) DO UPDATE SET nom = excluded.nom, role = excluded.role, codes = excluded.codes, actif = excluded.actif, maj_le = excluded.maj_le, par = excluded.par`)
-        .bind(em, String(c.nom || '').slice(0, 120) || null, c.role === 'magasin' ? 'magasin' : 'franchise', JSON.stringify(codes), c.actif === false ? 0 : 1, new Date().toISOString(), email).run();
+      if (role === 'franchise' && !groupe && !codes.length) return erreur('Choisissez le groupe du franchisé', 400, h);
+      if (role === 'magasin' && !codes.length) return erreur('Choisissez au moins un magasin', 400, h);
+      await env.DB.prepare(`INSERT INTO restes_dus_comptes (email, nom, role, groupe, codes, actif, maj_le, par) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(email) DO UPDATE SET nom = excluded.nom, role = excluded.role, groupe = excluded.groupe, codes = excluded.codes, actif = excluded.actif, maj_le = excluded.maj_le, par = excluded.par`)
+        .bind(em, String(c.nom || '').slice(0, 120) || null, role, role === 'franchise' ? (groupe || null) : null, JSON.stringify(codes), c.actif === false ? 0 : 1, new Date().toISOString(), email).run();
       return json({ ok: true }, 200, h);
     }
   }
