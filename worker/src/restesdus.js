@@ -98,7 +98,8 @@ export async function routesRestesDus(request, env, p, chemin, url, h, json, err
     return Object.fromEntries((js.results || []).map(j => [j.cle, { motif: j.motif || '', commentaire: j.commentaire || '', dateAction: j.date_action || '', par: j.par, majLe: j.maj_le,
       decision: j.decision || '', decisionCom: j.decision_com || '', decisionPar: j.decision_par || '', decisionLe: j.decision_le || '' }]));
   };
-  const infoMag = code => { const m = parCode.get(codeNorm(code)) || {}; return { code: codeNorm(code), magasin: m.magasin || '', groupe: m.groupe || '', pays: m.pays || '', type: m.type || '' }; };
+  // L'e-mail du magasin (référentiel) n'est remis qu'aux administrateurs (création des comptes magasin)
+  const infoMag = code => { const m = parCode.get(codeNorm(code)) || {}; return { code: codeNorm(code), magasin: m.magasin || '', groupe: m.groupe || '', pays: m.pays || '', type: m.type || '', ...(d.admin ? { email: m.email || '' } : {}) }; };
 
   if (chemin === '/restes-dus/moi') {
     const codes = d.admin
