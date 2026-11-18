@@ -20,12 +20,14 @@
   // ---------- Session et état ----------
   let session = null;
   try { const x = JSON.parse(localStorage.getItem(CLE_SESSION) || 'null'); if (x && x.jeton) session = x; } catch (e) {}
-  const S = { moi: null, annee: new Date().getFullYear(), config: null, franchises: [], moisChiffres: null, notes: new Map(), file: [], comptes: [] };
+  const S = { moi: null, annee: new Date().getFullYear(), config: null, editions: [], franchises: [], moisChiffres: null, notes: new Map(), file: [], comptes: [] };
+  const ICONES = ['🏝️', '🌴', '⛱️', '🌊', '🐠', '⛰️', '🏔️', '🏛️', '🗼', '🏰', '⛵', '✈️', '🌍', '☀️', '🍷', '🎯', '⭐', '🤝'];
+  let surAccueil = true;
   const cleCache = () => 'seminaireCache:' + (session && session.profil ? session.profil.email : '');
   const cleFile = () => 'seminaireFile:' + (session && session.profil ? session.profil.email : '');
   function sauverCache() {
     try { localStorage.setItem(cleFile(), JSON.stringify(S.file)); } catch (e) { console.warn('file', e); alert('Mémoire de l’appareil pleine : reconnectez-vous au réseau pour envoyer vos notes.'); }
-    const base = { moi: S.moi, annee: S.annee, config: S.config, franchises: S.franchises, moisChiffres: S.moisChiffres };
+    const base = { moi: S.moi, annee: S.annee, config: S.config, editions: S.editions, franchises: S.franchises, moisChiffres: S.moisChiffres };
     try { localStorage.setItem(cleCache(), JSON.stringify({ ...base, notes: [...S.notes.values()] })); }
     catch (e) {
       // Trop lourd (notes au stylet) : on garde sur l'appareil les tracés de ses propres notes seulement
@@ -37,7 +39,7 @@
   function lireCache() {
     try {
       const c = JSON.parse(localStorage.getItem(cleCache()) || 'null');
-      if (c) { S.moi = c.moi; S.annee = c.annee || S.annee; S.config = c.config; S.franchises = c.franchises || []; S.moisChiffres = c.moisChiffres; (c.notes || []).forEach(n => S.notes.set(n.id, n)); }
+      if (c) { S.moi = c.moi; S.annee = c.annee || S.annee; S.config = c.config; S.editions = c.editions || []; S.franchises = c.franchises || []; S.moisChiffres = c.moisChiffres; (c.notes || []).forEach(n => S.notes.set(n.id, n)); }
       S.file = JSON.parse(localStorage.getItem(cleFile()) || '[]');
       return !!c;
     } catch (e) { return false; }
@@ -49,7 +51,7 @@
   function verrouiller(message) {
     // Les notes non envoyées restent sur l'appareil (file d'attente) ; tout le reste est effacé de l'appareil
     try { localStorage.removeItem(cleCache()); } catch (e) {}
-    S.moi = null; S.config = null; S.franchises = []; S.notes.clear(); S.comptes = []; cfg = null;
+    surAccueil = true; S.moi = null; S.config = null; S.editions = []; S.franchises = []; S.notes.clear(); S.comptes = []; cfg = null;
     S.notes = new Map(S.file.map(n => [n.id, n]));
     fenetreFr = null; $('#fenetre').innerHTML = '';
     afficherConnexion();
@@ -98,7 +100,8 @@
         if (refus.length) alert('Certaines notes ont été refusées : ' + refus.map(x => x.erreur).join(', '));
       }
       if (complet) {
-        const [moi, cfg, fr] = await Promise.all([appel('/seminaire/moi'), appel('/seminaire/config?annee=' + S.annee), appel('/seminaire/franchises')]);
+        const [moi, cfg, fr, ed] = await Promise.all([appel('/seminaire/moi'), appel('/seminaire/config?annee=' + S.annee), appel('/seminaire/franchises'), appel('/seminaire/editions')]);
+        S.editions = ed.editions || [];
         $('#bandeau-erreur').hidden = true; S.erreur = null; S.moi = moi; S.config = cfg.config; S.franchises = fr.franchises || []; S.moisChiffres = fr.mois;
       }
       const n = await appel('/seminaire/notes?annee=' + S.annee);
@@ -157,7 +160,8 @@
     document.querySelectorAll('#onglets button').forEach(b => b.onclick = () => vue(b.dataset.vue));
     $('#fr-q').oninput = rendreFranchises; $('#fr-mes').onchange = rendreFranchises;
     $('#pl-ajouter').onclick = () => ouvrirNote({ type: 'speed' });
-    $('#sy-auteur').onchange = rendreSynthese; $('#sy-annee').onchange = async () => { S.annee = +$('#sy-annee').value; S.notes.clear(); await synchroniser(true); };
+    $('#sy-auteur').onchange = rendreSynthese;
+    brancherAccueil();
     $('#sy-excel').onclick = exporterExcel;
     ['#cr-q', '#cr-auteur', '#cr-type', '#cr-ordre', '#cr-realises'].forEach(id => { $(id).oninput = $(id).onchange = rendreComptesRendus; });
     $('#cr-imprimer').onclick = () => window.print();
@@ -179,7 +183,7 @@
     if (etatReseau === 'session' && !cache) afficherConnexion();
   }
   function afficherConnexion() {
-    $('#ecran-connexion').hidden = false; $('#principal').hidden = true; $('#onglets').hidden = true;
+    $('#ecran-connexion').hidden = false; $('#principal').hidden = true; $('#onglets').hidden = true; $('#ecran-accueil').hidden = true; $('#btn-seminaires').hidden = true;
     if (session && session.profil) $('#cx-user').value = session.profil.email;
   }
   async function connecter() {
@@ -201,12 +205,82 @@
     } catch (e) { $('#cx-info').textContent = e.message; }
   }
   function ouvrirAppli() {
-    $('#ecran-connexion').hidden = true; $('#principal').hidden = false; $('#onglets').hidden = false;
+    $('#ecran-connexion').hidden = true;
     $('#lien-deconnexion').hidden = false;
     $('#qui').innerHTML = esc(S.moi.nom || monEmail()) + (resp() ? ' · responsable' : '') + '<span id="qui-duree"></span>';
     surveillerSession();
     $('#onglet-reglages').hidden = !resp();
-    afficherSync(); rafraichir();
+    afficherSync();
+    if (surAccueil) afficherAccueil(); else { $('#principal').hidden = false; $('#onglets').hidden = false; rafraichir(); }
+  }
+
+  // ---------- Accueil : choix du séminaire ----------
+  const datesEdition = e => {
+    if (!e.du && !e.au) return String(e.annee);
+    const f = x => new Date(x + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    return e.du && e.au ? `du ${f(e.du).replace(/ \d{4}$/, '')} au ${f(e.au)}` : f(e.du || e.au);
+  };
+  function afficherAccueil() {
+    surAccueil = true; fenetreFr = null; $('#fenetre').innerHTML = '';
+    $('#principal').hidden = true; $('#onglets').hidden = true; $('#ecran-accueil').hidden = false; $('#btn-seminaires').hidden = true;
+    $('#titre-edition').textContent = 'Séminaires franchisés';
+    const l = S.editions || [];
+    $('#acc-liste').innerHTML = l.length ? l.map(e => `<div class="carte-sem" data-annee="${e.annee}"><div class="icone">${esc(e.icone || '🏝️')}</div>
+      <div><b>${esc(e.titre)}</b>${e.lieu ? `<div class="lieu">${esc(e.lieu)}</div>` : ''}<div class="dates">${esc(datesEdition(e))}</div></div></div>`).join('')
+      : `<div class="carte"><p class="muted">${resp() ? 'Aucun séminaire pour l’instant : créez le premier.' : 'Aucun séminaire pour l’instant.'}</p></div>`;
+    $('#acc-liste').querySelectorAll('[data-annee]').forEach(x => x.onclick = () => choisirEdition(+x.dataset.annee));
+    $('#acc-ouvrir-nouveau').hidden = !resp() || !$('#acc-nouveau').hidden;
+    window.scrollTo(0, 0);
+  }
+  async function choisirEdition(annee) {
+    surAccueil = false;
+    $('#ecran-accueil').hidden = true; $('#principal').hidden = false; $('#onglets').hidden = false; $('#btn-seminaires').hidden = false;
+    const e = (S.editions || []).find(x => x.annee === annee) || {};
+    $('#titre-edition').textContent = `${e.icone || ''} ${e.titre || 'Séminaire ' + annee}`.trim();
+    if (annee !== S.annee || !S.config || S.config._parDefaut || S.config.annee !== annee) {
+      S.annee = annee; S.config = null; S.notes = new Map(S.file.map(n => [n.id, n]));
+      document.querySelectorAll('.vue').forEach(v => v.classList.remove('actif'));
+      $('#vue-franchises').classList.add('actif'); vueActive = 'franchises';
+      document.querySelectorAll('#onglets button').forEach(b => b.classList.toggle('actif', b.dataset.vue === 'franchises'));
+      $('#fr-liste').innerHTML = '<p class="muted">Chargement du séminaire…</p>';
+      await synchroniser(true);
+      if (!S.config) { afficherAccueil(); alert(etatReseau === 'hors' ? 'Connexion internet nécessaire pour ouvrir ce séminaire la première fois.' : 'Impossible d’ouvrir ce séminaire.'); return; }
+    }
+    else synchroniser(true); // séminaire déjà chargé : affichage immédiat, mise à jour en arrière-plan
+    vue(vueActive);
+  }
+  function brancherAccueil() {
+    $('#btn-seminaires').onclick = afficherAccueil;
+    let icone = '🏝️';
+    const icones = () => { $('#acc-icones').innerHTML = ICONES.map(i => `<button type="button" data-i="${i}" class="${i === icone ? 'on' : ''}">${i}</button>`).join(''); $('#acc-icones').querySelectorAll('[data-i]').forEach(b => b.onclick = () => { icone = b.dataset.i; icones(); }); };
+    $('#acc-ouvrir-nouveau').onclick = () => {
+      const pris = new Set((S.editions || []).map(e => e.annee)); let a = new Date().getFullYear(); while (pris.has(a)) a++;
+      $('#acc-annee').value = a; $('#acc-titre').value = `Séminaire franchisés ${a}`; $('#acc-lieu').value = ''; $('#acc-du').value = ''; $('#acc-au').value = ''; $('#acc-info').textContent = '';
+      $('#acc-reprendre').closest('label').hidden = !(S.editions || []).length;
+      icone = '🏝️'; icones(); $('#acc-nouveau').hidden = false; $('#acc-ouvrir-nouveau').hidden = true; $('#acc-titre').focus();
+    };
+    $('#acc-annee').oninput = () => { const a = $('#acc-annee').value; if (/^Séminaire franchisés \d{4}$/.test($('#acc-titre').value)) $('#acc-titre').value = 'Séminaire franchisés ' + a; };
+    $('#acc-annuler').onclick = () => { $('#acc-nouveau').hidden = true; afficherAccueil(); };
+    $('#acc-creer').onclick = async () => {
+      const a = +$('#acc-annee').value;
+      if (!(a >= 2024 && a <= 2100)) { $('#acc-info').textContent = 'Année invalide'; return; }
+      if ((S.editions || []).some(e => e.annee === a)) { $('#acc-info').textContent = `Un séminaire existe déjà pour ${a} (un séminaire par année).`; return; }
+      $('#acc-info').textContent = 'Création…';
+      try {
+        const c = (await appel('/seminaire/config?annee=' + a)).config;
+        const prec = (S.editions || []).filter(e => e.annee < a).sort((x, y) => y.annee - x.annee)[0] || (S.editions || [])[0];
+        if ($('#acc-reprendre').checked && prec) {
+          const p = (await appel('/seminaire/config?annee=' + prec.annee)).config;
+          ['sujetsProposes', 'momentsSeminaire', 'sujetCentral', 'besoinsProposes'].forEach(k => { if (p[k]) c[k] = p[k]; });
+        }
+        Object.assign(c, { annee: a, titre: $('#acc-titre').value.trim() || `Séminaire franchisés ${a}`, lieu: $('#acc-lieu').value.trim(), du: $('#acc-du').value, au: $('#acc-au').value, icone, planning: [], participants: [] });
+        delete c._parDefaut; delete c._maj; delete c._par;
+        await appel('/seminaire/config', { method: 'PUT', body: JSON.stringify(c) });
+        S.editions = [{ annee: a, titre: c.titre, lieu: c.lieu, du: c.du, au: c.au, icone }, ...(S.editions || []).filter(e => e.annee !== a)].sort((x, y) => y.annee - x.annee);
+        $('#acc-nouveau').hidden = true; S.config = null; sauverCache();
+        choisirEdition(a);
+      } catch (e) { $('#acc-info').textContent = e.horsLigne ? 'Connexion internet nécessaire.' : e.message; }
+    };
   }
   let vueActive = 'franchises';
   function vue(v) {
@@ -217,8 +291,8 @@
     rafraichir(); window.scrollTo(0, 0);
   }
   function rafraichir() {
-    if (!S.moi) return;
-    $('#titre-edition').textContent = (S.config && S.config.titre) || 'Séminaire franchisés';
+    if (!S.moi || !S.config || surAccueil) { if (S.moi && surAccueil) afficherAccueil(); return; }
+    $('#titre-edition').textContent = `${S.config.icone || ''} ${S.config.titre || 'Séminaire franchisés'}`.trim();
     if (vueActive === 'franchises') rendreFranchises();
     if (vueActive === 'planning') rendrePlanning();
     if (vueActive === 'synthese') rendreSynthese();
@@ -651,8 +725,6 @@
       const v = sel.value; sel.hidden = false;
       sel.innerHTML = '<option value="">Tous les directeurs</option>' + auteurs.map(([e, n]) => `<option value="${esc(e)}"${e === v ? ' selected' : ''}>${esc(n || e)}</option>`).join('');
     }
-    const annees = [...new Set([...(S.moi.annees || []), S.annee, new Date().getFullYear()])].sort((a, b) => b - a);
-    $('#sy-annee').innerHTML = annees.map(a => `<option${a === S.annee ? ' selected' : ''}>${a}</option>`).join('');
     const ns = notesSynthese();
     const preps = ns.filter(n => n.type === 'preparation'), ech = ns.filter(n => n.type === 'speed' || n.type === 'informel');
     const speed = ech.filter(n => n.type === 'speed'), realises = speed.filter(n => n.donnees.realise);
@@ -735,13 +807,11 @@
   let cfg = null, reglagesBranches = false;
   async function brancherReglages() {
     if (!resp()) return;
-    const a0 = new Date().getFullYear();
-    $('#rg-annee').innerHTML = [...new Set([a0 + 1, a0, S.annee, ...(S.moi.annees || [])])].sort((a, b) => b - a).map(a => `<option${a === S.annee ? ' selected' : ''}>${a}</option>`).join('');
+    $('#rg-annee').innerHTML = `<option>${S.annee}</option>`;
     cfg = JSON.parse(JSON.stringify(S.config));
     remplirReglages();
     chargerComptes();
     if (reglagesBranches) return; reglagesBranches = true;
-    $('#rg-annee').onchange = async () => { try { const d = await appel('/seminaire/config?annee=' + $('#rg-annee').value); cfg = d.config; remplirReglages(); } catch (e) { $('#rg-info').textContent = e.message; } };
     $('#rg-enregistrer').onclick = () => enregistrerReglages('#rg-info');
     $('#pp-enregistrer').onclick = () => enregistrerReglages('#pp-info');
     $('#pp-q').oninput = rendreParticipantsReglages;
@@ -765,6 +835,8 @@
   }
   function remplirReglages() {
     const c = cfg;
+    const icones = () => { $('#rg-icones').innerHTML = ICONES.map(i => `<button type="button" data-i="${i}" class="${i === (cfg.icone || '🏝️') ? 'on' : ''}">${i}</button>`).join(''); $('#rg-icones').querySelectorAll('[data-i]').forEach(b => b.onclick = () => { cfg.icone = b.dataset.i; icones(); }); };
+    icones();
     $('#rg-titre').value = c.titre || ''; $('#rg-lieu').value = c.lieu || ''; $('#rg-du').value = c.du || ''; $('#rg-au').value = c.au || '';
     $('#rg-sujets').value = (c.sujetsProposes || []).join('\n');
     $('#rg-moments').value = (c.momentsSeminaire || MOMENTS_DEFAUT).join('\n');
@@ -881,6 +953,8 @@
       cfg = { ...c, _maj: new Date().toISOString() };
       if (c.annee === S.annee) S.config = JSON.parse(JSON.stringify(c));
       if (!(S.moi.annees || []).includes(c.annee)) S.moi.annees = [...(S.moi.annees || []), c.annee];
+      S.editions = [{ annee: c.annee, titre: c.titre, lieu: c.lieu, du: c.du, au: c.au, icone: c.icone || '' }, ...(S.editions || []).filter(e => e.annee !== c.annee)].sort((x, y) => y.annee - x.annee);
+      if (c.annee === S.annee && !surAccueil) $('#titre-edition').textContent = `${c.icone || ''} ${c.titre}`.trim();
       sauverCache(); $(cible).textContent = 'Enregistré ✓';
       const sansCompte = (c.planning || []).filter(x => !x.directeur).map(x => x.libelle);
       if (sansCompte.length) $(cible).textContent += ` · colonnes sans compte : ${sansCompte.join(', ')}`;

@@ -17,7 +17,8 @@
 <body>
 <header class="entete">
   <img src="../assets/logo-optical-center.png" alt="Optical Center">
-  <h1><small>Optical Center</small><span id="titre-edition">Séminaire franchisés</span></h1>
+  <h1><small>Optical Center</small><span id="titre-edition">Séminaires franchisés</span></h1>
+  <button id="btn-seminaires" class="pas-imprimer" hidden title="Revenir à la liste des séminaires">← Séminaires</button>
   <div class="droite"><span id="etat-sync" class="sync hors" hidden></span><br><span id="qui"></span> <a href="#" id="lien-deconnexion" hidden>Déconnexion</a></div>
 </header>
 
@@ -29,6 +30,22 @@
     <label for="cx-pass">Mot de passe</label><input id="cx-pass" type="password" autocomplete="current-password">
     <button class="primaire" id="btn-connexion" style="width:100%;margin-top:14px">Se connecter</button>
     <p class="muted petit" id="cx-info" style="min-height:1.2em"></p>
+  </div>
+</section>
+
+<section id="ecran-accueil" hidden>
+  <div class="accueil">
+    <h2 class="titre-accueil">Choisissez un séminaire</h2>
+    <div class="grille-sem" id="acc-liste"></div>
+    <button id="acc-ouvrir-nouveau" hidden>+ Nouveau séminaire</button>
+    <div class="carte" id="acc-nouveau" hidden>
+      <h2>Nouveau séminaire</h2>
+      <div class="ligne"><div style="flex:1;min-width:110px"><label>Année</label><input id="acc-annee" type="number" min="2024" max="2100"></div><div style="flex:3;min-width:200px"><label>Titre</label><input id="acc-titre"></div></div>
+      <div class="ligne"><div style="flex:2;min-width:160px"><label>Lieu</label><input id="acc-lieu" placeholder="Punta Cana…"></div><div style="flex:1;min-width:140px"><label>Du</label><input id="acc-du" type="date"></div><div style="flex:1;min-width:140px"><label>Au</label><input id="acc-au" type="date"></div></div>
+      <label>Icône</label><div class="choix-icones" id="acc-icones"></div>
+      <label class="ligne" style="font-weight:600"><input type="checkbox" id="acc-reprendre" style="width:auto" checked> Reprendre les sujets proposés, les ateliers et les questions du séminaire précédent</label>
+      <div class="ligne" style="margin-top:10px"><button class="primaire" id="acc-creer">Créer le séminaire</button><button id="acc-annuler">Annuler</button><span class="muted petit" id="acc-info"></span></div>
+    </div>
   </div>
 </section>
 
@@ -98,7 +115,6 @@
     <div class="carte pas-imprimer">
       <div class="ligne">
         <select id="sy-auteur" style="flex:1;min-width:180px" hidden></select>
-        <select id="sy-annee" style="width:auto"></select>
         <button id="sy-excel">Exporter en Excel</button>
         <button id="sy-imprimer">Imprimer</button>
       </div>
@@ -109,7 +125,8 @@
   <section class="vue" id="vue-reglages">
     <div class="carte">
       <h2>Séminaire de l'année</h2>
-      <div class="ligne"><div style="flex:1;min-width:160px"><label>Année</label><select id="rg-annee"></select></div><div style="flex:3;min-width:220px"><label>Titre</label><input id="rg-titre"></div></div>
+      <div class="ligne"><div style="flex:1;min-width:110px"><label>Année</label><select id="rg-annee" disabled></select></div><div style="flex:3;min-width:220px"><label>Titre</label><input id="rg-titre"></div></div>
+      <label>Icône (page d'accueil)</label><div class="choix-icones" id="rg-icones"></div>
       <div class="ligne"><div style="flex:2;min-width:160px"><label>Lieu</label><input id="rg-lieu"></div><div style="flex:1;min-width:140px"><label>Du</label><input id="rg-du" type="date"></div><div style="flex:1;min-width:140px"><label>Au</label><input id="rg-au" type="date"></div></div>
       <label>Sujets proposés (un par ligne)</label><textarea id="rg-sujets" rows="6"></textarea>
       <label>Ateliers et moments du séminaire (un par ligne)</label>
@@ -156,6 +173,6 @@
 <div id="fenetre"></div>
 
 <script src="../lib/xlsx.full.min.js" defer></script>
-<script src="sem.js?v=2026.11.18-4"></script>
+<script src="sem.js?v=2026.11.18-5"></script>
 </body>
 </html>
