@@ -154,6 +154,12 @@ export async function routesSeminaire(request, env, p, chemin, url, h, json, err
     const r = await env.DB.prepare('SELECT annee FROM seminaire_config ORDER BY annee DESC').all();
     return json({ ok: true, email, nom: d.nom, droit: d.droit, annees: (r.results || []).map(x => x.annee) }, 200, h);
   }
+  // Page d'accueil : un séminaire par année (titre, lieu, dates, icône)
+  if (chemin === '/seminaire/editions') {
+    const r = await env.DB.prepare('SELECT annee, valeur FROM seminaire_config ORDER BY annee DESC').all();
+    const editions = (r.results || []).map(x => { let c = {}; try { c = JSON.parse(x.valeur); } catch (e) {} return { annee: x.annee, titre: c.titre || `Séminaire franchisés ${x.annee}`, lieu: c.lieu || '', du: c.du || '', au: c.au || '', icone: c.icone || '' }; });
+    return json({ ok: true, editions }, 200, h);
+  }
   if (chemin === '/seminaire/config' && request.method === 'GET') {
     if (!(annee >= 2024 && annee <= 2100)) return erreur('Année invalide', 400, h);
     return json({ ok: true, config: filtrerConfig(await lireConfig(env, annee), email, resp) }, 200, h);
