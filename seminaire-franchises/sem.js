@@ -23,6 +23,38 @@
   const S = { moi: null, annee: new Date().getFullYear(), config: null, editions: [], franchises: [], moisChiffres: null, notes: new Map(), file: [], comptes: [] };
   const ICONES = ['🏝️', '🌴', '⛱️', '🌊', '🐠', '⛰️', '🏔️', '🏛️', '🗼', '🏰', '⛵', '✈️', '🌍', '☀️', '🍷', '🎯', '⭐', '🤝'];
   let surAccueil = true;
+  // Icône d'un séminaire : un émoji, ou une photo (album ou appareil photo) recadrée en carré
+  const estPhoto = i => typeof i === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(i);
+  const iconeHtml = (i, taille) => estPhoto(i) ? `<img src="${i}" alt="" style="${taille ? `width:${taille}px;height:${taille}px;` : ''}border-radius:50%;object-fit:cover;vertical-align:middle">` : esc(i || '🏝️');
+  const titreHtml = (i, t) => `${i ? iconeHtml(i, 26) + ' ' : ''}${esc(t)}`;
+  // Choix de l'icône : grille d'émojis + bouton Photo ; quand(icone) est appelé à chaque choix
+  function grilleIcones(conteneur, actuelle, quand) {
+    const rendre = () => {
+      conteneur.innerHTML = `<button type="button" data-photo class="${estPhoto(actuelle) ? 'on' : ''}" title="Photo de l'album ou de l'appareil photo" style="${estPhoto(actuelle) ? 'padding:3px' : 'font-size:14px'}">${estPhoto(actuelle) ? iconeHtml(actuelle, 38) : '📷 Photo'}</button>`
+        + ICONES.map(i => `<button type="button" data-i="${i}" class="${i === actuelle ? 'on' : ''}">${i}</button>`).join('');
+      conteneur.querySelectorAll('[data-i]').forEach(b => b.onclick = () => { actuelle = b.dataset.i; quand(actuelle); rendre(); });
+      conteneur.querySelector('[data-photo]').onclick = () => {
+        const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/*';
+        f.onchange = async () => { const fic = f.files[0]; if (!fic) return; try { actuelle = await photoCarree(fic, 320); quand(actuelle); rendre(); } catch (e) { alert('Photo illisible : ' + e.message); } };
+        f.click();
+      };
+    };
+    rendre();
+  }
+  // Recadrage au centre en carré, réduit (~30 Ko) pour rester léger sur les téléphones
+  function photoCarree(fichier, cote) {
+    return new Promise((ok, ko) => {
+      const url = URL.createObjectURL(fichier), img = new Image();
+      img.onload = () => {
+        const c = Math.min(img.naturalWidth, img.naturalHeight); if (!c) { URL.revokeObjectURL(url); return ko(new Error('image vide')); }
+        const cv = document.createElement('canvas'); cv.width = cv.height = cote;
+        cv.getContext('2d').drawImage(img, (img.naturalWidth - c) / 2, (img.naturalHeight - c) / 2, c, c, 0, 0, cote, cote);
+        URL.revokeObjectURL(url); ok(cv.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); ko(new Error('format non reconnu (essayez une photo JPEG)')); };
+      img.src = url;
+    });
+  }
   const cleCache = () => 'seminaireCache:' + (session && session.profil ? session.profil.email : '');
   const cleFile = () => 'seminaireFile:' + (session && session.profil ? session.profil.email : '');
   function sauverCache() {
@@ -225,7 +257,7 @@
     $('#principal').hidden = true; $('#onglets').hidden = true; $('#ecran-accueil').hidden = false; $('#btn-seminaires').hidden = true;
     $('#titre-edition').textContent = 'Séminaires franchisés';
     const l = S.editions || [];
-    $('#acc-liste').innerHTML = l.length ? l.map(e => `<div class="carte-sem" data-annee="${e.annee}"><div class="icone">${esc(e.icone || '🏝️')}</div>
+    $('#acc-liste').innerHTML = l.length ? l.map(e => `<div class="carte-sem" data-annee="${e.annee}"><div class="icone">${iconeHtml(e.icone)}</div>
       <div><b>${esc(e.titre)}</b>${e.lieu ? `<div class="lieu">${esc(e.lieu)}</div>` : ''}<div class="dates">${esc(datesEdition(e))}</div></div></div>`).join('')
       : `<div class="carte"><p class="muted">${resp() ? 'Aucun séminaire pour l’instant : créez le premier.' : 'Aucun séminaire pour l’instant.'}</p></div>`;
     $('#acc-liste').querySelectorAll('[data-annee]').forEach(x => x.onclick = () => choisirEdition(+x.dataset.annee));
@@ -236,7 +268,7 @@
     surAccueil = false;
     $('#ecran-accueil').hidden = true; $('#principal').hidden = false; $('#onglets').hidden = false; $('#btn-seminaires').hidden = false;
     const e = (S.editions || []).find(x => x.annee === annee) || {};
-    $('#titre-edition').textContent = `${e.icone || ''} ${e.titre || 'Séminaire ' + annee}`.trim();
+    $('#titre-edition').innerHTML = titreHtml(e.icone, e.titre || 'Séminaire ' + annee);
     if (annee !== S.annee || !S.config || S.config._parDefaut || S.config.annee !== annee) {
       S.annee = annee; S.config = null; S.notes = new Map(S.file.map(n => [n.id, n]));
       document.querySelectorAll('.vue').forEach(v => v.classList.remove('actif'));
@@ -252,7 +284,7 @@
   function brancherAccueil() {
     $('#btn-seminaires').onclick = afficherAccueil;
     let icone = '🏝️';
-    const icones = () => { $('#acc-icones').innerHTML = ICONES.map(i => `<button type="button" data-i="${i}" class="${i === icone ? 'on' : ''}">${i}</button>`).join(''); $('#acc-icones').querySelectorAll('[data-i]').forEach(b => b.onclick = () => { icone = b.dataset.i; icones(); }); };
+    const icones = () => grilleIcones($('#acc-icones'), icone, i => { icone = i; });
     $('#acc-ouvrir-nouveau').onclick = () => {
       const pris = new Set((S.editions || []).map(e => e.annee)); let a = new Date().getFullYear(); while (pris.has(a)) a++;
       $('#acc-annee').value = a; $('#acc-titre').value = `Séminaire franchisés ${a}`; $('#acc-lieu').value = ''; $('#acc-du').value = ''; $('#acc-au').value = ''; $('#acc-info').textContent = '';
@@ -292,7 +324,7 @@
   }
   function rafraichir() {
     if (!S.moi || !S.config || surAccueil) { if (S.moi && surAccueil) afficherAccueil(); return; }
-    $('#titre-edition').textContent = `${S.config.icone || ''} ${S.config.titre || 'Séminaire franchisés'}`.trim();
+    $('#titre-edition').innerHTML = titreHtml(S.config.icone, S.config.titre || 'Séminaire franchisés');
     if (vueActive === 'franchises') rendreFranchises();
     if (vueActive === 'planning') rendrePlanning();
     if (vueActive === 'synthese') rendreSynthese();
@@ -835,7 +867,7 @@
   }
   function remplirReglages() {
     const c = cfg;
-    const icones = () => { $('#rg-icones').innerHTML = ICONES.map(i => `<button type="button" data-i="${i}" class="${i === (cfg.icone || '🏝️') ? 'on' : ''}">${i}</button>`).join(''); $('#rg-icones').querySelectorAll('[data-i]').forEach(b => b.onclick = () => { cfg.icone = b.dataset.i; icones(); }); };
+    const icones = () => grilleIcones($('#rg-icones'), cfg.icone || '🏝️', ic => { cfg.icone = ic; });
     icones();
     $('#rg-titre').value = c.titre || ''; $('#rg-lieu').value = c.lieu || ''; $('#rg-du').value = c.du || ''; $('#rg-au').value = c.au || '';
     $('#rg-sujets').value = (c.sujetsProposes || []).join('\n');
@@ -954,7 +986,7 @@
       if (c.annee === S.annee) S.config = JSON.parse(JSON.stringify(c));
       if (!(S.moi.annees || []).includes(c.annee)) S.moi.annees = [...(S.moi.annees || []), c.annee];
       S.editions = [{ annee: c.annee, titre: c.titre, lieu: c.lieu, du: c.du, au: c.au, icone: c.icone || '' }, ...(S.editions || []).filter(e => e.annee !== c.annee)].sort((x, y) => y.annee - x.annee);
-      if (c.annee === S.annee && !surAccueil) $('#titre-edition').textContent = `${c.icone || ''} ${c.titre}`.trim();
+      if (c.annee === S.annee && !surAccueil) $('#titre-edition').innerHTML = titreHtml(c.icone, c.titre);
       sauverCache(); $(cible).textContent = 'Enregistré ✓';
       const sansCompte = (c.planning || []).filter(x => !x.directeur).map(x => x.libelle);
       if (sansCompte.length) $(cible).textContent += ` · colonnes sans compte : ${sansCompte.join(', ')}`;
