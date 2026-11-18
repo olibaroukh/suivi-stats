@@ -32,7 +32,7 @@ label{display:block;font-size:12px;font-weight:700;color:#6d6566;margin:12px 0 5
 .sync{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:700;background:#E3F2EA;color:var(--ok)}
 .sync.attente{background:#FDF1DC;color:var(--warn)}.sync.hors{background:var(--soft);color:var(--accent)}
 nav.onglets{position:fixed;bottom:0;left:0;right:0;z-index:6;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px)}
-nav.onglets button{flex:1;border:none;border-radius:0;background:none;padding:9px 2px 8px;font-size:10.5px;color:#6d6566;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav.onglets button{flex:1;min-width:0;border:none;border-radius:0;background:none;padding:9px 1px 8px;font-size:9.5px;line-height:1.15;color:#6d6566;display:flex;flex-direction:column;align-items:center;gap:2px}
 nav.onglets button span{font-size:19px;line-height:1}
 nav.onglets button.actif{color:var(--accent)}
 main{max-width:920px;margin:0 auto;padding:14px 14px 20px}
@@ -83,3 +83,27 @@ th{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted
 .lecture{background:#FDF9F8}
 @media (min-width:900px){nav.onglets{position:static;border-top:none;border-bottom:1px solid var(--line);justify-content:center}nav.onglets button{flex:0 0 auto;flex-direction:row;font-size:12px;padding:12px 18px;gap:6px}nav.onglets button span{font-size:15px}body{padding-bottom:0}}
 @media print{nav.onglets,.entete .droite,.pas-imprimer{display:none!important}body{background:#fff}.carte{break-inside:avoid}}
+
+/* Comptes rendus */
+.cr{border:1px solid var(--line);border-radius:14px;background:#fff;padding:12px 14px;margin-bottom:10px;break-inside:avoid;cursor:pointer}
+.cr .en-tete{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.cr .en-tete b{font-size:14px}
+.cr .meta{font-size:11.5px;color:var(--muted)}
+.cr h4{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);margin:10px 0 3px}
+.cr p{margin:2px 0;white-space:pre-wrap;font-size:13px;line-height:1.45}
+.cr table{font-size:12px}
+.cr .vignettes{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.cr .vignettes img{width:150px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.groupe-cr{font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin:16px 4px 6px;color:#6d6566}
+/* Stylet */
+.ms-item{display:flex;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.ms-item img{width:72px;border:1px solid var(--line);border-radius:6px;background:#fff;flex:none}
+.ms-item b{display:block}
+.outils{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 14px;background:var(--bg);position:sticky;top:44px;z-index:2}
+.outils button{padding:7px 10px;font-size:13px}
+.outils button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.outils .pastille-couleur{width:26px;height:26px;border-radius:50%;padding:0;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.outils .pastille-couleur.on{box-shadow:0 0 0 2px var(--ink)}
+.zone-page{display:flex;justify-content:center;padding:6px 14px 20px}
+canvas.page{background:#fff;border-radius:6px;box-shadow:0 2px 12px rgba(0,0,0,.08);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@media print{.cr{border-color:#ddd}.groupe-cr{margin-top:10px}}
