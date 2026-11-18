@@ -445,6 +445,10 @@
       ctx.moveTo(p[(i - 1) * 3] * k, p[(i - 1) * 3 + 1] * k); ctx.lineTo(p[i * 3] * k, p[i * 3 + 1] * k); ctx.stroke();
     }
   }
+  const MOMENTS_DEFAUT = ['Plénière', 'Atelier ouvertures de magasins'];
+  const moments = () => (S.config && S.config.momentsSeminaire) || MOMENTS_DEFAUT;
+  const estSeminaire = n => n.type === 'manuscrit' && (n.donnees || {}).rattachement === 'seminaire';
+  const libelleRattachement = n => estSeminaire(n) ? 'Séminaire · ' + ((n.donnees || {}).moment || 'général') : (n.franchise || '');
   const cacheVignettes = new Map();
   function imagePage(traits, largeur) {
     const c = document.createElement('canvas'), k = largeur / PAGE_L;
@@ -465,7 +469,7 @@
     $('#ms-liste').innerHTML = l.length ? l.map(n => {
       const pages = n.donnees.pages || [], img = pages.length && pages[0].length ? imagePage(pages[0], 144) : '';
       return `<div class="ms-item" data-note="${esc(n.id)}">${img ? `<img src="${img}" alt="">` : '<div style="width:72px;height:102px;border:1px dashed var(--line);border-radius:6px;flex:none"></div>'}
-        <div><b>${esc(n.donnees.titre || 'Sans titre')}</b><span class="petit muted">${n.franchise ? esc(n.franchise) + ' · ' : ''}${esc(dateFr(n.donnees.date || n.creeLe))} · ${pages.length} page${pages.length > 1 ? 's' : ''}${n.auteur !== monEmail() ? ' · ' + esc(n.auteurNom) : ''}</span></div></div>`;
+        <div><b>${esc(n.donnees.titre || 'Sans titre')}</b><span class="petit muted">${libelleRattachement(n) ? (estSeminaire(n) ? '🗂 ' : '') + esc(libelleRattachement(n)) + ' · ' : ''}${esc(dateFr(n.donnees.date || n.creeLe))} · ${pages.length} page${pages.length > 1 ? 's' : ''}${n.auteur !== monEmail() ? ' · ' + esc(n.auteurNom) : ''}</span></div></div>`;
     }).join('') : '<p class="muted petit">Aucune note au stylet pour l’instant.</p>';
     $('#ms-liste').querySelectorAll('[data-note]').forEach(x => x.onclick = () => ouvrirManuscrit(S.notes.get(x.dataset.note)));
   }
@@ -482,7 +486,9 @@
       <div class="barre-haut"><button id="ms-retour">← Retour</button><h3>✍️ Note au stylet${lecture ? ' · ' + esc(n.auteurNom) : ''}</h3><span class="pousse petit muted" id="ms-etat"></span></div>
       <div class="contenu"><div class="ligne" style="margin-bottom:6px">
         <input id="ms-titre" placeholder="Titre (facultatif)" value="${esc(d.titre || '')}" style="flex:2;min-width:160px"${dis}>
-        <input id="ms-fr" list="ms-liste-fr" placeholder="Franchisé (facultatif)" value="${esc(n.franchise || '')}" style="flex:2;min-width:160px"${dis}><datalist id="ms-liste-fr">${entrees().map(e => `<option value="${esc(e.cle)}">`).join('')}</datalist>
+        <select id="ms-rat" style="flex:0 0 auto;width:auto"${dis}><option value="franchise"${d.rattachement === 'seminaire' ? '' : ' selected'}>Franchisé</option><option value="seminaire"${d.rattachement === 'seminaire' ? ' selected' : ''}>Séminaire / atelier</option></select>
+        <input id="ms-fr" list="ms-liste-fr" placeholder="Franchisé (facultatif)" value="${esc(n.franchise || '')}" style="flex:2;min-width:160px"${dis}${d.rattachement === 'seminaire' ? ' hidden' : ''}><datalist id="ms-liste-fr">${entrees().map(e => `<option value="${esc(e.cle)}">`).join('')}</datalist>
+        <input id="ms-moment" list="ms-liste-moments" placeholder="Atelier, plénière… (choisir ou saisir)" value="${esc(d.moment || '')}" style="flex:2;min-width:160px"${dis}${d.rattachement === 'seminaire' ? '' : ' hidden'}><datalist id="ms-liste-moments">${moments().map(m => `<option value="${esc(m)}">`).join('')}</datalist>
         <input id="ms-date" type="date" value="${esc(d.date || '')}" style="flex:1;min-width:130px"${dis}>
       </div></div>
       <div class="outils">
@@ -503,13 +509,18 @@
       clearTimeout(minuterie); minuterie = null;
       if (lecture || !modifie) return;
       if (!base && vide()) return;
-      n.franchise = $('#ms-fr').value.trim(); d.titre = $('#ms-titre').value.trim(); d.date = $('#ms-date').value;
+      d.rattachement = $('#ms-rat').value;
+      if (d.rattachement === 'seminaire') { n.franchise = ''; d.moment = $('#ms-moment').value.trim(); } else { n.franchise = $('#ms-fr').value.trim(); delete d.moment; }
+      d.titre = $('#ms-titre').value.trim(); d.date = $('#ms-date').value;
       d.pages = d.pages.length > 1 ? d.pages.filter((pg, i) => pg.length || i === 0) : d.pages;
       enregistrerNote(n, true); base = n; modifie = false; etat('Enregistré ✓');
     }
     const plusTard = () => { modifie = true; etat('…'); clearTimeout(minuterie); minuterie = setTimeout(enregistrer, 2500); };
     $('#ms-retour').onclick = () => { enregistrer(); revenir(); };
-    if (!lecture) ['#ms-titre', '#ms-fr', '#ms-date'].forEach(id => { $(id).oninput = plusTard; });
+    if (!lecture) {
+      ['#ms-titre', '#ms-fr', '#ms-moment', '#ms-date'].forEach(id => { $(id).oninput = plusTard; });
+      $('#ms-rat').onchange = () => { const sem = $('#ms-rat').value === 'seminaire'; $('#ms-fr').hidden = sem; $('#ms-moment').hidden = !sem; (sem ? $('#ms-moment') : $('#ms-fr')).focus(); plusTard(); };
+    }
     if (!cv) return;
     const ctx = cv.getContext('2d');
     let k = 1;
@@ -612,17 +623,17 @@
     }
     const q = norm($('#cr-q').value), type = $('#cr-type').value, aut = resp() ? sel.value : '', real = $('#cr-realises').checked, ordre = $('#cr-ordre').value;
     const l = notesVisibles().filter(n => ['speed', 'informel', 'manuscrit'].includes(n.type))
-      .filter(n => (!type || n.type === type) && (!aut || n.auteur === aut) && (!real || n.type !== 'speed' || n.donnees.realise))
-      .filter(n => !q || norm([n.franchise, n.auteurNom, n.donnees.titre, n.donnees.notes, n.donnees.demandes, (n.donnees.sujets || []).join(' '), (n.donnees.actions || []).map(a => a.quoi).join(' '), Object.values(n.donnees.central || {}).flat().join(' ')].join(' ')).includes(q));
+      .filter(n => (!type || (type === 'seminaire' ? estSeminaire(n) : n.type === type)) && (!aut || n.auteur === aut) && (!real || n.type !== 'speed' || n.donnees.realise))
+      .filter(n => !q || norm([n.franchise, n.donnees.moment, n.auteurNom, n.donnees.titre, n.donnees.notes, n.donnees.demandes, (n.donnees.sujets || []).join(' '), (n.donnees.actions || []).map(a => a.quoi).join(' '), Object.values(n.donnees.central || {}).flat().join(' ')].join(' ')).includes(q));
     const cleDate = n => (n.donnees.date || String(n.creeLe).slice(0, 10)) + ' ' + (n.donnees.heure || '');
-    const groupe = n => ordre === 'auteur' ? (n.auteurNom || n.auteur) : ordre === 'date' ? dateFr(n.donnees.date || n.creeLe) : (n.franchise || 'Sans franchisé');
-    l.sort((a, b) => ordre === 'date' ? cleDate(a).localeCompare(cleDate(b)) : groupe(a).localeCompare(groupe(b), 'fr') || cleDate(a).localeCompare(cleDate(b)));
+    const groupe = n => ordre === 'auteur' ? (n.auteurNom || n.auteur) : ordre === 'date' ? dateFr(n.donnees.date || n.creeLe) : (libelleRattachement(n) || 'Sans rattachement');
+    l.sort((a, b) => ordre === 'date' ? cleDate(a).localeCompare(cleDate(b)) : (ordre === 'franchise' && (estSeminaire(b) - estSeminaire(a))) || groupe(a).localeCompare(groupe(b), 'fr') || cleDate(a).localeCompare(cleDate(b)));
     let dernier = null;
     const types = { speed: '⏱️ Speed dating', informel: '💬 Échange informel', manuscrit: '✍️ Note au stylet' };
     $('#cr-contenu').innerHTML = (l.length ? `<p class="muted petit" style="margin:0 4px 8px">${l.length} compte${l.length > 1 ? 's' : ''} rendu${l.length > 1 ? 's' : ''}${resp() ? '' : ' · vos rendez-vous'}</p>` : '<div class="carte"><p class="muted">Aucun compte rendu ne correspond.</p></div>') + l.map(n => {
       const g = groupe(n), titre = g !== dernier ? `<div class="groupe-cr">${esc(g)}</div>` : ''; dernier = g;
       const d = n.donnees;
-      return `${titre}<div class="cr" data-note="${esc(n.id)}"><div class="en-tete">${ordre !== 'franchise' && n.franchise ? `<b>${esc(n.franchise)}</b>` : ''}<span class="meta">${types[n.type]} · ${esc(dateFr(d.date || n.creeLe))}${d.heure ? ' ' + esc(d.heure) : ''}${ordre !== 'auteur' && (resp() || n.auteur !== monEmail()) ? ' · ' + esc(n.auteurNom) : ''}</span>
+      return `${titre}<div class="cr" data-note="${esc(n.id)}"><div class="en-tete">${ordre !== 'franchise' && libelleRattachement(n) ? `<b>${esc(libelleRattachement(n))}</b>` : ''}<span class="meta">${types[n.type]} · ${esc(dateFr(d.date || n.creeLe))}${d.heure ? ' ' + esc(d.heure) : ''}${ordre !== 'auteur' && (resp() || n.auteur !== monEmail()) ? ' · ' + esc(n.auteurNom) : ''}</span>
         ${d.humeur ? `<span style="font-size:18px" title="Humeur perçue">${emoji(d.humeur)}</span>` : ''}${n.type === 'speed' && !d.realise ? '<span class="pastille att">à venir</span>' : ''}</div>${contenuCR(n)}</div>`;
     }).join('');
     $('#cr-contenu').querySelectorAll('[data-note]').forEach(x => x.onclick = () => ouvrirNote(S.notes.get(x.dataset.note)));
@@ -756,6 +767,7 @@
     const c = cfg;
     $('#rg-titre').value = c.titre || ''; $('#rg-lieu').value = c.lieu || ''; $('#rg-du').value = c.du || ''; $('#rg-au').value = c.au || '';
     $('#rg-sujets').value = (c.sujetsProposes || []).join('\n');
+    $('#rg-moments').value = (c.momentsSeminaire || MOMENTS_DEFAUT).join('\n');
     $('#rg-central').value = (c.sujetCentral || {}).titre || '';
     $('#rg-questions').value = ((c.sujetCentral || {}).questions || []).map(q => [q.libelle, q.type, (q.options || []).join(', ')].filter((x, i) => i < 2 || x).join(' | ')).join('\n');
     $('#pp-date').value = c.dateSpeed || '';
@@ -859,7 +871,7 @@
       return { id: ex ? ex.id : 'q' + hash(lib + i).slice(0, 8), libelle: lib, type: t, options: t === 'texte' ? [] : (opts || '').split(',').map(x => x.trim()).filter(Boolean) };
     });
     const c = { ...cfg, annee: +$('#rg-annee').value, titre: $('#rg-titre').value.trim(), lieu: $('#rg-lieu').value.trim(), du: $('#rg-du').value, au: $('#rg-au').value,
-      sujetsProposes: $('#rg-sujets').value.split('\n').map(x => x.trim()).filter(Boolean), sujetCentral: { titre: $('#rg-central').value.trim(), questions },
+      sujetsProposes: $('#rg-sujets').value.split('\n').map(x => x.trim()).filter(Boolean), momentsSeminaire: $('#rg-moments').value.split('\n').map(x => x.trim()).filter(Boolean), sujetCentral: { titre: $('#rg-central').value.trim(), questions },
       dateSpeed: $('#pp-date').value };
     delete c.partageInfosDepart;
     delete c._parDefaut; delete c._maj; delete c._par;

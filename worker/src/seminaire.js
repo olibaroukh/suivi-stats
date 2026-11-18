@@ -28,6 +28,7 @@ export function configParDefaut(annee) {
     sujetsProposes: ['Ouvertures de magasins', 'Rentabilité', 'Recrutement', 'Formation', 'Marketing / communication', 'Audio',
       'Achats / produits', 'Informatique / Cosium', 'Relations avec le siège', 'Tiers payant / mutuelles', 'Succession / cession', 'Concurrence'],
     besoinsProposes: [],
+    momentsSeminaire: ['Plénière', 'Atelier ouvertures de magasins'],
     sujetCentral: {
       titre: 'Ouvertures de magasins en franchise',
       questions: [

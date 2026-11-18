@@ -74,7 +74,7 @@
       <div class="ligne">
         <input id="cr-q" type="search" placeholder="🔍 Franchisé, mot-clé…" style="flex:2;min-width:180px">
         <select id="cr-auteur" style="flex:1;min-width:160px" hidden></select>
-        <select id="cr-type" style="flex:1;min-width:150px"><option value="">Tous les échanges</option><option value="speed">Speed dating</option><option value="informel">Échanges informels</option><option value="manuscrit">Notes au stylet</option></select>
+        <select id="cr-type" style="flex:1;min-width:150px"><option value="">Tous les échanges</option><option value="speed">Speed dating</option><option value="informel">Échanges informels</option><option value="manuscrit">Notes au stylet (toutes)</option><option value="seminaire">Notes du séminaire (ateliers…)</option></select>
         <select id="cr-ordre" style="flex:1;min-width:150px"><option value="franchise">Par franchisé</option><option value="date">Par date et heure</option><option value="auteur">Par directeur</option></select>
       </div>
       <div class="ligne" style="margin-top:8px">
@@ -112,6 +112,9 @@
       <div class="ligne"><div style="flex:1;min-width:160px"><label>Année</label><select id="rg-annee"></select></div><div style="flex:3;min-width:220px"><label>Titre</label><input id="rg-titre"></div></div>
       <div class="ligne"><div style="flex:2;min-width:160px"><label>Lieu</label><input id="rg-lieu"></div><div style="flex:1;min-width:140px"><label>Du</label><input id="rg-du" type="date"></div><div style="flex:1;min-width:140px"><label>Au</label><input id="rg-au" type="date"></div></div>
       <label>Sujets proposés (un par ligne)</label><textarea id="rg-sujets" rows="6"></textarea>
+      <label>Ateliers et moments du séminaire (un par ligne)</label>
+      <p class="aide">Proposés pour rattacher une note au stylet au séminaire plutôt qu'à un franchisé (plénière, ateliers, interventions…).</p>
+      <textarea id="rg-moments" rows="4"></textarea>
       <label>Sujet central de l'année</label><input id="rg-central">
       <label>Questions du sujet central</label>
       <p class="aide">Une question par ligne : <b>libellé | type | options séparées par des virgules</b>. Types : choix (une réponse), etiquettes (plusieurs), texte.</p>
@@ -153,6 +156,6 @@
 <div id="fenetre"></div>
 
 <script src="../lib/xlsx.full.min.js" defer></script>
-<script src="sem.js?v=2026.11.18-3"></script>
+<script src="sem.js?v=2026.11.18-4"></script>
 </body>
 </html>
