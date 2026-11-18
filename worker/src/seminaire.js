@@ -15,8 +15,9 @@ const RESPONSABLES_DEPART = [
   ['sacha.assola@optical-center.com', 'Sacha Assola'],
   ['laurent.levy@optical-center.com', 'Laurent Levy'],
 ];
-const TYPES_NOTE = ['preparation', 'speed', 'informel'];
+const TYPES_NOTE = ['preparation', 'speed', 'informel', 'manuscrit'];
 const TAILLE_MAX_NOTE = 30000;
+const TAILLE_MAX_MANUSCRIT = 1500000; // notes au stylet : tracés vectoriels de plusieurs pages
 
 // Édition par défaut (modifiable dans Réglages par un responsable)
 export function configParDefaut(annee) {
@@ -134,9 +135,9 @@ function valideNote(n) {
   if (!/^[\w-]{8,64}$/.test(String(n.id || ''))) return 'identifiant invalide';
   if (!(+n.annee >= 2024 && +n.annee <= 2100)) return 'année invalide';
   if (!TYPES_NOTE.includes(n.type)) return 'type invalide';
-  if (!n.franchise || String(n.franchise).length > 200) return 'franchisé requis';
+  if ((!n.franchise && n.type !== 'manuscrit') || String(n.franchise || '').length > 200) return 'franchisé requis';
   const t = JSON.stringify(n.donnees || {});
-  if (t.length > TAILLE_MAX_NOTE) return 'note trop longue';
+  if (t.length > (n.type === 'manuscrit' ? TAILLE_MAX_MANUSCRIT : TAILLE_MAX_NOTE)) return n.type === 'manuscrit' ? 'note manuscrite trop lourde (ajoutez une nouvelle note)' : 'note trop longue';
   return null;
 }
 
@@ -190,7 +191,7 @@ export async function routesSeminaire(request, env, p, chemin, url, h, json, err
       if (ex && ex.maj_le > maj) { resultats.push({ id: n.id, ok: true, ignore: 'version plus récente déjà enregistrée' }); continue; }
       await env.DB.prepare(`INSERT INTO seminaire_notes (id, annee, auteur, franchise, type, donnees, cree_le, maj_le, supprime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET franchise = excluded.franchise, type = excluded.type, donnees = excluded.donnees, maj_le = excluded.maj_le, supprime = excluded.supprime`)
-        .bind(n.id, +n.annee, email, String(n.franchise), n.type, JSON.stringify(n.donnees || {}), String(n.creeLe || maj), maj, n.supprime ? 1 : 0).run();
+        .bind(n.id, +n.annee, email, String(n.franchise || ''), n.type, JSON.stringify(n.donnees || {}), String(n.creeLe || maj), maj, n.supprime ? 1 : 0).run();
       resultats.push({ id: n.id, ok: true });
     }
     return json({ ok: true, resultats }, 200, h);

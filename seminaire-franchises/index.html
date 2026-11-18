@@ -35,6 +35,8 @@
 <nav class="onglets" id="onglets" hidden>
   <button data-vue="franchises" class="actif"><span>👥</span>Franchisés</button>
   <button data-vue="planning"><span>⏱️</span>Speed dating</button>
+  <button data-vue="comptes-rendus"><span>📋</span>Comptes rendus</button>
+  <button data-vue="manuscrit"><span>✍️</span>Stylet</button>
   <button data-vue="synthese"><span>📊</span>Synthèse</button>
   <button data-vue="reglages" id="onglet-reglages" hidden><span>⚙️</span>Réglages</button>
 </nav>
@@ -63,6 +65,32 @@
     <div class="carte">
       <h2>Mes échanges informels</h2>
       <div id="pl-informels"></div>
+    </div>
+  </section>
+
+  <section class="vue" id="vue-comptes-rendus">
+    <div class="carte pas-imprimer">
+      <h2>Comptes rendus des rendez-vous</h2>
+      <div class="ligne">
+        <input id="cr-q" type="search" placeholder="🔍 Franchisé, mot-clé…" style="flex:2;min-width:180px">
+        <select id="cr-auteur" style="flex:1;min-width:160px" hidden></select>
+        <select id="cr-type" style="flex:1;min-width:150px"><option value="">Tous les échanges</option><option value="speed">Speed dating</option><option value="informel">Échanges informels</option><option value="manuscrit">Notes au stylet</option></select>
+        <select id="cr-ordre" style="flex:1;min-width:150px"><option value="franchise">Par franchisé</option><option value="date">Par date et heure</option><option value="auteur">Par directeur</option></select>
+      </div>
+      <div class="ligne" style="margin-top:8px">
+        <label class="ligne" style="margin:0;font-weight:600"><input type="checkbox" id="cr-realises" style="width:auto"> Rendez-vous réalisés seulement</label>
+        <button class="pousse" id="cr-imprimer">Imprimer / PDF</button>
+      </div>
+    </div>
+    <div id="cr-contenu"></div>
+  </section>
+
+  <section class="vue" id="vue-manuscrit">
+    <div class="carte">
+      <h2>Notes au stylet</h2>
+      <p class="aide">Écrivez à main levée avec le stylet (iPad, tablette ou ordinateur tactile). Une note peut être rattachée à un franchisé ; elle apparaît alors dans sa fiche et dans les comptes rendus.</p>
+      <button class="primaire" id="ms-nouvelle" style="width:100%">+ Nouvelle note au stylet</button>
+      <div id="ms-liste" style="margin-top:10px"></div>
     </div>
   </section>
 
@@ -125,6 +153,6 @@
 <div id="fenetre"></div>
 
 <script src="../lib/xlsx.full.min.js" defer></script>
-<script src="sem.js?v=2026.11.08-7"></script>
+<script src="sem.js?v=2026.11.18-3"></script>
 </body>
 </html>

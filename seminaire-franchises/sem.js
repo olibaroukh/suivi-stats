@@ -24,10 +24,14 @@
   const cleCache = () => 'seminaireCache:' + (session && session.profil ? session.profil.email : '');
   const cleFile = () => 'seminaireFile:' + (session && session.profil ? session.profil.email : '');
   function sauverCache() {
-    try {
-      localStorage.setItem(cleCache(), JSON.stringify({ moi: S.moi, annee: S.annee, config: S.config, franchises: S.franchises, moisChiffres: S.moisChiffres, notes: [...S.notes.values()] }));
-      localStorage.setItem(cleFile(), JSON.stringify(S.file));
-    } catch (e) { console.warn('cache', e); }
+    try { localStorage.setItem(cleFile(), JSON.stringify(S.file)); } catch (e) { console.warn('file', e); alert('Mémoire de l’appareil pleine : reconnectez-vous au réseau pour envoyer vos notes.'); }
+    const base = { moi: S.moi, annee: S.annee, config: S.config, franchises: S.franchises, moisChiffres: S.moisChiffres };
+    try { localStorage.setItem(cleCache(), JSON.stringify({ ...base, notes: [...S.notes.values()] })); }
+    catch (e) {
+      // Trop lourd (notes au stylet) : on garde sur l'appareil les tracés de ses propres notes seulement
+      const allege = [...S.notes.values()].map(n => n.type === 'manuscrit' && n.auteur !== monEmail() ? { ...n, donnees: { ...n.donnees, pages: null, allege: true } } : n);
+      try { localStorage.setItem(cleCache(), JSON.stringify({ ...base, notes: allege })); } catch (x) { console.warn('cache', x); }
+    }
   }
   function lireFileSeule() { try { S.file = JSON.parse(localStorage.getItem(cleFile()) || '[]'); } catch (e) { S.file = []; } }
   function lireCache() {
@@ -85,7 +89,8 @@
     if (syncEnCours || !session) return; syncEnCours = true;
     try {
       if (S.file.length) {
-        const lot = S.file.slice(0, 100);
+        const lot = []; let taille = 0;
+        for (const n of S.file) { const t = JSON.stringify(n).length; if (lot.length && (taille + t > 4e6 || lot.length >= 100)) break; lot.push(n); taille += t; }
         const d = await appel('/seminaire/notes', { method: 'POST', body: JSON.stringify({ notes: lot }) });
         const okIds = new Set((d.resultats || []).filter(x => x.ok).map(x => x.id));
         const refus = (d.resultats || []).filter(x => !x.ok);
@@ -153,7 +158,10 @@
     $('#fr-q').oninput = rendreFranchises; $('#fr-mes').onchange = rendreFranchises;
     $('#pl-ajouter').onclick = () => ouvrirNote({ type: 'speed' });
     $('#sy-auteur').onchange = rendreSynthese; $('#sy-annee').onchange = async () => { S.annee = +$('#sy-annee').value; S.notes.clear(); await synchroniser(true); };
-    $('#sy-excel').onclick = exporterExcel; $('#sy-imprimer').onclick = () => window.print();
+    $('#sy-excel').onclick = exporterExcel;
+    ['#cr-q', '#cr-auteur', '#cr-type', '#cr-ordre', '#cr-realises'].forEach(id => { $(id).oninput = $(id).onchange = rendreComptesRendus; });
+    $('#cr-imprimer').onclick = () => window.print();
+    $('#ms-nouvelle').onclick = () => ouvrirManuscrit(null, ''); $('#sy-imprimer').onclick = () => window.print();
     window.addEventListener('online', () => synchroniser(true));
     window.addEventListener('offline', () => { etatReseau = 'hors'; afficherSync(); });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) synchroniser(false); });
@@ -214,6 +222,8 @@
     if (vueActive === 'franchises') rendreFranchises();
     if (vueActive === 'planning') rendrePlanning();
     if (vueActive === 'synthese') rendreSynthese();
+    if (vueActive === 'comptes-rendus') rendreComptesRendus();
+    if (vueActive === 'manuscrit') rendreListeManuscrits();
     // Pas de nouvel affichage de la fiche pendant une saisie (sinon le curseur saute)
     const actif = document.activeElement;
     if (fenetreFr && !(actif && $('#fenetre').contains(actif) && /^(INPUT|TEXTAREA)$/.test(actif.tagName))) rendreFicheFranchise(fenetreFr);
@@ -276,7 +286,7 @@
       </div>
       ${autresPreps.length ? `<div class="carte lecture"><h2>Préparation des autres directeurs</h2>${autresPreps.map(n => `<div class="note"><div class="t">${esc(n.auteurNom)} ${emoji(n.donnees.humeur)}</div>${n.donnees.esprit ? `<p>${esc(n.donnees.esprit)}</p>` : ''}${(n.donnees.sujets || []).map(s => `<span class="pastille">${esc(s)}</span>`).join('')}</div>`).join('')}</div>` : ''}
       <div class="carte"><h2>Échanges</h2>
-        <div class="ligne"><button class="primaire" id="ff-speed" style="flex:1">+ Speed dating</button><button id="ff-info-btn" style="flex:1">+ Échange informel</button></div>
+        <div class="ligne"><button class="primaire" id="ff-speed" style="flex:1">+ Speed dating</button><button id="ff-info-btn" style="flex:1">+ Échange informel</button><button id="ff-stylet" style="flex:1">+ ✍️ Stylet</button></div>
         ${echanges.length ? echanges.map(apercuNote).join('') : '<p class="muted petit">Aucun échange pour l’instant.</p>'}
       </div></div></div>`;
     const fond = $('#fenetre .fond'); fond.scrollTop = scroll;
@@ -295,9 +305,11 @@
     $('#ff-speed').onclick = () => cr ? ouvrirCreneau(cr) : ouvrirNote({ type: 'speed', franchise: fr });
     if ($('#ff-creneau')) $('#ff-creneau').onclick = () => ouvrirCreneau(cr);
     $('#ff-info-btn').onclick = () => ouvrirNote({ type: 'informel', franchise: fr });
+    $('#ff-stylet').onclick = () => ouvrirManuscrit(null, fr);
     fond.querySelectorAll('[data-note]').forEach(x => x.onclick = () => ouvrirNote(S.notes.get(x.dataset.note)));
   }
   function apercuNote(n) {
+    if (n.type === 'manuscrit') return `<div class="note" data-note="${esc(n.id)}"><div class="t">✍️ Note au stylet · ${esc(dateFr(n.donnees.date || n.creeLe))}${n.auteur !== monEmail() ? ' · ' + esc(n.auteurNom) : ''}${n.donnees.titre ? ' · <b>' + esc(n.donnees.titre) + '</b>' : ''}</div>${vignettes(n, 1, 120)}</div>`;
     const d = n.donnees || {}, c = d.central || {};
     const repC = Object.entries(c).filter(([, v]) => v && (!Array.isArray(v) || v.length)).map(([k, v]) => { const q = ((S.config.sujetCentral || {}).questions || []).find(x => x.id === k); return `${esc(q ? q.libelle : k)} : <b>${esc(Array.isArray(v) ? v.join(', ') : v)}</b>`; });
     const actions = (d.actions || []).filter(a => a.quoi);
@@ -314,6 +326,7 @@
     ouvrirNote(ex && !ex.supprime ? ex : { id, type: 'speed', franchise: c.participant, donnees: { date: (S.config && S.config.dateSpeed) || aujourdhui(), heure: c.debut, sujets: [], central: {}, actions: [] } });
   }
   function ouvrirNote(base) {
+    if (base && base.type === 'manuscrit') return ouvrirManuscrit(base);
     const n = base && base.id ? JSON.parse(JSON.stringify(base)) : { id: nouvelId(), type: base.type, franchise: base.franchise || '', donnees: { date: aujourdhui(), sujets: [], central: {}, actions: [] } };
     if (n.supprime) n.supprime = false;
     const existe = base && base.id && S.notes.has(base.id) && !S.notes.get(base.id).supprime;
@@ -411,6 +424,210 @@
     $('#pl-informels').querySelectorAll('[data-note]').forEach(x => x.onclick = () => ouvrirNote(S.notes.get(x.dataset.note)));
   }
 
+  // ---------- Notes au stylet ----------
+  // Page au format A4 (1000 × 1414 unités) ; un trait = { c: couleur, w: épaisseur, p: [x, y, pression 1-9, …] } en unités de page
+  const PAGE_L = 1000, PAGE_H = 1414;
+  const COULEURS = ['#231F20', '#1F5FBF', '#E22F2A', '#1E8A52'];
+  const EPAISSEURS = [[2.2, 'Fin'], [3.6, 'Moyen'], [6.5, 'Épais']];
+  function dessinerPage(ctx, traits, k, lignes) {
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.restore();
+    if (lignes) { ctx.strokeStyle = '#E8EEF6'; ctx.lineWidth = Math.max(1, k); for (let y = 130; y < PAGE_H - 40; y += 62) { ctx.beginPath(); ctx.moveTo(50 * k, y * k); ctx.lineTo((PAGE_L - 50) * k, y * k); ctx.stroke(); } }
+    (traits || []).forEach(t => tracerTrait(ctx, t, k));
+  }
+  function tracerTrait(ctx, t, k, depuis) {
+    const p = t.p, n = p.length / 3; if (!n) return;
+    ctx.strokeStyle = ctx.fillStyle = COULEURS[t.c] || COULEURS[0]; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const larg = pr => t.w * (0.45 + (pr || 5) / 9 * 0.9) * k;
+    if (n === 1) { ctx.beginPath(); ctx.arc(p[0] * k, p[1] * k, larg(p[2]) / 2, 0, Math.PI * 2); ctx.fill(); return; }
+    for (let i = Math.max(1, depuis || 1); i < n; i++) {
+      ctx.beginPath(); ctx.lineWidth = larg(p[i * 3 + 2]);
+      ctx.moveTo(p[(i - 1) * 3] * k, p[(i - 1) * 3 + 1] * k); ctx.lineTo(p[i * 3] * k, p[i * 3 + 1] * k); ctx.stroke();
+    }
+  }
+  const cacheVignettes = new Map();
+  function imagePage(traits, largeur) {
+    const c = document.createElement('canvas'), k = largeur / PAGE_L;
+    c.width = largeur; c.height = Math.round(PAGE_H * k);
+    dessinerPage(c.getContext('2d'), traits, k, false);
+    return c.toDataURL('image/png');
+  }
+  function vignettes(n, max, largeur) {
+    const pages = (n.donnees && n.donnees.pages) || null;
+    if (!pages) return '<p class="muted petit">Tracé consultable avec une connexion internet.</p>';
+    const cle = n.id + n.majLe + largeur;
+    if (!cacheVignettes.has(cle)) cacheVignettes.set(cle, pages.filter(pg => pg.length).slice(0, max || 99).map(pg => imagePage(pg, largeur)));
+    const imgs = cacheVignettes.get(cle);
+    return imgs.length ? `<div class="vignettes">${imgs.map(u => `<img src="${u}" alt="Page manuscrite">`).join('')}</div>` : '<p class="muted petit">Page vide.</p>';
+  }
+  function rendreListeManuscrits() {
+    const l = notesVisibles().filter(n => n.type === 'manuscrit').sort((a, b) => String(b.majLe).localeCompare(String(a.majLe)));
+    $('#ms-liste').innerHTML = l.length ? l.map(n => {
+      const pages = n.donnees.pages || [], img = pages.length && pages[0].length ? imagePage(pages[0], 144) : '';
+      return `<div class="ms-item" data-note="${esc(n.id)}">${img ? `<img src="${img}" alt="">` : '<div style="width:72px;height:102px;border:1px dashed var(--line);border-radius:6px;flex:none"></div>'}
+        <div><b>${esc(n.donnees.titre || 'Sans titre')}</b><span class="petit muted">${n.franchise ? esc(n.franchise) + ' · ' : ''}${esc(dateFr(n.donnees.date || n.creeLe))} · ${pages.length} page${pages.length > 1 ? 's' : ''}${n.auteur !== monEmail() ? ' · ' + esc(n.auteurNom) : ''}</span></div></div>`;
+    }).join('') : '<p class="muted petit">Aucune note au stylet pour l’instant.</p>';
+    $('#ms-liste').querySelectorAll('[data-note]').forEach(x => x.onclick = () => ouvrirManuscrit(S.notes.get(x.dataset.note)));
+  }
+  function ouvrirManuscrit(base, franchise) {
+    const n = base ? JSON.parse(JSON.stringify(base)) : { id: nouvelId(), type: 'manuscrit', franchise: franchise || '', donnees: { titre: '', date: aujourdhui(), pages: [[]] } };
+    const lecture = !!(base && base.auteur && base.auteur !== monEmail());
+    const d = n.donnees; if (!Array.isArray(d.pages) || !d.pages.length) d.pages = [[]];
+    const indisponible = d.allege && !d.pages.some(pg => pg && pg.length);
+    const frPrecedent = fenetreFr; fenetreFr = null;
+    let page = 0, couleur = 0, epaisseur = 1, gomme = false, styletSeul = false, styletVu = false, modifie = false, minuterie = null;
+    const annulations = [];
+    const dis = lecture ? ' disabled' : '';
+    $('#fenetre').innerHTML = `<div class="fond ${lecture ? 'lecture' : ''}" style="padding-bottom:20px">
+      <div class="barre-haut"><button id="ms-retour">← Retour</button><h3>✍️ Note au stylet${lecture ? ' · ' + esc(n.auteurNom) : ''}</h3><span class="pousse petit muted" id="ms-etat"></span></div>
+      <div class="contenu"><div class="ligne" style="margin-bottom:6px">
+        <input id="ms-titre" placeholder="Titre (facultatif)" value="${esc(d.titre || '')}" style="flex:2;min-width:160px"${dis}>
+        <input id="ms-fr" list="ms-liste-fr" placeholder="Franchisé (facultatif)" value="${esc(n.franchise || '')}" style="flex:2;min-width:160px"${dis}><datalist id="ms-liste-fr">${entrees().map(e => `<option value="${esc(e.cle)}">`).join('')}</datalist>
+        <input id="ms-date" type="date" value="${esc(d.date || '')}" style="flex:1;min-width:130px"${dis}>
+      </div></div>
+      <div class="outils">
+        ${lecture ? '' : `${COULEURS.map((c, i) => `<button class="pastille-couleur" data-c="${i}" style="background:${c}" title="Couleur"></button>`).join('')}
+        <select id="ms-ep" style="width:auto;padding:6px 8px;font-size:13px">${EPAISSEURS.map(([, l], i) => `<option value="${i}"${i === 1 ? ' selected' : ''}>${l}</option>`).join('')}</select>
+        <button id="ms-gomme" title="Gomme : touchez un trait pour l'effacer">🧽 Gomme</button>
+        <button id="ms-annuler" title="Annuler">↶</button>
+        <button id="ms-stylet" title="Si activé, seul le stylet écrit (la main posée sur l'écran est ignorée)">✏️ Stylet seul</button>`}
+        <span class="ligne pousse" style="gap:4px"><button id="ms-prec">◀</button><span id="ms-num" class="petit" style="min-width:44px;text-align:center"></span><button id="ms-suiv">▶</button>${lecture ? '' : '<button id="ms-plus">+ Page</button>'}
+        <button id="ms-image" title="Télécharger la page en image">⬇︎</button>${lecture || !base ? '' : '<button id="ms-suppr" title="Supprimer la note">🗑</button>'}</span>
+      </div>
+      <div class="zone-page">${indisponible ? '<p class="muted">Cette note est consultable avec une connexion internet.</p>' : '<canvas class="page" id="ms-canvas"></canvas>'}</div></div>`;
+    const fond = $('#fenetre .fond'), cv = $('#ms-canvas');
+    const etat = t => { $('#ms-etat').textContent = t; };
+    const revenir = () => { if (frPrecedent) ouvrirFranchise(frPrecedent); else fermerFenetre(); };
+    const vide = () => !d.pages.some(pg => pg.length) && !$('#ms-titre').value.trim();
+    function enregistrer() {
+      clearTimeout(minuterie); minuterie = null;
+      if (lecture || !modifie) return;
+      if (!base && vide()) return;
+      n.franchise = $('#ms-fr').value.trim(); d.titre = $('#ms-titre').value.trim(); d.date = $('#ms-date').value;
+      d.pages = d.pages.length > 1 ? d.pages.filter((pg, i) => pg.length || i === 0) : d.pages;
+      enregistrerNote(n, true); base = n; modifie = false; etat('Enregistré ✓');
+    }
+    const plusTard = () => { modifie = true; etat('…'); clearTimeout(minuterie); minuterie = setTimeout(enregistrer, 2500); };
+    $('#ms-retour').onclick = () => { enregistrer(); revenir(); };
+    if (!lecture) ['#ms-titre', '#ms-fr', '#ms-date'].forEach(id => { $(id).oninput = plusTard; });
+    if (!cv) return;
+    const ctx = cv.getContext('2d');
+    let k = 1;
+    function taille() {
+      const zone = fond.querySelector('.zone-page'), haut = cv.getBoundingClientRect().top - fond.getBoundingClientRect().top;
+      const dispoH = Math.max(320, window.innerHeight - Math.max(haut, 120) - 24);
+      const l = Math.min(zone.clientWidth - 28, dispoH / (PAGE_H / PAGE_L), 1000);
+      const r = window.devicePixelRatio || 1;
+      cv.style.width = l + 'px'; cv.style.height = l * PAGE_H / PAGE_L + 'px';
+      cv.width = Math.round(l * r); cv.height = Math.round(l * PAGE_H / PAGE_L * r);
+      k = cv.width / PAGE_L; redessiner();
+    }
+    function redessiner() {
+      dessinerPage(ctx, d.pages[page], k, true);
+      $('#ms-num').textContent = `${page + 1} / ${d.pages.length}`;
+      $('#ms-prec').disabled = page === 0; $('#ms-suiv').disabled = page >= d.pages.length - 1;
+      if (!lecture) {
+        fond.querySelectorAll('[data-c]').forEach(b => b.classList.toggle('on', !gomme && +b.dataset.c === couleur));
+        $('#ms-gomme').classList.toggle('on', gomme); $('#ms-stylet').classList.toggle('on', styletSeul);
+        $('#ms-annuler').disabled = !annulations.length;
+      }
+    }
+    const pointPage = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * PAGE_L, (e.clientY - r.top) / r.height * PAGE_H]; };
+    const memoriser = () => { annulations.push([page, d.pages[page].slice()]); if (annulations.length > 60) annulations.shift(); };
+    function effacerAutour(x, y) {
+      const avant = d.pages[page].length, r2 = 16 * 16;
+      d.pages[page] = d.pages[page].filter(t => { for (let i = 0; i < t.p.length; i += 3) { const dx = t.p[i] - x, dy = t.p[i + 1] - y; if (dx * dx + dy * dy < r2) return false; } return true; });
+      if (d.pages[page].length !== avant) { redessiner(); plusTard(); }
+    }
+    let trait = null, actif = null;
+    if (!lecture) {
+      cv.addEventListener('pointerdown', e => {
+        if (e.pointerType === 'pen' && !styletVu) { styletVu = true; styletSeul = true; redessiner(); }
+        if (styletSeul && e.pointerType !== 'pen') return;
+        if (actif !== null) return;
+        e.preventDefault(); actif = e.pointerId; try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+        const [x, y] = pointPage(e);
+        memoriser();
+        if (gomme) { trait = null; effacerAutour(x, y); return; }
+        const pr = e.pointerType === 'pen' && e.pressure > 0 ? Math.max(1, Math.round(e.pressure * 9)) : 5;
+        trait = { c: couleur, w: EPAISSEURS[epaisseur][0], p: [Math.round(x * 10) / 10, Math.round(y * 10) / 10, pr] };
+        tracerTrait(ctx, trait, k);
+      });
+      cv.addEventListener('pointermove', e => {
+        if (e.pointerId !== actif) return; e.preventDefault();
+        const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+        for (const ev of (evs.length ? evs : [e])) {
+          const [x, y] = pointPage(ev);
+          if (gomme) { effacerAutour(x, y); continue; }
+          if (!trait) continue;
+          const p = trait.p, lx = p[p.length - 3], ly = p[p.length - 2];
+          if ((x - lx) ** 2 + (y - ly) ** 2 < 1.4) continue;
+          const pr = ev.pointerType === 'pen' && ev.pressure > 0 ? Math.max(1, Math.round(ev.pressure * 9)) : 5;
+          p.push(Math.round(x * 10) / 10, Math.round(y * 10) / 10, pr);
+          tracerTrait(ctx, trait, k, p.length / 3 - 1);
+        }
+      });
+      const fin = e => {
+        if (e.pointerId !== actif) return; actif = null;
+        if (trait) { d.pages[page].push(trait); trait = null; plusTard(); } else if (gomme && annulations.length && annulations[annulations.length - 1][1].length === d.pages[page].length) annulations.pop();
+        redessiner();
+      };
+      cv.addEventListener('pointerup', fin); cv.addEventListener('pointercancel', fin); cv.addEventListener('lostpointercapture', fin);
+      fond.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { couleur = +b.dataset.c; gomme = false; redessiner(); });
+      $('#ms-ep').onchange = e => { epaisseur = +e.target.value; gomme = false; redessiner(); };
+      $('#ms-gomme').onclick = () => { gomme = !gomme; redessiner(); };
+      $('#ms-stylet').onclick = () => { styletSeul = !styletSeul; redessiner(); };
+      $('#ms-annuler').onclick = () => { const a = annulations.pop(); if (!a) return; d.pages[a[0]] = a[1]; page = a[0]; redessiner(); plusTard(); };
+      $('#ms-plus').onclick = () => { d.pages.splice(page + 1, 0, []); page++; redessiner(); plusTard(); };
+      if ($('#ms-suppr')) $('#ms-suppr').onclick = () => { if (!confirm('Supprimer cette note au stylet ?')) return; clearTimeout(minuterie); n.supprime = true; enregistrerNote(n, true); revenir(); };
+    }
+    $('#ms-prec').onclick = () => { if (page > 0) { page--; redessiner(); } };
+    $('#ms-suiv').onclick = () => { if (page < d.pages.length - 1) { page++; redessiner(); } };
+    $('#ms-image').onclick = () => { const a = document.createElement('a'); a.href = imagePage(d.pages[page], 1500); a.download = `note-stylet-${(n.franchise || d.titre || 'page').replace(/[^\w-]+/g, '_')}-${page + 1}.png`; a.click(); };
+    const auRedim = () => { if (document.body.contains(cv)) taille(); else window.removeEventListener('resize', auRedim); };
+    window.addEventListener('resize', auRedim);
+    requestAnimationFrame(taille);
+  }
+
+  // ---------- Comptes rendus des rendez-vous ----------
+  function contenuCR(n) {
+    const d = n.donnees || {};
+    if (n.type === 'manuscrit') return `${d.titre ? `<p><b>${esc(d.titre)}</b></p>` : ''}${vignettes(n, 99, 300)}`;
+    const qs = ((S.config && S.config.sujetCentral) || {}).questions || [];
+    const rep = qs.map(q => [q, (d.central || {})[q.id]]).filter(([, v]) => v && (!Array.isArray(v) || v.length));
+    const actions = (d.actions || []).filter(a => a.quoi);
+    return `${(d.sujets || []).length ? `<div style="margin-top:6px">${d.sujets.map(x => `<span class="pastille">${esc(x)}</span>`).join('')}</div>` : ''}
+      ${d.notes ? `<h4>Notes</h4><p>${esc(d.notes)}</p>` : ''}
+      ${d.demandes ? `<h4>Demandes du franchisé</h4><p>${esc(d.demandes)}</p>` : ''}
+      ${rep.length ? `<h4>🎯 ${esc(((S.config && S.config.sujetCentral) || {}).titre || 'Sujet central')}</h4><table>${rep.map(([q, v]) => `<tr><td style="width:40%" class="muted">${esc(q.libelle)}</td><td><b>${esc(Array.isArray(v) ? v.join(', ') : v)}</b></td></tr>`).join('')}</table>` : ''}
+      ${actions.length ? `<h4>Actions</h4><table>${actions.map(a => `<tr><td>${esc(a.quoi)}</td><td>${esc(a.qui || '')}</td><td>${esc(dateFr(a.echeance))}</td><td><span class="pastille ${a.statut === 'Fait' ? 'ok' : a.statut === 'En cours' ? 'att' : 'rouge'}">${esc(a.statut || 'À faire')}</span></td></tr>`).join('')}</table>` : ''}
+      ${!d.notes && !d.demandes && !rep.length && !actions.length && !(d.sujets || []).length ? '<p class="muted petit">Pas encore de contenu.</p>' : ''}`;
+  }
+  function rendreComptesRendus() {
+    const sel = $('#cr-auteur');
+    if (resp()) {
+      const auteurs = [...new Map(notesVisibles().filter(n => n.type !== 'preparation').map(n => [n.auteur, n.auteurNom])).entries()].sort((x, y) => String(x[1]).localeCompare(String(y[1])));
+      const v = sel.value; sel.hidden = false;
+      sel.innerHTML = '<option value="">Tous les directeurs</option>' + auteurs.map(([e, nm]) => `<option value="${esc(e)}"${e === v ? ' selected' : ''}>${esc(nm || e)}</option>`).join('');
+    }
+    const q = norm($('#cr-q').value), type = $('#cr-type').value, aut = resp() ? sel.value : '', real = $('#cr-realises').checked, ordre = $('#cr-ordre').value;
+    const l = notesVisibles().filter(n => ['speed', 'informel', 'manuscrit'].includes(n.type))
+      .filter(n => (!type || n.type === type) && (!aut || n.auteur === aut) && (!real || n.type !== 'speed' || n.donnees.realise))
+      .filter(n => !q || norm([n.franchise, n.auteurNom, n.donnees.titre, n.donnees.notes, n.donnees.demandes, (n.donnees.sujets || []).join(' '), (n.donnees.actions || []).map(a => a.quoi).join(' '), Object.values(n.donnees.central || {}).flat().join(' ')].join(' ')).includes(q));
+    const cleDate = n => (n.donnees.date || String(n.creeLe).slice(0, 10)) + ' ' + (n.donnees.heure || '');
+    const groupe = n => ordre === 'auteur' ? (n.auteurNom || n.auteur) : ordre === 'date' ? dateFr(n.donnees.date || n.creeLe) : (n.franchise || 'Sans franchisé');
+    l.sort((a, b) => ordre === 'date' ? cleDate(a).localeCompare(cleDate(b)) : groupe(a).localeCompare(groupe(b), 'fr') || cleDate(a).localeCompare(cleDate(b)));
+    let dernier = null;
+    const types = { speed: '⏱️ Speed dating', informel: '💬 Échange informel', manuscrit: '✍️ Note au stylet' };
+    $('#cr-contenu').innerHTML = (l.length ? `<p class="muted petit" style="margin:0 4px 8px">${l.length} compte${l.length > 1 ? 's' : ''} rendu${l.length > 1 ? 's' : ''}${resp() ? '' : ' · vos rendez-vous'}</p>` : '<div class="carte"><p class="muted">Aucun compte rendu ne correspond.</p></div>') + l.map(n => {
+      const g = groupe(n), titre = g !== dernier ? `<div class="groupe-cr">${esc(g)}</div>` : ''; dernier = g;
+      const d = n.donnees;
+      return `${titre}<div class="cr" data-note="${esc(n.id)}"><div class="en-tete">${ordre !== 'franchise' && n.franchise ? `<b>${esc(n.franchise)}</b>` : ''}<span class="meta">${types[n.type]} · ${esc(dateFr(d.date || n.creeLe))}${d.heure ? ' ' + esc(d.heure) : ''}${ordre !== 'auteur' && (resp() || n.auteur !== monEmail()) ? ' · ' + esc(n.auteurNom) : ''}</span>
+        ${d.humeur ? `<span style="font-size:18px" title="Humeur perçue">${emoji(d.humeur)}</span>` : ''}${n.type === 'speed' && !d.realise ? '<span class="pastille att">à venir</span>' : ''}</div>${contenuCR(n)}</div>`;
+    }).join('');
+    $('#cr-contenu').querySelectorAll('[data-note]').forEach(x => x.onclick = () => ouvrirNote(S.notes.get(x.dataset.note)));
+  }
+
   // ---------- Synthèse ----------
   function notesSynthese() {
     const a = $('#sy-auteur').value;
@@ -426,9 +643,9 @@
     const annees = [...new Set([...(S.moi.annees || []), S.annee, new Date().getFullYear()])].sort((a, b) => b - a);
     $('#sy-annee').innerHTML = annees.map(a => `<option${a === S.annee ? ' selected' : ''}>${a}</option>`).join('');
     const ns = notesSynthese();
-    const preps = ns.filter(n => n.type === 'preparation'), ech = ns.filter(n => n.type !== 'preparation');
+    const preps = ns.filter(n => n.type === 'preparation'), ech = ns.filter(n => n.type === 'speed' || n.type === 'informel');
     const speed = ech.filter(n => n.type === 'speed'), realises = speed.filter(n => n.donnees.realise);
-    const frTouches = new Set(ns.map(n => n.franchise));
+    const frTouches = new Set(ns.map(n => n.franchise).filter(Boolean));
     // Sujets : nombre de franchisés concernés (préparation + échanges)
     const parSujet = new Map();
     for (const n of ns) for (const s of (n.donnees.sujets || [])) { if (!parSujet.has(s)) parSujet.set(s, new Set()); parSujet.get(s).add(n.franchise); }
@@ -490,7 +707,7 @@
     const ns = notesSynthese(), qs = ((S.config.sujetCentral || {}).questions) || [];
     const hl = h => h ? (HUMEURS.find(x => x[0] === h) || [])[2] : '';
     const prep = ns.filter(n => n.type === 'preparation').map(n => ({ 'Franchisé': n.franchise, 'Directeur': n.auteurNom, 'Humeur': hl(n.donnees.humeur), "État d'esprit": n.donnees.esprit || '', 'Sujets': (n.donnees.sujets || []).join(', ') }));
-    const ech = ns.filter(n => n.type !== 'preparation').map(n => {
+    const ech = ns.filter(n => n.type === 'speed' || n.type === 'informel').map(n => {
       const o = { 'Type': n.type === 'speed' ? 'Speed dating' : 'Informel', 'Franchisé': n.franchise, 'Directeur': n.auteurNom, 'Date': dateFr(n.donnees.date), 'Heure': n.donnees.heure || '', 'Réalisé': n.type === 'speed' ? (n.donnees.realise ? 'Oui' : 'Non') : '', 'Humeur': hl(n.donnees.humeur), 'Sujets': (n.donnees.sujets || []).join(', '), 'Notes': n.donnees.notes || '', 'Demandes': n.donnees.demandes || '' };
       qs.forEach(q => { const v = (n.donnees.central || {})[q.id]; o[q.libelle] = Array.isArray(v) ? v.join(', ') : v || ''; });
       return o;
