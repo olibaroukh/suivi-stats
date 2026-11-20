@@ -607,6 +607,15 @@ async function routes(request, env) {
     try { return json({ ok: true, ...(await env.RELAIS.rhGenre(m)) }, 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
   }
 
+  // 20/11/2026 : absentéisme cumulé depuis janvier par magasin (jours d'absence / jours théoriques, définition du score santé)
+  if (chemin === '/relais/absenteisme') {
+    if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
+    const m = url.searchParams.get('mois') || '';
+    if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois (AAAA-MM) requis', 400, h);
+    if (typeof env.RELAIS.rhAbsenteisme !== 'function') return erreur('zimbra-relay pas encore à jour (absentéisme)', 502, h);
+    try { return json({ ok: true, ...(await env.RELAIS.rhAbsenteisme(m)) }, 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
+  }
+
   // Cumul annuel des points Kaizen par magasin (zimbra-relay), pour le Magasin d'Excellence
   if (chemin === '/relais/kaizen') {
     if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);

@@ -203,6 +203,28 @@
     if (!viaServeur()) return null;
     try { const r = await Store.api('/relais/genre?mois=' + annee + '-' + pad(mois)); const d = await r.json(); return d && d.ok ? { mois: d.mois, magasins: d.magasins || {} } : null; } catch (e) { return null; }
   }
+  // 20/11/2026 : absentéisme cumulé depuis janvier (zimbra-relay, même définition que le score santé) → colonnes
+  // XR (jours d'absence) et XS (jours ouvrés théoriques) de chaque magasin ; le taux est recalculé à chaque niveau
+  // (magasin, AR, groupe) par les cockpits. Renvoie le détail affiché dans le rapport (médiane, quartiles) ou null.
+  async function absenteismeWorker(annee, mois, photo) {
+    if (!viaServeur() || !photo || !photo.magasins) return null;
+    try {
+      const r = await Store.api('/relais/absenteisme?mois=' + annee + '-' + pad(mois)); const d = await r.json();
+      if (!d || !d.ok) return { erreur: (d && d.error) || ('HTTP ' + r.status) };
+      const taux = [];
+      for (const c in photo.magasins) { const N = photo.magasins[c].N; if (N) { delete N.XR; delete N.XS; } }
+      for (const c in (d.magasins || {})) {
+        const m = photo.magasins[c], a = d.magasins[c]; if (!m || !m.N || !(a.theorique > 0)) continue;
+        m.N.XR = a.absence; m.N.XS = a.theorique; taux.push(a.absence / a.theorique);
+      }
+      photo.absenteisme = { moisRh: d.moisRh || [], maj: new Date().toISOString(), nbMagasins: taux.length };
+      if (!taux.length) return { detail: 'aucun import RH (rapport agenda) pour l’année', ...photo.absenteisme };
+      taux.sort((x, y) => x - y);
+      const q = p => (taux[Math.min(taux.length - 1, Math.floor(p * (taux.length - 1) + 0.5))] * 100).toFixed(1) + ' %';
+      const mr = photo.absenteisme.moisRh, per = mr.length ? `${mr[0].slice(5)} → ${mr[mr.length - 1].slice(5)}/${mr[mr.length - 1].slice(0, 4)}` : '';
+      return { ...photo.absenteisme, detail: `${taux.length} magasins, mois RH ${per} · médiane ${q(0.5)}, 1/4 des magasins sous ${q(0.25)}, 1/4 au-dessus de ${q(0.75)}, 1/10 au-dessus de ${q(0.9)}` };
+    } catch (e) { return { erreur: String(e) }; }
+  }
   async function kaizenWorker(annee, mois) {
     if (!viaServeur()) return null;
     try { const r = await Store.api('/relais/kaizen?mois=' + annee + '-' + pad(mois)); const d = await r.json(); return d && d.ok ? d.cumul || {} : null; } catch (e) { return null; }
@@ -274,6 +296,8 @@
         if (saa && !saa.erreur) { res.photo.santeAnnuel = saa; res.rapport.sources.sante.detail += ' · annuel : ' + detailAnnuel(saa); if (saa.vide) res.rapport.alertes.push('Score santé annuel : aucun mois validé dans le dashboard, la fiche affiche le score du mois.'); }
         else res.rapport.alertes.push('Score santé annuel non récupéré (' + (saa ? saa.erreur : 'worker non configuré') + ') : la fiche affiche le score du mois.');
         const kz = await kaizenWorker(annee, mois); if (kz) res.photo.mlme = { ...(res.photo.mlme || {}), kaizen: kz, kaizenMaj: new Date().toISOString() }; const hf = await genreWorker(annee, mois); if (hf) res.photo.mlme = { ...(res.photo.mlme || {}), genre: hf };
+        const abs = await absenteismeWorker(annee, mois, res.photo);
+        if (abs) res.rapport.sources.absenteisme = abs.erreur ? { statut: 'absent', detail: abs.erreur } : { statut: 'recu', detail: abs.detail };
         const bp = await bilansWorker(annee, mois);
         if (bp && !bp.erreur) { res.photo.bilans = bp; res.rapport.sources.bilans = { statut: 'recu', detail: `${Object.keys(bp.magasins).length} magasins (dernier passage avant le ${bp.fin.split('-').reverse().join('/')})` }; }
         else res.rapport.sources.bilans = { statut: 'absent', detail: bp ? bp.erreur : 'worker non configuré' };
@@ -853,10 +877,11 @@
       if (saa && !saa.erreur) { ph.santeAnnuel = saa; ph.sources.sante.detail += ' · annuel : ' + detailAnnuel(saa); }
       else ph.sources.sante.detail += ' · annuel non récupéré (' + (saa ? saa.erreur : 'worker non configuré') + ')';
       const kz = await kaizenWorker(a, m); if (kz) ph.mlme = { ...(ph.mlme || {}), kaizen: kz, kaizenMaj: new Date().toISOString() }; const hf = await genreWorker(a, m); if (hf) ph.mlme = { ...(ph.mlme || {}), genre: hf };
+      const abs = await absenteismeWorker(a, m, ph); if (abs) ph.sources.absenteisme = abs.erreur ? { statut: 'absent', detail: abs.erreur } : { statut: 'recu', detail: abs.detail };
       const bp = await bilansWorker(a, m);
       if (bp && !bp.erreur) { ph.bilans = bp; ph.sources.bilans = { statut: 'recu', detail: `${Object.keys(bp.magasins).length} magasins` }; }
       await Store.ecrireJSON(`donnees/${k}/photo.json`, ph); CK.cle = null; if (S.photo && S.photo.annee === a && S.photo.mois === m) S.photo = ph;
-      $('#s-maj-info').textContent = `${MOIS[m - 1]} ${a} mis à jour : score santé ${ph.sources.sante.detail}${ph.bilans ? ' · bilans de passage : ' + ph.sources.bilans.detail : ''}.`;
+      $('#s-maj-info').textContent = `${MOIS[m - 1]} ${a} mis à jour : score santé ${ph.sources.sante.detail}${ph.bilans ? ' · bilans de passage : ' + ph.sources.bilans.detail : ''}${ph.sources.absenteisme ? ' · absentéisme : ' + ph.sources.absenteisme.detail : ''}.`;
     };
     $('#inp-reprise').onchange = async e => {
       const f = e.target.files[0]; if (!f) return; const rep = JSON.parse(await f.text()); const a = rep.annee;
