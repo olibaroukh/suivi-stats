@@ -481,6 +481,12 @@ body.non-connecte .recherche-globale{display:none}
 .cockpit.sg .sg-mobile>div{padding:6px 10px}
 .cockpit.sg .sg-vis>div{padding:9px 10px}.cockpit.sg .sg-vis .v{font-size:22px}
 .cockpit.sg .ck-g2,.cockpit.sg .ck-g3{gap:22px}
+/* 20/11/2026 : colonne Absentéisme → plus de place pour la rentabilité ; Confidence à droite sous le site, OC Mobile en bas */
+.cockpit.sg .ck-g2{grid-template-columns:1.6fr 1fr}
+.cockpit.sg .ck-g3{grid-template-columns:1.25fr .8fr 1fr}
+.cockpit.sg .sg-lignes{gap:5px}.cockpit.sg .sg-ligne .n{flex-direction:row;align-items:baseline;gap:8px}.cockpit.sg .sg-ligne.tot{padding-top:5px}
+.cockpit.sg .sg-conf .sg-jauge{width:34px}.cockpit.sg .sg-conf-l>span{min-width:0}
+.cockpit.sg .sg-conf{font-size:10px}.cockpit.sg .sg-conf-t,.cockpit.sg .sg-conf-l{grid-template-columns:.95fr 1.2fr 1.2fr 1.2fr 1.2fr .85fr;gap:7px}
 
 /* ---------- Dossier de visite ---------- */
 .fiche.visite .v-chiffres{grid-template-columns:repeat(5,1fr)}
