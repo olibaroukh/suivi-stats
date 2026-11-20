@@ -242,12 +242,14 @@
         succ: rs.filter(r => estActif(r) && r.type === 'Succursale' && r.nature !== 'Camion').length, fr: rs.filter(r => estActif(r) && r.type === 'Franchise' && r.nature !== 'Camion').length, sup12: prevMag.filter(x => x >= 1.2e6).length,
         evolOpt: evol(n.P != null ? n.P - (n.Q || 0) - (n.R || 0) : null, p.P != null ? p.P - (p.Q || 0) - (p.R || 0) : null), evolAud: evol(n.Q, p.Q),
         evolNdv: evol(n.U, p.U), evolNdvA: evol(n.AW, p.AW), ndv: n.U, ndvA: n.AW,
-        re: pct(n.CQ), marge: pct(n.CS), loyers: pct(n.CU), pub: pct(n.CW), rentaSal: pct(n.CM), note: n.BL ? n.BK : null, avis: n.BL };
+        re: pct(n.CQ), marge: pct(n.CS), loyers: pct(n.CU), pub: pct(n.CW), rentaSal: pct(n.CM), absent: n.XS ? (n.XR || 0) / n.XS : null, note: n.BL ? n.BK : null, avis: n.BL };
     };
     const pays = paysL.map(p => ligne(p, act.filter(r => r.pays === p)));
     const total = ligne('TOTAL', act);
     const succ = paysL.map(p => ligne(p, act.filter(r => r.pays === p && r.type === 'Succursale'))).filter(l => l.succ);
     const succTot = ligne('SUCCURSALES', act.filter(r => r.type === 'Succursale'));
+    // Absentéisme (20/11/2026) : succursales France uniquement → pas de total réseau, qui laisserait croire à un taux toutes succursales
+    succTot.absent = null;
     const segments = [['Succursales France', r => r.pays === 'FRANCE' && r.type === 'Succursale'], ['Franchises France', r => r.pays === 'FRANCE' && r.type === 'Franchise'], ['International', r => r.pays !== 'FRANCE']]
       .map(([n, f]) => ligne(n, act.filter(f)));
     // Site internet (cumul depuis janvier, devise locale par site, total en €)
@@ -482,7 +484,7 @@
     const L = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b></td><td class="fort sg-ca-c">${f(l.ca, 'kn')}${cls === 'tot' ? '' : part(l.ca)}</td><td class="${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</td><td>${f(l.obj, 'kn')}</td>${posCell(l.posit)}<td>${f(l.prev, 'kn')}</td><td>${nb(l.succ)}</td><td>${nb(l.fr)}</td><td>${nb(l.sup12)}</td>
       <td class="${c(l.evolOpt, l.evolOpt >= 0)}">${f(l.evolOpt, 'evol')}</td><td class="${c(l.evolAud, l.evolAud >= 0)}">${f(l.evolAud, 'evol')}</td><td>${nb(l.ndv)}</td><td class="${c(l.evolNdv, l.evolNdv >= 0)}">${f(l.evolNdv, 'evol')}</td><td>${nb(l.ndvA)}</td><td class="${c(l.evolNdvA, l.evolNdvA >= 0)}">${f(l.evolNdvA, 'evol')}</td></tr>`;
     const head = `<thead><tr><th class="nm"></th><th>CA généré (k€)</th><th>Évol. CA</th><th>Objectif (k€)</th><th class="sg-pos">Positionnement</th><th>Prévisionnel (k€)</th><th>Succ.</th><th>Franch.</th><th>≥ 1,2 M€</th><th>Évol. CA optique</th><th>Évol. CA audio</th><th>Ventes optique</th><th>Évol.</th><th>Ventes audio</th><th>Évol.</th></tr></thead>`;
-    const R = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b><small>${l.succ} succ.</small></td><td>${f(l.ca, 'kn')}</td><td class="${c(l.re, l.re >= 0.2)}">${f(l.re, 'pct1')}</td><td class="${c(l.marge, l.marge >= 0.7)}">${f(l.marge, 'pct1')}</td><td class="${c(l.loyers, l.loyers <= 0.06)}">${f(l.loyers, 'pct1')}</td><td class="${c(l.pub, l.pub <= 0.07)}">${f(l.pub, 'pct1')}</td><td class="${c(l.rentaSal, l.rentaSal <= 0.28)}">${f(l.rentaSal, 'pct1')}</td><td>${l.note == null ? '–' : '<span class="sg-etoile">★</span> ' + nb(l.note, 1)}</td><td>${nb(l.avis)}</td></tr>`;
+    const R = (l, cls = '') => `<tr class="${cls}"><td class="nm"><b>${esc(l.nom)}</b><small>${l.succ} succ.</small></td><td>${f(l.ca, 'kn')}</td><td class="${c(l.re, l.re >= 0.2)}">${f(l.re, 'pct1')}</td><td class="${c(l.marge, l.marge >= 0.7)}">${f(l.marge, 'pct1')}</td><td class="${c(l.loyers, l.loyers <= 0.06)}">${f(l.loyers, 'pct1')}</td><td class="${c(l.pub, l.pub <= 0.07)}">${f(l.pub, 'pct1')}</td><td class="${c(l.rentaSal, l.rentaSal <= 0.28)}">${f(l.rentaSal, 'pct1')}</td><td class="${l.absent == null ? '' : l.absent <= COL.absent.seuil ? 'ok' : l.absent <= COL.absent.seuil2 ? 'moy' : 'ko'}">${f(l.absent, 'pct1')}</td><td>${l.note == null ? '–' : '<span class="sg-etoile">★</span> ' + nb(l.note, 1)}</td><td>${nb(l.avis)}</td></tr>`;
     const DS = { 'Euro': '€', 'Shekel': '₪', 'Livre Sterling': '£', 'Dollars Canadien': '$' };
     const site = !md.site ? '<div class="nd">Données du site internet non chargées (copier-coller du mail de fin de mois).</div>' : `<div class="sg-lignes">
       ${md.site.lignes.map(l => `<div class="sg-ligne"><span class="n"><b>${esc(l.nom)}</b><small>${f(l.ca, 'kn')} k${DS[l.dev]} / ${f(l.obj, 'kn')}</small></span>${barre(l.posit)}<em style="color:${coulPosit(l.posit)}">${f(l.posit, 'pct0')}</em><span class="e ${c(l.evol, l.evol >= 0)}">${f(l.evol, 'evol')}</span></div>`).join('')}
@@ -499,14 +501,14 @@
       ${heros}
       <section class="ck-sec"><h2><span>Chiffre d’affaires par pays et par segment</span><small>positionnement : vert ≥ 100 %, orange ≥ 95 %, rouge en dessous · barre grise = part du CA réseau</small></h2><table class="ck-syn sg-pays">${head}<tbody>${md.pays.map(l => L(l)).join('')}${L(t, 'tot')}${md.segments.map(l => L(l, 'seg')).join('')}</tbody></table></section>
       <div class="ck-g2">
-        <section class="ck-sec"><h2><span>Rentabilité succursales par pays</span><small>reporting trimestriel · renta salariale cumul</small></h2><table class="ck-syn"><thead><tr><th class="nm"></th><th>CA généré (k€)</th><th>RE</th><th>Marge produits</th><th>Loyers chargés</th><th>Publicité</th><th>Renta salariale</th><th>Note Google</th><th>Avis</th></tr></thead><tbody>${md.succ.map(l => R(l)).join('')}${R(md.succTot, 'tot')}</tbody></table></section>
+        <section class="ck-sec"><h2><span>Rentabilité succursales par pays</span><small>reporting trimestriel · renta salariale et absentéisme cumulés · absentéisme : succursales France</small></h2><table class="ck-syn"><thead><tr><th class="nm"></th><th>CA généré (k€)</th><th>RE</th><th>Marge produits</th><th>Loyers chargés</th><th>Publicité</th><th>Renta salariale</th><th>Absen&shy;téisme</th><th>Note Google</th><th>Avis</th></tr></thead><tbody>${md.succ.map(l => R(l)).join('')}${R(md.succTot, 'tot')}</tbody></table></section>
         <div class="ck-col">
           <section class="ck-sec"><h2><span>Site internet</span><small>CA TTC cumulé · positionnement vs objectif</small></h2>${site}</section>
-          <section class="ck-sec"><h2><span>OC Mobile</span></h2>${mobile}</section>
+          <section class="ck-sec"><h2><span>Confidence</span><small>taux de contact par liste</small></h2>${conf}</section>
         </div>
       </div>
       <div class="ck-g3">
-        <section class="ck-sec"><h2><span>Confidence</span><small>taux de contact par liste</small></h2>${conf}</section>
+        <section class="ck-sec"><h2><span>OC Mobile</span></h2>${mobile}</section>
         <section class="ck-sec"><h2><span>Taux de MdC</span></h2>${mdc}</section>
         <section class="ck-sec"><h2><span>Visites externes</span></h2>${vis}</section>
       </div>
