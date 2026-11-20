@@ -86,8 +86,8 @@
     effTheo: { lib: 'Effectif théorique', f: (n) => n.XB, fmt: 'nb1' },
     // 20/11/2026 : absentéisme cumulé depuis janvier = jours d'absence (motifs du score santé, groupe A) / jours ouvrés
     // théoriques ; XR et XS sont additionnés à chaque niveau (AR, groupe), le taux n'est jamais une moyenne de taux.
-    // Seuils PROVISOIRES, à ajuster d'après la répartition réelle (médiane / quartiles affichés dans le rapport d'import).
-    absent: { lib: 'Absentéisme', f: (n) => n.XS ? (n.XR || 0) / n.XS : null, fmt: 'pct1', seuil: 0.04, seuil2: 0.06, inverse: true },
+    // Seuils validés le 20/11/2026 d'après octobre (médiane 6,3 %, quartiles 3,1 % / 10,7 %) : vert ≤ 5 %, orange ≤ 10 %, rouge au-delà.
+    absent: { lib: 'Absentéisme', f: (n) => n.XS ? (n.XR || 0) / n.XS : null, fmt: 'pct1', seuil: 0.05, seuil2: 0.10, inverse: true },
     ecart: { lib: 'Écart effectif / théorique', f: (n) => (n.XA != null && n.XB != null) ? n.XA + (n.XC || 0) - n.XB : null, fmt: 'ecart', seuil: 0.5, inverse: true },
     ageMoy: { lib: 'Âge moyen', f: (n) => n.XG, fmt: 'nb1' },
     pctF: { lib: '% femmes', f: (n) => n.XI ? n.XH / n.XI : null, fmt: 'pct0' },
