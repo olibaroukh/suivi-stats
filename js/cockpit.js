@@ -84,6 +84,10 @@
     effOpt: { lib: 'Effectif optique', f: (n) => n.XA, fmt: 'nb1' },
     effAud: { lib: 'Effectif audio', f: (n) => n.XC, fmt: 'nb1' },
     effTheo: { lib: 'Effectif théorique', f: (n) => n.XB, fmt: 'nb1' },
+    // 20/11/2026 : absentéisme cumulé depuis janvier = jours d'absence (motifs du score santé, groupe A) / jours ouvrés
+    // théoriques ; XR et XS sont additionnés à chaque niveau (AR, groupe), le taux n'est jamais une moyenne de taux.
+    // Seuils PROVISOIRES, à ajuster d'après la répartition réelle (médiane / quartiles affichés dans le rapport d'import).
+    absent: { lib: 'Absentéisme', f: (n) => n.XS ? (n.XR || 0) / n.XS : null, fmt: 'pct1', seuil: 0.04, seuil2: 0.06, inverse: true },
     ecart: { lib: 'Écart effectif / théorique', f: (n) => (n.XA != null && n.XB != null) ? n.XA + (n.XC || 0) - n.XB : null, fmt: 'ecart', seuil: 0.5, inverse: true },
     ageMoy: { lib: 'Âge moyen', f: (n) => n.XG, fmt: 'nb1' },
     pctF: { lib: '% femmes', f: (n) => n.XI ? n.XH / n.XI : null, fmt: 'pct0' },
@@ -96,7 +100,7 @@
     complet: { lib: 'CA · Optique · Audio · Rentabilité', tri: 'ca',
       sections: [
         { lib: 'Chiffre d’affaires · Optique · Audio', groupes: [['Chiffre d’affaires', ['obj', 'ca', 'posit', 'evolCa']], ['Optique', ['ndv', 'evolNdv', 'panier', 'tc', 'sop', 'mdc', 'pcPct', 'pm1']], ['Audio', ['caAudio', 'evolAudio', 'protheses', 'pmProt', 'tcA', 'vadd', 'depist']]] },
-        { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'indus']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Google & qualité', ['note', 'avis', 'mrq']], ['Rentabilité salariale & effectifs', ['rentaSal', 'effOpt', 'effAud', 'effTheo', 'ecart', 'ageMoy', 'pctF', 'caPers']]] },
+        { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'indus']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Google & qualité', ['note', 'avis', 'mrq']], ['Rentabilité salariale & effectifs', ['rentaSal', 'effOpt', 'effAud', 'effTheo', 'ecart', 'absent', 'ageMoy', 'pctF', 'caPers']]] },
       ],
       top: [['posit', 'Positionnement'], ['ndv', 'Nombre de ventes'], ['protheses', 'Nombre de prothèses'], ['re', 'Résultat d’exploitation']] },
     // sansSiColonnes (06/11/2026, demande d'Olivier) : colonnes retirées de la liste dès qu'elle passe sur 2 colonnes ou plus (la synthèse les garde)
@@ -109,7 +113,7 @@
     restes: { lib: 'Restes dus', cols: ['rdus', 'avoirs', 'gel', 'indus', 'evolIndus', 'recup'], tri: 'indus',
       top: [['indus', 'Taux d’indus le plus bas', true]] },
     confidence: { lib: 'Confidence', cols: [], tri: 'cfG', top: [['cfG', 'Taux de contact global']] },
-    renta: { lib: 'Rentabilité & gestion', maxBlocs: 2, cols: ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel', 'rentaSal', 'indus', 'note', 'mrq'], tri: 're',
+    renta: { lib: 'Rentabilité & gestion', maxBlocs: 2, cols: ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel', 'rentaSal', 'absent', 'indus', 'note', 'mrq'], tri: 're',
       top: [['re', 'Résultat d’exploitation'], ['note', 'Note Google'], ['indus', 'Taux d’indus le plus bas', true]] },
   };
 
@@ -209,7 +213,9 @@
     const compteurs = [['Magasins', mags.length], ['Magasins à 100 %', posit.filter(x => x != null && x >= 1).length], ['Prévisionnel ≥ 1,2 M€', prevs.filter(x => x >= 1.2e6).length]];
     if (themeId === 'confidence') compteurs.push(['Magasins utilisateurs', mags.filter(r => { const it = donnees(r).N; return it.ZN > 0 && it.ZM > 0; }).length]);
     if (themeId === 'restes') compteurs.push(['Taux d’indus ≤ 1 %', mags.filter(r => { const v = (photo.magasins[String(r.code)].N || {}).BV; return v != null && v <= 0.01; }).length]);
-    return { type: th.sections ? 'multi' : 'liste', perim, theme: th, themeId, photo, cols: th.cols, lignes, total, sous, top, compteurs, obj, multi, devTotal: multi ? '€' : (DEVISE_SYM[devises[0]] || '€'), sousLib: perim.id === 'france' ? 'AR' : perim.id === 'inter' ? 'Pays' : '' };
+    // Absentéisme : colonne retirée quand aucun magasin du périmètre n'a de rapport agenda RH (franchises, international)
+    const colsMd = th.cols.includes('absent') && total.v.absent == null ? th.cols.filter(k => k !== 'absent') : th.cols;
+    return { type: th.sections ? 'multi' : 'liste', perim, theme: th, themeId, photo, cols: colsMd, lignes, total, sous, top, compteurs, obj, multi, devTotal: multi ? '€' : (DEVISE_SYM[devises[0]] || '€'), sousLib: perim.id === 'france' ? 'AR' : perim.id === 'inter' ? 'Pays' : '' };
   }
   function objectifsRef(objectifs, mags) {
     const rows = (objectifs && objectifs.rows) || [];
