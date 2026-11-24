@@ -792,11 +792,11 @@
     const equipe = `<div class="mu-carte mu-equipe"><div class="mu-t">Équipe &amp; productivité <small>effectifs en ETP</small></div>
       <div class="mu-eqts">
         ${tq('Renta salariale', q.rentaSal == null ? '–' : nb(q.rentaSal * 100, 1) + ' %', 'objectif ≤ 28 %', q.rentaSal == null ? '' : q.rentaSal <= 0.28 ? 'ok' : 'ko')}
-        ${tq('Effectif vs théorique', q.ecartTot == null ? '–' : sgn(q.ecartTot) + ' ETP', q.ecartTot == null ? 'export RH manquant' : `${q.nSous} en sous-effectif · ${q.nSur} en sureffectif`, q.ecartTot == null ? '' : Math.abs(q.ecartTot) < 1 ? 'ok' : q.ecartTot < 0 ? 'sous' : q.ecartTot < 3 ? 'moy' : 'ko')}
+        ${tq('Effectif vs théorique', q.ecartTot == null ? '–' : sgn(q.ecartTot) + ' ETP', q.ecartTot == null ? 'export RH manquant' : `${q.nSous} en sous-effectif · ${q.nSur} en sur-effectif`, q.ecartTot == null ? '' : Math.abs(q.ecartTot) < 1 ? 'ok' : q.ecartTot < 0 ? 'sous' : q.ecartTot < 3 ? 'moy' : 'ko')}
         ${tq('CA / mois / ETP', q.caCollab == null ? '–' : nb(q.caCollab / 1000, 1) + ' k€', dRef == null ? '' : `${f(dRef, 'evol')} vs moy. France (${nb(q.caCollabRef / 1000, 1)} k€)`, dRef == null ? '' : dRef >= 0 ? 'ok' : 'ko')}
       </div>
       <div class="mu-aj-t">Effectifs à ajuster</div>
-      <div class="mu-ajs">${q.ajuster.length ? q.ajuster.map(x => `<div class="mu-aj ${x.ecart < 0 ? 'sous' : 'sur'}"><b>${esc(x.nom)}</b><span class="e">${sgn(x.ecart)} ETP</span><span class="d">${x.ecart < 0 ? 'sous-effectif' : 'sureffectif'}${x.rs != null ? ' · renta sal. ' + nb(x.rs * 100, 1) + ' %' : ''}${x.caE != null ? ' · ' + nb(x.caE / 1000, 1) + ' k€ / ETP' : ''}</span></div>`).join('') : '<div class="mu-vide">Tous les magasins sont à l’effectif juste (± 0,5 ETP).</div>'}</div></div>`;
+      <div class="mu-ajs">${q.ajuster.length ? q.ajuster.map(x => `<div class="mu-aj ${x.ecart < 0 ? 'sous' : 'sur'}"><b>${esc(x.nom)}</b><span class="e">${sgn(x.ecart)} ETP</span><span class="d">${x.ecart < 0 ? 'sous-effectif' : 'sur-effectif'}${x.rs != null ? ' · renta sal. ' + nb(x.rs * 100, 1) + ' %' : ''}${x.caE != null ? ' · ' + nb(x.caE / 1000, 1) + ' k€ / ETP' : ''}</span></div>`).join('') : '<div class="mu-vide">Tous les magasins sont à l’effectif juste (± 0,5 ETP).</div>'}</div></div>`;
     // Podium
     const pod = md.podium, ordre = [[1, 2, 'p2'], [0, 1, 'p1'], [2, 3, 'p3']];
     const podium = `<div class="mu-carte mu-podium"><div class="mu-t">Le podium <small>meilleurs positionnements</small></div><div class="mu-marches">
@@ -842,7 +842,7 @@
   }
 
   // ---------- Indicateur du moment (24/11/2026) : affiche réseau succursales France, un indicateur ou un thème ----------
-  const MOMENT_LIBS = Object.assign({}, MUR_INDICS, { ecartEff: 'Écart d’effectif (ETP)' });
+  const MOMENT_LIBS = Object.assign({}, MUR_INDICS, { ecartEff: 'Écart d’effectif (ETP)', posit: 'Positionnement' });
   const MOMENT_THEMES = {
     rentabilite: { lib: 'Rentabilité', ind: ['re', 'rentaSal', 'ecartEff'] },
     optique: { lib: 'Optique', ind: ['mdc', 'pc', 'tc', 'panier'] },
@@ -866,6 +866,7 @@
     avis: { spe: 'avis', fmt: 'nb', seuil: OBJ_AVIS_GOOGLE, sens: 1, tol: 100 },
     caCollab: { spe: 'caCollab', fmt: 'k1', reseau: 1 },
     ecartEff: { spe: 'eff', fmt: 'sg1', eff: 1 },
+    posit: { spe: 'posit', fmt: 'pct0', seuil: 1, sens: 1, tol: 0.05 },
   };
   function mesure(k, ph, rs) {
     const sp = MSPEC[k]; if (!sp || !ph) return { v: null, v1: null };
@@ -873,6 +874,7 @@
     if (!rr.length) return { v: null, v1: null };
     if (sp.spe === 'avis') { const l = rr.map(r => ph.magasins[String(r.code)].N || {}).filter(x => x.BL != null); return { v: l.length ? l.reduce((a, x) => a + x.BL, 0) / l.length : null, v1: null }; }
     if (sp.spe === 'caCollab') { let ca = 0, e = 0; rr.forEach(r => { const ef = effectifMag(ph, r.code), x = ph.magasins[String(r.code)].N || {}; if (ef && x.P != null) { ca += x.P; e += ef; } }); return { v: e ? ca / e / ph.mois : null, v1: null }; }
+    if (sp.spe === 'posit') { const a = agreger(rr.map(r => ph.magasins[String(r.code)])).N; return { v: a.P != null && a.O ? a.P * 12 / ph.mois / (a.O * 1000) : null, v1: null }; }
     if (sp.spe === 'eff') { const l = rr.map(r => ecartEffMag(ph, r)).filter(x => x != null); return { v: l.length ? l.reduce((a, x) => a + x, 0) / l.length : null, v1: null }; }
     const a = agreger(rr.map(r => ph.magasins[String(r.code)]));
     return { v: sp.get(a.N), v1: sp.get(a.N1) };
@@ -936,10 +938,14 @@
       : magsT.filter(x => x.nOk === inds.length).sort(parS0).slice(0, 5);
     const progres = magsT.filter(x => x.d0 != null && x.d0 > 0).sort((a, b) => b.d0 - a.d0).slice(0, 3);
     const mobilise = magsT.filter(x => x.nKo > 0).sort((a, b) => b.nKo - a.nKo || -parS0(a, b)).slice(0, 3);
+    const coursePos = ars.map(a => { const rs = tous.filter(r => r.ar === a); return { ar: a, couleur: coul[a], v: mesure('posit', photo, rs).v, vp: mesure('posit', prec, rs).v }; })
+      .filter(x => x.v != null).sort((a, b) => b.v - a.v);
+    const ordP = coursePos.filter(x => x.vp != null).slice().sort((a, b) => b.vp - a.vp).map(x => x.ar);
+    coursePos.forEach((x, i) => { x.rang = i + 1; const j = ordP.indexOf(x.ar); x.gain = prec && j >= 0 ? j - i : null; });
     const compte = d => ({ ok: d.mags.filter(x => x.e.etat === 'ok').length, sur: d.mags.filter(x => x.m.v != null).length,
       progres: d.mags.filter(x => x.e.score != null && x.ep.score != null && x.e.score > x.ep.score).length, avecP: d.mags.filter(x => x.e.score != null && x.ep.score != null).length });
     return { type: 'moment', photo, prec, conf: Object.assign({}, MOMENT_DEFAUT, conf || {}), mode: L.mode, titre: L.titre, inds, course, tableau, champions, progres, mobilise,
-      comptes: inds.map(compte), tousOk: magsT.filter(x => x.nOk === inds.length && x.cells.every(c => c.m.v != null)).length, nbMags: actifs.length, serie: opts.serie || null };
+      coursePos, comptes: inds.map(compte), tousOk: magsT.filter(x => x.nOk === inds.length && x.cells.every(c => c.m.v != null)).length, nbMags: actifs.length, serie: opts.serie || null };
   }
 
   const FMT_M = (v, fmt) => {
@@ -994,9 +1000,9 @@
       const vsN1 = r.v1 != null && r.v != null ? ((i0.spec.vol || i0.spec.rel) ? FMT_M(r.v / r.v1 - 1, 'evol') : deltaAff(i0, r.v - r.v1)) + ' vs N-1' : '';
       const vsM = rp.v != null && r.v != null && !(i0.spec.vol || i0.spec.rel) ? deltaAff(i0, r.v - rp.v) + ' vs ' + mp : '';
       droite = `<div class="mo-res" style="background:${i0.eRes.etat ? e[1] : '#E22F2A'}"><div class="l">Réseau</div><div class="v">${FMT_M(r.v, i0.spec.fmt)}</div><div class="o">${esc(objAff(i0))}</div></div>
-        <div class="mo-evs">${vsN1 ? `<div>${vsN1}</div>` : ''}${vsM ? `<div>${vsM}</div>` : ''}</div>`;
+        <div class="mo-evs">${vsN1 ? `<div>${vsN1}</div>` : ''}${vsM ? `<div>${vsM}</div>` : ''}<div>${md.comptes[0].ok}/${md.comptes[0].sur} magasins à l’objectif</div></div>`;
     } else {
-      droite = md.inds.map(d => { const e = ETATS[d.eRes.etat] || ETATS['']; return `<div class="mo-tu" style="background:${d.eRes.etat ? e[1] : '#5A5557'}"><div class="l">${esc(d.lib)}</div><div class="v">${FMT_M(d.res.v, d.spec.fmt)}</div><div class="o">${esc(objAff(d))}</div></div>`; }).join('');
+      droite = md.inds.map(d => { const e = ETATS[d.eRes.etat] || ETATS['']; return `<div class="mo-tu" style="background:${d.eRes.etat ? e[1] : '#5A5557'}"><div class="l">${esc(d.lib)}</div><div class="v">${FMT_M(d.res.v, d.spec.fmt)}</div><div class="o">${esc(objAff(d))}</div><div class="c">${md.comptes[md.inds.indexOf(d)].ok}/${md.comptes[md.inds.indexOf(d)].sur} magasins</div></div>`; }).join('');
     }
     const bandeau = `<header class="mo-band"><div class="mo-id"><div class="mo-lab">${seul ? 'Indicateur' : 'Thème'} du moment · à fin ${MOIS[mo - 1]} ${ph.annee}</div>
       <h1>${esc(md.titre)}</h1>${msg}</div>${droite}<img class="mu-logo" src="${logo}" alt=""></header>`;
@@ -1007,7 +1013,7 @@
       const trait = sp.eff ? null : (sp.vol || sp.rel) ? 1 : i0.seuil != null ? i0.seuil : (i0.res.v1 != null ? i0.res.v1 : i0.res.v);
       const hi = Math.max(...vals.map(Math.abs), trait || 0) * 1.12 || 1;
       const lt = sp.eff ? 'barre = écart d’effectif moyen par magasin' : (sp.vol || sp.rel) ? 'trait = N-1' : i0.seuil != null ? 'trait = objectif' : 'trait = réseau N-1';
-      gauche = `<div class="mu-carte mo-course"><div class="mu-t">La course des AR <small>${lt} · flèche = places vs ${mp}</small></div><div class="mo-barres">
+      gauche = `<div class="mu-carte mo-course"><div class="mu-t">Le classement des AR <small>${lt} · flèche = places vs ${mp}</small></div><div class="mo-barres">
         ${md.course.map(x => { const bv = (sp.vol || sp.rel) && x.m.v1 ? x.m.v / x.m.v1 : x.m.v; const c = sp.eff ? (x.m.v < 0 ? '#1565C0' : '#B5520A') : x.couleur;
           return `<div class="mo-b"><span class="r">${x.rang}.</span><span class="pa" style="background:${x.couleur}">${esc(x.ar.charAt(0))}</span><span class="n">${esc(x.ar.split(/\s+/)[0])}</span>
           <span class="piste"><i style="width:${Math.min(100, Math.abs(bv) / hi * 100).toFixed(1)}%;background:${c}"></i>${trait != null ? `<b style="left:${(trait / hi * 100).toFixed(1)}%"></b>` : ''}</span>
@@ -1017,12 +1023,12 @@
       gauche = `<div class="mu-carte mo-tab"><div class="mu-t">Le classement des AR <small>par objectifs tenus, puis ${esc(i0.lib)}</small></div>
         <div class="mo-ligne mo-tete" style="--nc:${cols}"><span></span><span></span><span></span>${md.inds.map(d => `<span>${esc(d.lib)}<br><small>${esc(objAff(d).replace('objectif ', ''))}</small></span>`).join('')}<span>Objectifs<br>tenus</span></div>
         <div class="mo-lignes">${md.tableau.map(x => `<div class="mo-ligne" style="--nc:${cols}"><span class="r">${x.rang}.</span><span class="pa" style="background:${x.couleur}">${esc(x.ar.charAt(0))}</span><span class="n">${esc(x.ar.split(/\s+/)[0])}</span>
-          ${x.cells.map((c, j) => { const e = ETATS[c.e.etat] || ETATS['']; const d = md.inds[j]; return `<span class="ce" style="background:${e[0]};color:${e[1]}">${valAff(d, c.m)}${d.spec.eff && c.m.v != null ? `<small>${c.m.v <= -0.5 ? 'sous-effectif' : c.m.v < 0.5 ? 'juste' : 'sureffectif'}</small>` : ''}</span>`; }).join('')}
+          ${x.cells.map((c, j) => { const e = ETATS[c.e.etat] || ETATS['']; const d = md.inds[j]; return `<span class="ce" style="background:${e[0]};color:${e[1]}">${valAff(d, c.m)}${d.spec.eff && c.m.v != null ? `<small>${c.m.v <= -0.5 ? 'sous-effectif' : c.m.v < 0.5 ? 'juste' : 'sur-effectif'}</small>` : ''}</span>`; }).join('')}
           <span class="dots" style="color:${x.couleur}">${'●'.repeat(x.nOk)}${'○'.repeat(cols - x.nOk)}</span></div>`).join('')}</div></div>`;
     }
     // Colonne droite
     const medals = ['#E8B931', '#C9CDD6', '#D9A47A', '#EEECEB', '#EEECEB'];
-    const champ = `<div class="mu-carte mo-champ"><div class="mu-t">Les champions <small>${seul ? 'meilleurs magasins' : 'tous les objectifs tenus'}</small></div><div class="mo-l">
+    const champ = `<div class="mu-carte mo-champ"><div class="mu-t">Les champions <small>${seul ? 'meilleurs magasins' : `tous les objectifs tenus · ${md.tousOk}/${md.nbMags} magasins`}</small></div><div class="mo-l">
       ${md.champions.length ? md.champions.map((c, i) => `<div class="mo-c"><span class="md" style="background:${medals[i]}">${i + 1}</span><div class="tx"><b>${esc(c.nom)}</b><small style="color:${c.couleur}">AR ${esc(String(c.ar).split(/\s+/)[0])}</small></div><span class="v${seul ? '' : ' multi'}">${seul ? valAff(i0, c.cells[0].m) : c.cells.map((x, j) => valAff(md.inds[j], x.m)).join(' · ')}</span></div>`).join('') : '<div class="mu-vide">Aucun magasin pour l’instant : à vous de jouer !</div>'}</div></div>`;
     const sec = seul
       ? `<div class="mu-carte mo-prog"><div class="mu-t">Les plus fortes progressions <small>vs ${mp}</small></div><div class="mo-l">
@@ -1034,7 +1040,7 @@
     const dEff = md.inds.find(d => d.spec.eff);
     if (!seul && dEff) {
       const mx = Math.max(1, ...dEff.ars.map(a => Math.abs(a.m.v || 0))) * 1.1;
-      basG = `<div class="mu-carte mo-eff"><div class="mu-t">Sous- et sureffectif par AR <small><span style="color:#1565C0">sous-effectif ▼</span> · <span style="color:#B5520A">▲ sureffectif</span> · ETP moyen par magasin</small></div><div class="mo-effs">
+      basG = `<div class="mu-carte mo-eff"><div class="mu-t">Sous- et sur-effectif par AR et par magasin <small><span style="color:#1565C0">▼ sous</span> · <span style="color:#B5520A">▲ sur</span> · ETP moyen</small></div><div class="mo-effs">
         ${dEff.ars.filter(a => a.m.v != null).map(a => { const h = Math.abs(a.m.v) / mx * 50, c = a.m.v < 0 ? '#1565C0' : '#B5520A';
           return `<div class="mo-ec"><div class="zone"><i class="axe"></i><i class="bar" style="background:${c};height:${h.toFixed(1)}%;top:${(a.m.v >= 0 ? 50 - h : 50).toFixed(1)}%"></i></div><b style="color:${c}">${FMT_M(a.m.v, 'sg1')}</b><span>${esc(a.ar.split(/\s+/)[0])}</span></div>`; }).join('')}</div></div>`;
     } else {
@@ -1055,9 +1061,14 @@
           <text x="24" y="${H - 4}" class="mu-sm">${MC[s[0].mois - 1]}</text><text x="${W - 24}" y="${H - 4}" text-anchor="end" class="mu-sm">${MC[der.mois - 1]} · ${(i0.spec.vol || i0.spec.rel) ? FMT_M(der.v - 1, 'evol') + ' vs N-1' : FMT_M(der.v, i0.spec.fmt)}</text></svg></div>`;
       }
     }
-    // Bas droite : compteurs
+    // Bas droite : la course des AR au positionnement (24/11/2026, retirée des cockpits mur)
     let basD;
-    if (seul) {
+    const cp = md.coursePos;
+    if (!(seul && i0.k === 'posit') && cp.length) {
+      const hiP = Math.max(1.1, ...cp.map(x => x.v + 0.02));
+      basD = `<div class="mu-carte mo-cpos"><div class="mu-t">La course des AR <small>positionnement · places vs ${mp}</small></div><div class="mo-cpl">
+        ${cp.map(x => `<div class="mo-cp"><span class="r">${x.rang}.</span><span class="n" style="color:${x.couleur}">${esc(x.ar.split(/\s+/)[0])}</span><span class="piste"><i style="width:${(Math.max(0, x.v) / hiP * 100).toFixed(1)}%;background:${x.couleur}"></i><b style="left:${(100 / hiP).toFixed(1)}%"></b></span><span class="v">${FMT_M(x.v, 'pct0')}</span><span class="g ${x.gain > 0 ? 'ok' : x.gain < 0 ? 'ko' : ''}">${x.gain == null ? '' : x.gain > 0 ? '▲ ' + x.gain : x.gain < 0 ? '▼ ' + (-x.gain) : '='}</span></div>`).join('')}</div></div>`;
+    } else if (seul) {
       const c = md.comptes[0], r = i0.res;
       let manque = '';
       if (i0.seuil != null && r.v != null) { const d = (i0.seuil - r.v) * (i0.spec.sens || 1);

@@ -976,3 +976,17 @@ a.bouton[hidden]{display:none}
 .moment .mo-cpt .mu-bad .v{font-size:30px}
 .moment .mo-droite>.mo-champ{flex:1.4}
 .moment .mo-c .v.multi{font-size:16px;font-weight:800}
+.moment .mo-tu .c{font-size:12px;font-weight:800;margin-top:2px;opacity:.95}
+.moment .mo-evs div{font-size:16px}
+.moment .mo-cpos{padding:14px 22px}
+.moment .mo-cpl{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;min-height:0}
+.moment .mo-cp{display:flex;align-items:center;gap:10px}
+.moment .mo-cp .r{width:26px;text-align:right;font-size:16px;font-weight:900}
+.moment .mo-cp .n{width:96px;font-size:16px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.moment .mo-cp .piste{flex:1;height:16px;background:#EEECEB;border-radius:999px;position:relative}
+.moment .mo-cp .piste i{display:block;height:16px;border-radius:999px}
+.moment .mo-cp .piste b{position:absolute;top:-4px;width:3px;height:24px;background:#231F20}
+.moment .mo-cp .v{width:56px;text-align:right;font-size:17px;font-weight:900}
+.moment .mo-cp .g{width:40px;font-size:14px;font-weight:800;color:#8C8C8C}.moment .mo-cp .g.ok{color:var(--ok)}.moment .mo-cp .g.ko{color:var(--r)}
+.moment .mu-t{white-space:nowrap}.moment .mu-t small{overflow:hidden;text-overflow:ellipsis}
+.moment .mo-band h1{text-transform:none}
