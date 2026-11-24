@@ -376,7 +376,7 @@
     const ouvre = `<div class="fiche${paysage ? ' paysage' : ''}" dir="${lang === 'he' ? 'rtl' : 'ltr'}" lang="${lang}">`;
     const blocChiffres = `<div class="chiffres">
     ${tuile(t('CA GÉNÉRÉ:').replace(/:$/, ''), keur(c.ca.ca), '', evo(c.ca.evol, null, pc))}
-    ${tuile(t('OBJECTIF:').replace(/:$/, ''), keur(c.ca.obj))}
+    ${tuile(t('OBJECTIF:').replace(/:$/, ''), keur(c.ca.obj), '', c.ca.ca != null ? `${esc(t('Prévisionnel'))} ${keur(c.ca.ca * 12 / c.mois)}` : '')}
     ${tuile('Positionnement', pc(c.ca.posit), 'fort ' + etatPct(c.ca.posit, 1), t('projection fin d’année'))}
     ${tuile(t('CA MANQUANT'), keur(c.ca.manquant), c.ca.manquant ? 'rouge' : '', `${esc(t('Restant par mois'))} ${keur(c.ca.restant)}`)}
     ${tuile(t('Potentiel CA'), keur(c.ca.potentiel), '', `${esc(t('Positionnement potentiel'))} ${pc(c.ca.positPot)}`)}

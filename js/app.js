@@ -489,13 +489,14 @@
     return par;
   }
   // Positionnement d'un périmètre mois par mois (montants convertis en € si plusieurs devises)
-  async function seriePerimetre(p, tx) {
+  async function seriePerimetre(p, tx, objFixe) {
     if (!p || !p.filtre || !CK.photo || !S.photo || CK.photo.annee !== S.photo.annee || CK.photo.mois !== S.photo.mois) return null;
     const par = await series(), ref = S.ref.filter(r => p.filtre(r));
     const out = [];
     for (let mo = 1; mo <= S.photo.mois; mo++) {
       let P = 0, O = 0, ok = false;
       ref.forEach(r => { const x = (par[String(r.code)] || []).find(y => y.mois === mo); if (!x || x.caCum == null || !x.O) return; const t = tx[r.devise] || 1; P += x.caCum * t; O += x.O * 1000 * t; ok = true; });
+      if (objFixe) O = objFixe;
       if (ok) out.push({ mois: mo, posit: O ? P * 12 / mo / O : null });
     }
     return out.length > 1 ? out : null;
@@ -640,7 +641,7 @@
     const listesConf = th === 'confidence' ? await listesConfChoisies() : null;
     $('#ck-conf-btn').hidden = th !== 'confidence'; if (th !== 'confidence') $('#ck-conf').hidden = true;
     const md = Cockpit.construire(CK.photo, S.ref, pAff, th, { tri, objectifs: S.objectifs, taux: tx, siege, precedente, listesConf });
-    md.serie = await seriePerimetre(pAff, tx);
+    md.serie = await seriePerimetre(pAff, tx, pAff.id === 'franchises' ? Object.assign({}, Cockpit.SIEGE_DEFAUT, siege).franchFrance : null);
     const triLib = $('#ck-tri').selectedOptions[0].textContent.replace('Tri : ', '');
     let sansPlafond = false;
     const poser = (h, pages) => { $('#ck-apercu').innerHTML = `<div class="ck-echelle">${Cockpit.rendre(md, { triLib, hListe: h, pages, sansPlafond })}</div>`; return [...$('#ck-apercu').querySelectorAll('.cockpit')]; };
@@ -841,7 +842,7 @@
     $('#ck-print').onclick = () => { document.body.classList.add('impression-cockpit'); window.print(); setTimeout(() => document.body.classList.remove('impression-cockpit'), 500); };
   }
   async function brancherObjSiege() {
-    const a = $('#imp-annee').value, LIB = { groupe: 'Groupe (€)', siteFrance: 'Site France (€)', siteIsrael: 'Site Israël (₪)', siteUK: 'Site UK (£)', siteCanada: 'Site Canada ($)', mobileSucc: 'OC Mobile succ. (€)', mobileFranchise: 'OC Mobile franch. (€)', mdc: 'Taux de MdC (ex. 0,66)' };
+    const a = $('#imp-annee').value, LIB = { groupe: 'Groupe (€)', franchFrance: 'Franchises France (€)', siteFrance: 'Site France (€)', siteIsrael: 'Site Israël (₪)', siteUK: 'Site UK (£)', siteCanada: 'Site Canada ($)', mobileSucc: 'OC Mobile succ. (€)', mobileFranchise: 'OC Mobile franch. (€)', mdc: 'Taux de MdC (ex. 0,66)' };
     const o = Object.assign({}, Cockpit.SIEGE_DEFAUT, (await Store.lireJSON(`config/objectifs-siege-${a}.json`)) || {});
     $('#siege-champs').innerHTML = Object.keys(LIB).map(k => `<label class="muted">${LIB[k]} <input data-k="${k}" type="number" step="any" value="${o[k]}" style="width:120px"></label>`).join('');
     $('#btn-siege').onclick = async () => { const x = {}; document.querySelectorAll('#siege-champs input').forEach(i => x[i.dataset.k] = +i.value); await Store.ecrireJSON(`config/objectifs-siege-${$('#imp-annee').value}.json`, x); $('#siege-info').textContent = 'Enregistré pour ' + $('#imp-annee').value; CK.cle = null; };

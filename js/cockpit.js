@@ -197,7 +197,12 @@
     } else lignes = mags.map(r => ({ code: String(r.code), nom: r.magasin, ar: r.ar || '', v: valeurs(donnees(r)), dev: DEVISE_SYM[r.devise] || '€', devise: r.devise || 'Euro' }));
     // Objectifs (pays de référence du périmètre) pour colorer les cellules
     const obj = objectifsRef(opts.objectifs, mags);
-    const total = { nom: 'TOTAL', v: valeurs(agreger(magsTot.map(item), conv)) };
+    const aggTot = agreger(magsTot.map(item), conv);
+    // 25/11/2026 : périmètre = toutes les franchises France → objectif fixe (Réglages › objectifs Siège, 880 M€ en 2026)
+    const objFF = Object.assign({}, SIEGE_DEFAUT, opts.siege || {}).franchFrance;
+    if (objFF && magsTot.length && magsTot.every(r => r.pays === 'FRANCE' && r.type === 'Franchise')
+      && magsTot.length === ref.filter(r => r.pays === 'FRANCE' && r.type === 'Franchise' && photo.magasins[String(r.code)]).length) aggTot.N.O = objFF / 1000;
+    const total = { nom: 'TOTAL', v: valeurs(aggTot) };
     let sous = [];
     if (perim.sousTotal) {
       const g = {}; magsTot.forEach(r => { const k = perim.sousTotal(r) || '—'; (g[k] = g[k] || []).push(r); });
@@ -229,7 +234,7 @@
 
   // Vue Siège : synthèse par pays (CA converti en €), rentabilité succursales, évolutions
   // Objectifs propres à la vue Siège (fixés chaque année dans Réglages ; valeurs 2026 du Numbers par défaut)
-  const SIEGE_DEFAUT = { groupe: 1.1e9, siteFrance: 6000000, siteIsrael: 1200000, siteUK: 840000, siteCanada: 500000, mobileSucc: 1200000, mobileFranchise: 450000, mdc: 0.66 };
+  const SIEGE_DEFAUT = { groupe: 1.1e9, franchFrance: 880000000, siteFrance: 6000000, siteIsrael: 1200000, siteUK: 840000, siteCanada: 500000, mobileSucc: 1200000, mobileFranchise: 450000, mdc: 0.66 };
   function construireSiege(photo, ref, taux, objS) {
     // Tous les magasins ayant du chiffre (actifs ou non) comptent dans les montants ; les compteurs ne retiennent que les actifs
     const m = photo.mois, act = ref.filter(r => photo.magasins[String(r.code)]), estActif = r => r.actif === 'Oui';
@@ -237,9 +242,14 @@
     const item = r => ({ ...photo.magasins[String(r.code)], devise: r.devise || 'Euro' });
     const ordre = ['FRANCE', 'ESPAGNE', 'BELGIQUE', 'LUXEMBOURG', 'SUISSE', 'ISRAEL', 'CANADA', 'ROYAUME-UNI', 'IRLANDE'];
     const paysL = [...new Set(act.map(r => r.pays))].sort((a, b) => (ordre.indexOf(a) + 1 || 99) - (ordre.indexOf(b) + 1 || 99));
+    // 25/11/2026 : objectif des franchises France = montant fixe (880 M€ en 2026), pas la somme des objectifs des magasins
+    const estFF = r => r.pays === 'FRANCE' && r.type === 'Franchise', nFF = act.filter(estFF).length;
     const ligne = (nom, rs) => {
       const a = agreger(rs.map(item), conv), n = a.N, p = a.N1;
-      const prev = n.P != null ? n.P * 12 / m : null, obj = n.O != null ? n.O * 1000 : null;
+      const prev = n.P != null ? n.P * 12 / m : null;
+      let obj = n.O != null ? n.O * 1000 : null;
+      const ff = rs.filter(estFF);
+      if (objS.franchFrance && nFF && ff.length === nFF) { const sFF = agreger(ff.map(item), conv).N; obj = (obj || 0) - (sFF.O || 0) * 1000 + objS.franchFrance; }
       const prevMag = rs.filter(estActif).map(r => { const x = photo.magasins[String(r.code)].N || {}; return x.P != null ? x.P * 12 / m * (taux[r.devise] || 1) : 0; });
       return { nom, ca: n.P, evol: evol(n.P, p.P), obj, posit: div(prev, obj), prev,
         succ: rs.filter(r => estActif(r) && r.type === 'Succursale' && r.nature !== 'Camion').length, fr: rs.filter(r => estActif(r) && r.type === 'Franchise' && r.nature !== 'Camion').length, sup12: prevMag.filter(x => x >= 1.2e6).length,
