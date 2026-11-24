@@ -291,6 +291,16 @@
         <textarea id="paris-codes" rows="3" style="width:100%"></textarea>
         <div style="margin-top:6px"><button id="btn-paris">Enregistrer</button> <span class="muted" id="paris-info"></span></div>
       </div>
+      <div class="carte" id="carte-moment" hidden>
+        <h2>Indicateur du moment</h2>
+        <p class="aide">Affiche A3 du réseau succursales France (Cockpits › France – succursales › « Indicateur du moment ») : un indicateur seul ou un thème de 2 à 4 indicateurs, avec votre message du mois.</p>
+        <div class="ligne-outils" style="gap:16px"><label><input type="radio" name="mo-mode" value="seul"> Un indicateur</label><label><input type="radio" name="mo-mode" value="theme"> Un thème</label></div>
+        <div id="mo-z-seul" style="margin-top:8px"><label>Indicateur <select id="mo-ind"></select></label></div>
+        <div id="mo-z-theme" style="margin-top:8px"><label>Thème <select id="mo-theme"></select></label></div>
+        <div id="mo-z-perso" style="margin-top:8px"><label>Titre <input id="mo-titre" type="text" placeholder="ex. Productivité" style="width:220px"></label><div id="mo-perso" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
+        <div style="margin-top:8px"><label>Message du mois <input id="mo-message" type="text" maxlength="120" placeholder="ex. Chaque monture de marque compte !" style="width:min(520px,100%)"></label></div>
+        <div style="margin-top:8px"><button id="btn-moment">Enregistrer</button> <span class="muted" id="mo-info"></span></div>
+      </div>
       <div class="carte" id="carte-mur" hidden>
         <h2>Cockpit « Affichage mur »</h2>
         <p class="aide">Recto lisible de loin (cockpits par AR et Paris, thème « Affichage mur ») ; le verso reprend le cockpit complet. Choisissez les 4 indicateurs affichés à côté du positionnement et la couleur du bandeau de chaque AR.</p>

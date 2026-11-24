@@ -105,6 +105,7 @@
       top: [['posit', 'Positionnement'], ['ndv', 'Nombre de ventes'], ['protheses', 'Nombre de prothèses'], ['re', 'Résultat d’exploitation']] },
     // 24/11/2026 : recto « mur » (affichage au bureau, lisible de loin) + verso = cockpit complet
     mur: { lib: 'Affichage mur (recto) + détail (verso)', tri: 'ca', mur: true },
+    moment: { lib: 'Indicateur du moment (affiche)', tri: 'ca', moment: true },
     // sansSiColonnes (06/11/2026, demande d'Olivier) : colonnes retirées de la liste dès qu'elle passe sur 2 colonnes ou plus (la synthèse les garde)
     ca: { lib: 'Chiffre d’affaires', maxBlocs: 2, cols: ['obj', 'ca', 'prev', 'evolCa', 'posit', 'caOpt', 'caAud', 'caCon', 'ndv', 'evolNdv'], sansSiColonnes: ['caOpt', 'caAud', 'caCon'], tri: 'ca',
       top: [['posit', 'Positionnement'], ['ca', 'CA généré'], ['evolCa', 'Évolution du CA']] },
@@ -129,7 +130,7 @@
     const succFr = r => fr(r) && r.type === 'Succursale' && r.nature !== 'Camion' && norm(r.ar) !== 'OCM';
     const out = [
       { id: 'siege', lib: 'Réseau – vue Siège', groupeLib: 'Synthèse', special: 'siege', themes: ['siege'] },
-      { id: 'france', lib: 'France – succursales', groupeLib: 'France', filtre: succFr, sousTotal: r => r.ar, themes: ['ca', 'optique', 'audio', 'restes', 'renta'] },
+      { id: 'france', lib: 'France – succursales', groupeLib: 'France', filtre: succFr, sousTotal: r => r.ar, themes: ['moment', 'ca', 'optique', 'audio', 'restes', 'renta'] },
     ];
     [...new Set(act.filter(succFr).map(r => r.ar))].filter(Boolean).sort().forEach(a =>
       out.push({ id: 'ar:' + a, lib: 'AR – ' + a, groupeLib: 'France', filtre: r => succFr(r) && r.ar === a, themes: ['complet', 'mur', 'ca', 'optique', 'audio', 'restes', 'renta'] }));
@@ -624,7 +625,7 @@
   const OBJ_AVIS_GOOGLE = 500; // objectif 2026 (aussi critère 9 du Manager Leader)
   const MUR_INDICS = {
     ca: 'Chiffre d’affaires', mdc: 'Taux de MdC', re: 'Rentabilité (RE)', indus: 'Taux d’indus', avis: 'Avis Google',
-    caCollab: 'CA / mois / ETP', pc: '% Pack confort', tc: 'Taux de concrétisation', panier: 'Panier moyen',
+    caCollab: 'CA / mois / ETP', pc: 'Pack confort (%)', tc: 'Taux de concrétisation', panier: 'Panier moyen',
     audio: 'CA audio', protheses: 'Prothèses', note: 'Note Google', confidence: 'Confidence', rentaSal: 'Renta salariale', absent: 'Absentéisme',
   };
   const MUR_DEFAUT = { indicateurs: ['ca', 're', 'avis', 'indus'], couleurs: {} };
@@ -721,7 +722,17 @@
     if (hausses.length) progres = { lib: 'Plus forte hausse du positionnement (vs ' + ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'][prec.mois - 1] + ')', val: hausses[0].d, fmt: 'pts', nom: hausses[0].nom };
     else { const e = lignes.filter(l => l.evolCa != null).sort((a, b) => b.evolCa - a.evolCa)[0]; if (e) progres = { lib: 'Plus forte progression du CA vs N-1', val: e.evolCa, fmt: 'evol', nom: e.nom }; }
     const badges = { ml, indus: { n: avecIndus.filter(l => l.indus <= 0.01).length, sur: avecIndus.length }, avis: { n: lignes.filter(l => l.avis >= OBJ_AVIS_GOOGLE).length, sur: mags.length }, progres };
-    return { type: 'mur', photo, perim, arId, moi, couleur: arId ? coul[arId] || '#231F20' : '#231F20', course, posit, positPrec, humeur,
+    // Équipe & productivité (24/11/2026, à la place de la course des AR, gardée dans l'Indicateur du moment)
+    const eqMags = mags.map(r => { const x = (photo.magasins[String(r.code)] || {}).N || {}, ef = effectifMag(photo, r.code);
+      return { nom: r.magasin, ecart: ecartEffMag(photo, r), rs: pct(x.CM), caE: ef && x.P != null ? x.P / ef / m : null }; });
+    const ecarts = eqMags.filter(x => x.ecart != null);
+    const equipe = {
+      rentaSal: pct(n.CM), caCollab: caCollabMoi, caCollabRef,
+      ecartTot: ecarts.length ? ecarts.reduce((a, x) => a + x.ecart, 0) : null, nEcart: ecarts.length,
+      nSous: ecarts.filter(x => x.ecart <= -0.5).length, nSur: ecarts.filter(x => x.ecart >= 0.5).length,
+      ajuster: ecarts.filter(x => Math.abs(x.ecart) >= 0.5).sort((a, b) => Math.abs(b.ecart) - Math.abs(a.ecart)).slice(0, 3),
+    };
+    return { type: 'mur', photo, perim, arId, moi, equipe, couleur: arId ? coul[arId] || '#231F20' : '#231F20', course, posit, positPrec, humeur,
       nbMags: mags.length, n100: lignes.filter(l => l.posit != null && l.posit >= 1).length, n12: lignes.filter(l => l.prev != null && l.prev >= 1.2e6).length,
       indicateurs, podium, mobilise, badges, serie: opts.serie || null, serieRef: opts.serieRef || null };
   }
@@ -743,7 +754,7 @@
         case 'pct2': return nb(v * 100, 2) + ' %';
         case 'note': return nb(v, 1);
         case 'evol': return signe(v) + nb(Math.abs(v) * 100, 1) + ' %';
-        case 'pts': return signe(v) + nb(Math.abs(v) * 100, 1) + ' pt' + (Math.abs(v * 100) >= 2 ? 's' : '');
+        case 'pts': if (Math.abs(v) < 0.0005) return '= 0 pt'; return signe(v) + nb(Math.abs(v) * 100, 1) + ' pt' + (Math.abs(v * 100) >= 2 ? 's' : '');
         case 'pts2': return signe(v) + nb(Math.abs(v) * 100, 2) + ' pt';
         default: return nb(v);
       }
@@ -774,6 +785,18 @@
     const course = `<div class="mu-carte mu-course"><div class="mu-t">La course des AR <small>positionnement · trait = 100 %</small></div><div class="mu-barres">
       ${md.course.map(x => `<div class="mu-b${x.moi ? ' moi' : ''}"><span class="r">${x.rang}.</span><span class="n">${esc(x.ar.split(/\s+/)[0])}</span>
         <span class="piste"><i style="width:${(Math.max(0, x.posit) / maxE * 100).toFixed(1)}%;background:${x.couleur}"></i><b style="left:${(100 / maxE).toFixed(1)}%"></b></span><span class="v">${nb(x.posit * 100)} %</span></div>`).join('')}</div></div>`;
+    // Équipe & productivité
+    const q = md.equipe, sgn = v => (v > 0 ? '+' : v < 0 ? '−' : '') + nb(Math.abs(v), 1);
+    const dRef = q.caCollab != null && q.caCollabRef ? q.caCollab / q.caCollabRef - 1 : null;
+    const tq = (lib, v, sub, etat) => `<div class="mu-eqt ${etat}"><div class="k">${lib}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
+    const equipe = `<div class="mu-carte mu-equipe"><div class="mu-t">Équipe &amp; productivité <small>effectifs en ETP</small></div>
+      <div class="mu-eqts">
+        ${tq('Renta salariale', q.rentaSal == null ? '–' : nb(q.rentaSal * 100, 1) + ' %', 'objectif ≤ 28 %', q.rentaSal == null ? '' : q.rentaSal <= 0.28 ? 'ok' : 'ko')}
+        ${tq('Effectif vs théorique', q.ecartTot == null ? '–' : sgn(q.ecartTot) + ' ETP', q.ecartTot == null ? 'export RH manquant' : `${q.nSous} en sous-effectif · ${q.nSur} en sureffectif`, q.ecartTot == null ? '' : Math.abs(q.ecartTot) < 1 ? 'ok' : q.ecartTot < 0 ? 'sous' : q.ecartTot < 3 ? 'moy' : 'ko')}
+        ${tq('CA / mois / ETP', q.caCollab == null ? '–' : nb(q.caCollab / 1000, 1) + ' k€', dRef == null ? '' : `${f(dRef, 'evol')} vs moy. France (${nb(q.caCollabRef / 1000, 1)} k€)`, dRef == null ? '' : dRef >= 0 ? 'ok' : 'ko')}
+      </div>
+      <div class="mu-aj-t">Effectifs à ajuster</div>
+      <div class="mu-ajs">${q.ajuster.length ? q.ajuster.map(x => `<div class="mu-aj ${x.ecart < 0 ? 'sous' : 'sur'}"><b>${esc(x.nom)}</b><span class="e">${sgn(x.ecart)} ETP</span><span class="d">${x.ecart < 0 ? 'sous-effectif' : 'sureffectif'}${x.rs != null ? ' · renta sal. ' + nb(x.rs * 100, 1) + ' %' : ''}${x.caE != null ? ' · ' + nb(x.caE / 1000, 1) + ' k€ / ETP' : ''}</span></div>`).join('') : '<div class="mu-vide">Tous les magasins sont à l’effectif juste (± 0,5 ETP).</div>'}</div></div>`;
     // Podium
     const pod = md.podium, ordre = [[1, 2, 'p2'], [0, 1, 'p1'], [2, 3, 'p3']];
     const podium = `<div class="mu-carte mu-podium"><div class="mu-t">Le podium <small>meilleurs positionnements</small></div><div class="mu-marches">
@@ -805,10 +828,264 @@
     if (b.progres) bad.push(`<div class="mu-bad b4"><div class="v">${f(b.progres.val, b.progres.fmt)}</div><div class="l">${esc(b.progres.lib)}<b style="color:${md.couleur}">${esc(b.progres.nom)}</b></div></div>`);
     const pied = `<footer class="ck-pied"><span>Optical Center · Suivi statistique · généré le ${new Date().toLocaleDateString('fr-FR')}</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span><span>Détail par magasin au verso</span></footer>`;
     return `<div class="cockpit mur">${bandeau}${kpis}
-      <div class="mu-milieu">${course}${podium}${mob}</div>
+      <div class="mu-milieu">${equipe}${podium}${mob}</div>
       <div class="mu-bas">${courbe}<div class="mu-badges">${bad.join('')}</div></div>${pied}</div>`;
   }
 
-  const api = { construireMur, rendreMur, MUR_INDICS, MUR_DEFAUT, couleursAr, OBJ_AVIS_GOOGLE, definirParis, paris: () => PARIS.slice(), LISTES_CONF_DEFAUT, SIEGE_DEFAUT, perimetres, construire, rendre, THEMES, COL, TAUX_DEFAUT, DEVISE_SYM, agreger, W_PAGE, H_PAGE };
+
+  // ---------- Écart d'effectif d'un magasin (réel optique + audio − théorique), comme la fiche ----------
+  function ecartEffMag(ph, r) {
+    const F = root.Fiche;
+    if (F && F.equipe) { try { const e = F.equipe(ph, r, {}); return e.connu && e.effTheo != null ? e.effOpt + e.effAud - e.effTheo : null; } catch (x) { return null; } }
+    const ef = effectifMag(ph, r.code), n = (ph.magasins[String(r.code)] || {}).N || {};
+    return ef != null && n.P != null ? ef - Math.max(3.5, n.P * 12 / ph.mois / 250000) : null;
+  }
+
+  // ---------- Indicateur du moment (24/11/2026) : affiche réseau succursales France, un indicateur ou un thème ----------
+  const MOMENT_LIBS = Object.assign({}, MUR_INDICS, { ecartEff: 'Écart d’effectif (ETP)' });
+  const MOMENT_THEMES = {
+    rentabilite: { lib: 'Rentabilité', ind: ['re', 'rentaSal', 'ecartEff'] },
+    optique: { lib: 'Optique', ind: ['mdc', 'pc', 'tc', 'panier'] },
+    audio: { lib: 'Audio', ind: ['audio', 'protheses'] },
+    satisfaction: { lib: 'Satisfaction clients', ind: ['avis', 'note', 'confidence'] },
+    gestion: { lib: 'Gestion', ind: ['indus', 'absent'] },
+  };
+  const MOMENT_DEFAUT = { mode: 'seul', indicateur: 'mdc', theme: 'rentabilite', perso: ['re', 'rentaSal'], message: '' };
+  // vol = volume (comparé à N-1, en indice) ; rel = valeur comparée à N-1 ; pts = taux comparé à N-1 ;
+  // seuil/sens/tol = objectif fixe ; reseau = comparé à la moyenne du réseau ; eff = écart d'effectif
+  const MSPEC = {
+    ca: { vol: 1, get: n => n.P, fmt: 'M' }, audio: { vol: 1, get: n => n.Q, fmt: 'M' }, protheses: { vol: 1, get: n => n.AX, fmt: 'nb' },
+    panier: { rel: 1, get: n => n.V, fmt: 'eur' },
+    mdc: { pts: 1, get: n => pct(n.AN), fmt: 'pct1', objCle: 'mdc' }, pc: { pts: 1, get: n => pct(n.AD), fmt: 'pct0' }, tc: { pts: 1, get: n => pct(n.AF), fmt: 'pct1' },
+    re: { get: n => pct(n.CQ), fmt: 'pct1', seuil: 0.2, sens: 1, tol: 0.01 },
+    rentaSal: { get: n => pct(n.CM), fmt: 'pct1', seuil: 0.28, sens: -1, tol: 0.01 },
+    indus: { get: n => n.BV, fmt: 'pct2', seuil: 0.01, sens: -1, tol: 0.01 },
+    note: { get: n => n.BL ? n.BK : null, fmt: 'note', seuil: 4.5, sens: 1, tol: 0.1 },
+    absent: { get: n => n.XS ? (n.XR || 0) / n.XS : null, fmt: 'pct1', seuil: 0.05, sens: -1, tol: 0.05 },
+    confidence: { reseau: 1, get: n => div(n.DO, n.DP), fmt: 'pct0' },
+    avis: { spe: 'avis', fmt: 'nb', seuil: OBJ_AVIS_GOOGLE, sens: 1, tol: 100 },
+    caCollab: { spe: 'caCollab', fmt: 'k1', reseau: 1 },
+    ecartEff: { spe: 'eff', fmt: 'sg1', eff: 1 },
+  };
+  function mesure(k, ph, rs) {
+    const sp = MSPEC[k]; if (!sp || !ph) return { v: null, v1: null };
+    const rr = rs.filter(r => ph.magasins[String(r.code)]);
+    if (!rr.length) return { v: null, v1: null };
+    if (sp.spe === 'avis') { const l = rr.map(r => ph.magasins[String(r.code)].N || {}).filter(x => x.BL != null); return { v: l.length ? l.reduce((a, x) => a + x.BL, 0) / l.length : null, v1: null }; }
+    if (sp.spe === 'caCollab') { let ca = 0, e = 0; rr.forEach(r => { const ef = effectifMag(ph, r.code), x = ph.magasins[String(r.code)].N || {}; if (ef && x.P != null) { ca += x.P; e += ef; } }); return { v: e ? ca / e / ph.mois : null, v1: null }; }
+    if (sp.spe === 'eff') { const l = rr.map(r => ecartEffMag(ph, r)).filter(x => x != null); return { v: l.length ? l.reduce((a, x) => a + x, 0) / l.length : null, v1: null }; }
+    const a = agreger(rr.map(r => ph.magasins[String(r.code)]));
+    return { v: sp.get(a.N), v1: sp.get(a.N1) };
+  }
+  // Score (plus grand = mieux) et état (ok / moy / ko / sous) d'une mesure
+  function evaluer(k, m, ctx = {}) {
+    const sp = MSPEC[k], v = m.v; if (v == null) return { score: null, etat: '' };
+    const seuil = ctx.seuil != null ? ctx.seuil : sp.seuil;
+    if (sp.eff) return { score: -Math.abs(v), etat: v <= -0.5 ? 'sous' : v < 0.5 ? 'ok' : v < 1 ? 'moy' : 'ko' };
+    if (seuil != null) { const sens = sp.sens || 1, d = (v - seuil) * sens; return { score: v * sens, etat: d >= 0 ? 'ok' : -d <= (sp.tol || 0.01) ? 'moy' : 'ko' }; }
+    if (sp.vol || sp.rel) { const r = m.v1 ? v / m.v1 : null; return { score: r, etat: r == null ? '' : r >= 1 ? 'ok' : r >= 0.98 ? 'moy' : 'ko' }; }
+    if (sp.pts) { const d = m.v1 != null ? v - m.v1 : null; return { score: v, etat: d == null ? '' : d >= 0 ? 'ok' : d >= -0.01 ? 'moy' : 'ko' }; }
+    if (sp.reseau && ctx.reseau) { const r = v / ctx.reseau; return { score: v, etat: r >= 1 ? 'ok' : r >= 0.95 ? 'moy' : 'ko' }; }
+    return { score: v, etat: '' };
+  }
+  function listeMoment(conf) {
+    const c = Object.assign({}, MOMENT_DEFAUT, conf || {});
+    if (c.mode === 'seul') return { mode: 'seul', titre: MOMENT_LIBS[c.indicateur] || MOMENT_LIBS.mdc, ind: [MSPEC[c.indicateur] ? c.indicateur : 'mdc'] };
+    if (c.theme === 'perso') { const l = [...new Set((c.perso || []).filter(k => MSPEC[k]))].slice(0, 4); return { mode: 'theme', titre: c.titrePerso || 'Thème du moment', ind: l.length >= 2 ? l : ['re', 'rentaSal'] }; }
+    const t = MOMENT_THEMES[c.theme] || MOMENT_THEMES.rentabilite;
+    return { mode: 'theme', titre: t.lib, ind: t.ind };
+  }
+  function construireMoment(photo, ref, conf, opts = {}) {
+    const L = listeMoment(conf), prec = opts.precedente || null;
+    const succFr = r => r.pays === 'FRANCE' && r.type === 'Succursale' && r.nature !== 'Camion' && norm(r.ar) !== 'OCM';
+    const tous = ref.filter(r => succFr(r) && photo.magasins[String(r.code)]);
+    const actifs = tous.filter(r => r.actif === 'Oui');
+    const ars = [...new Set(tous.map(r => r.ar))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'fr'));
+    const coul = couleursAr(ars, opts.couleurs || {});
+    const objFr = objectifsRef(opts.objectifs, actifs) || {};
+    const ctxDe = (k, reseau) => ({ seuil: MSPEC[k].objCle && objFr[MSPEC[k].objCle] ? objFr[MSPEC[k].objCle] : undefined, reseau });
+    const inds = L.ind.map(k => {
+      const res = mesure(k, photo, tous), resP = mesure(k, prec, tous), ctx = ctxDe(k, res.v);
+      const seuil = ctx.seuil != null ? ctx.seuil : MSPEC[k].seuil;
+      const arsL = ars.map(a => { const rs = tous.filter(r => r.ar === a), m = mesure(k, photo, rs), mp = mesure(k, prec, rs);
+        return { ar: a, couleur: coul[a], m, e: evaluer(k, m, ctx), ep: evaluer(k, mp, ctxDe(k, resP.v)) }; });
+      const mags = actifs.map(r => { const m = mesure(k, photo, [r]), mp = mesure(k, prec, [r]);
+        return { code: String(r.code), nom: r.magasin, ar: r.ar, couleur: coul[r.ar], m, e: evaluer(k, m, ctx), ep: evaluer(k, mp, ctxDe(k, resP.v)) }; });
+      return { k, lib: MOMENT_LIBS[k], spec: MSPEC[k], seuil, res, resP, eRes: evaluer(k, res, ctx), ars: arsL, mags };
+    });
+    // Classement des AR (indicateur seul) et places gagnées vs mois précédent
+    const i0 = inds[0];
+    const ordre = (l, cle) => l.filter(x => x[cle].score != null).sort((a, b) => b[cle].score - a[cle].score).map(x => x.ar);
+    const rangP = ordre(i0.ars, 'ep');
+    let course = [];
+    if (L.mode === 'seul') course = i0.ars.filter(x => x.e.score != null).sort((a, b) => b.e.score - a.e.score)
+      .map((x, i) => { const j = rangP.indexOf(x.ar); return Object.assign({}, x, { rang: i + 1, gain: prec && j >= 0 ? j - i : null }); });
+    // Thème : objectifs tenus par AR et par magasin
+    const nOk = (lst, cle) => lst.map((_, idx) => inds.filter(d => d[cle][idx].e.etat === 'ok').length);
+    let tableau = [];
+    if (L.mode === 'theme') {
+      const no = nOk(ars, 'ars');
+      tableau = ars.map((a, idx) => ({ ar: a, couleur: coul[a], cells: inds.map(d => d.ars[idx]), nOk: no[idx], s0: inds[0].ars[idx].e.score }))
+        .filter(x => x.cells.some(c => c.m.v != null)).sort((a, b) => b.nOk - a.nOk || (b.s0 == null ? -1 : a.s0 == null ? 1 : b.s0 - a.s0)).map((x, i) => Object.assign(x, { rang: i + 1 }));
+    }
+    const magsT = actifs.map((r, idx) => ({ nom: r.magasin, ar: r.ar, couleur: coul[r.ar], cells: inds.map(d => d.mags[idx]),
+      nOk: inds.filter(d => d.mags[idx].e.etat === 'ok').length, nKo: inds.filter(d => ['ko', 'moy'].includes(d.mags[idx].e.etat) || (d.k === 'ecartEff' && d.mags[idx].m.v >= 0.5)).length,
+      s0: i0.mags[idx].e.score, d0: (i0.mags[idx].e.score != null && i0.mags[idx].ep.score != null) ? i0.mags[idx].e.score - i0.mags[idx].ep.score : null }));
+    const parS0 = (a, b) => (b.s0 == null ? -1 : a.s0 == null ? 1 : b.s0 - a.s0);
+    const champions = L.mode === 'seul' ? magsT.filter(x => x.s0 != null).sort(parS0).slice(0, 5)
+      : magsT.filter(x => x.nOk === inds.length).sort(parS0).slice(0, 5);
+    const progres = magsT.filter(x => x.d0 != null && x.d0 > 0).sort((a, b) => b.d0 - a.d0).slice(0, 3);
+    const mobilise = magsT.filter(x => x.nKo > 0).sort((a, b) => b.nKo - a.nKo || -parS0(a, b)).slice(0, 3);
+    const compte = d => ({ ok: d.mags.filter(x => x.e.etat === 'ok').length, sur: d.mags.filter(x => x.m.v != null).length,
+      progres: d.mags.filter(x => x.e.score != null && x.ep.score != null && x.e.score > x.ep.score).length, avecP: d.mags.filter(x => x.e.score != null && x.ep.score != null).length });
+    return { type: 'moment', photo, prec, conf: Object.assign({}, MOMENT_DEFAUT, conf || {}), mode: L.mode, titre: L.titre, inds, course, tableau, champions, progres, mobilise,
+      comptes: inds.map(compte), tousOk: magsT.filter(x => x.nOk === inds.length && x.cells.every(c => c.m.v != null)).length, nbMags: actifs.length, serie: opts.serie || null };
+  }
+
+  const FMT_M = (v, fmt) => {
+    const nb = (x, d = 0) => Number(x).toLocaleString('fr-FR', { maximumFractionDigits: d, minimumFractionDigits: d });
+    const sg = x => x > 0 ? '+' : x < 0 ? '−' : '';
+    if (v == null || isNaN(v)) return '–';
+    switch (fmt) {
+      case 'M': return Math.abs(v) >= 1e6 ? nb(v / 1e6, 1) + ' M€' : nb(v / 1000) + ' k€';
+      case 'k1': return nb(v / 1000, 1) + ' k€';
+      case 'eur': return nb(v) + ' €';
+      case 'pct0': return nb(v * 100) + ' %';
+      case 'pct1': return nb(v * 100, 1) + ' %';
+      case 'pct2': return nb(v * 100, 2) + ' %';
+      case 'note': return nb(v, 1);
+      case 'sg1': return sg(v) + nb(Math.abs(v), 1);
+      case 'evol': return sg(v) + nb(Math.abs(v) * 100, 1) + ' %';
+      case 'pts': return sg(v) + nb(Math.abs(v) * 100, 1) + ' pt' + (Math.abs(v * 100) >= 2 ? 's' : '');
+      default: return nb(v);
+    }
+  };
+  // Valeur affichée : volume → évolution vs N-1 ; sinon la valeur
+  const valAff = (d, m) => (d.spec.vol || d.spec.rel) && m.v1 ? FMT_M(m.v / m.v1 - 1, 'evol') : FMT_M(m.v, d.spec.fmt);
+  const deltaAff = (d, x) => {
+    const sp = d.spec;
+    if (sp.vol || sp.rel || /^pct/.test(sp.fmt)) return FMT_M(x, 'pts');
+    if (sp.fmt === 'k1') return (x > 0 ? '+' : '−') + FMT_M(Math.abs(x), 'k1');
+    if (sp.spe === 'avis') return (x > 0 ? '+' : '−') + Math.round(Math.abs(x)) + ' avis';
+    return FMT_M(x, sp.fmt === 'nb' ? 'sg1' : 'sg1');
+  };
+  const objAff = d => {
+    const sp = d.spec;
+    if (d.seuil != null) return 'objectif ' + ((sp.sens || 1) < 0 ? '≤ ' : '≥ ') + FMT_M(d.seuil, sp.fmt);
+    if (sp.eff) return 'objectif ± 0,5 ETP';
+    if (sp.vol || sp.rel || sp.pts) return 'objectif ≥ N-1';
+    if (sp.reseau) return 'vs moyenne réseau';
+    return '';
+  };
+  const ETATS = { ok: ['#E4F2EA', '#145C35'], moy: ['#FFF0D6', '#7A4300'], ko: ['#FBE3E2', '#A11D18'], sous: ['#E3EEFB', '#0D4C92'], '': ['#F1F0EF', '#231F20'] };
+
+  function rendreMoment(md, opts = {}) {
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[x]));
+    const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    const MC = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+    const ph = md.photo, mo = ph.mois, mp = md.prec ? MC[md.prec.mois - 1] : 'mois préc.';
+    const logo = opts.logo || 'assets/logo-optical-center.png';
+    const i0 = md.inds[0], seul = md.mode === 'seul';
+    const msg = md.conf.message ? `<div class="mo-msg">${esc(md.conf.message)}</div>` : '';
+    // Bandeau
+    let droite;
+    if (seul) {
+      const r = i0.res, rp = i0.resP, e = ETATS[i0.eRes.etat] || ETATS[''];
+      const vsN1 = r.v1 != null && r.v != null ? ((i0.spec.vol || i0.spec.rel) ? FMT_M(r.v / r.v1 - 1, 'evol') : deltaAff(i0, r.v - r.v1)) + ' vs N-1' : '';
+      const vsM = rp.v != null && r.v != null && !(i0.spec.vol || i0.spec.rel) ? deltaAff(i0, r.v - rp.v) + ' vs ' + mp : '';
+      droite = `<div class="mo-res" style="background:${i0.eRes.etat ? e[1] : '#E22F2A'}"><div class="l">Réseau</div><div class="v">${FMT_M(r.v, i0.spec.fmt)}</div><div class="o">${esc(objAff(i0))}</div></div>
+        <div class="mo-evs">${vsN1 ? `<div>${vsN1}</div>` : ''}${vsM ? `<div>${vsM}</div>` : ''}</div>`;
+    } else {
+      droite = md.inds.map(d => { const e = ETATS[d.eRes.etat] || ETATS['']; return `<div class="mo-tu" style="background:${d.eRes.etat ? e[1] : '#5A5557'}"><div class="l">${esc(d.lib)}</div><div class="v">${FMT_M(d.res.v, d.spec.fmt)}</div><div class="o">${esc(objAff(d))}</div></div>`; }).join('');
+    }
+    const bandeau = `<header class="mo-band"><div class="mo-id"><div class="mo-lab">${seul ? 'Indicateur' : 'Thème'} du moment · à fin ${MOIS[mo - 1]} ${ph.annee}</div>
+      <h1>${esc(md.titre)}</h1>${msg}</div>${droite}<img class="mu-logo" src="${logo}" alt=""></header>`;
+    // Bloc principal gauche
+    let gauche;
+    if (seul) {
+      const sp = i0.spec, vals = md.course.map(x => (sp.vol || sp.rel) && x.m.v1 ? x.m.v / x.m.v1 : x.m.v).filter(v => v != null);
+      const trait = sp.eff ? null : (sp.vol || sp.rel) ? 1 : i0.seuil != null ? i0.seuil : (i0.res.v1 != null ? i0.res.v1 : i0.res.v);
+      const hi = Math.max(...vals.map(Math.abs), trait || 0) * 1.12 || 1;
+      const lt = sp.eff ? 'barre = écart d’effectif moyen par magasin' : (sp.vol || sp.rel) ? 'trait = N-1' : i0.seuil != null ? 'trait = objectif' : 'trait = réseau N-1';
+      gauche = `<div class="mu-carte mo-course"><div class="mu-t">La course des AR <small>${lt} · flèche = places vs ${mp}</small></div><div class="mo-barres">
+        ${md.course.map(x => { const bv = (sp.vol || sp.rel) && x.m.v1 ? x.m.v / x.m.v1 : x.m.v; const c = sp.eff ? (x.m.v < 0 ? '#1565C0' : '#B5520A') : x.couleur;
+          return `<div class="mo-b"><span class="r">${x.rang}.</span><span class="pa" style="background:${x.couleur}">${esc(x.ar.charAt(0))}</span><span class="n">${esc(x.ar.split(/\s+/)[0])}</span>
+          <span class="piste"><i style="width:${Math.min(100, Math.abs(bv) / hi * 100).toFixed(1)}%;background:${c}"></i>${trait != null ? `<b style="left:${(trait / hi * 100).toFixed(1)}%"></b>` : ''}</span>
+          <span class="v">${valAff(i0, x.m)}</span><span class="g ${x.gain > 0 ? 'ok' : x.gain < 0 ? 'ko' : ''}">${x.gain == null ? '' : x.gain > 0 ? '▲ ' + x.gain : x.gain < 0 ? '▼ ' + (-x.gain) : '='}</span></div>`; }).join('')}</div></div>`;
+    } else {
+      const cols = md.inds.length;
+      gauche = `<div class="mu-carte mo-tab"><div class="mu-t">Le classement des AR <small>par objectifs tenus, puis ${esc(i0.lib)}</small></div>
+        <div class="mo-ligne mo-tete" style="--nc:${cols}"><span></span><span></span><span></span>${md.inds.map(d => `<span>${esc(d.lib)}<br><small>${esc(objAff(d).replace('objectif ', ''))}</small></span>`).join('')}<span>Objectifs<br>tenus</span></div>
+        <div class="mo-lignes">${md.tableau.map(x => `<div class="mo-ligne" style="--nc:${cols}"><span class="r">${x.rang}.</span><span class="pa" style="background:${x.couleur}">${esc(x.ar.charAt(0))}</span><span class="n">${esc(x.ar.split(/\s+/)[0])}</span>
+          ${x.cells.map((c, j) => { const e = ETATS[c.e.etat] || ETATS['']; const d = md.inds[j]; return `<span class="ce" style="background:${e[0]};color:${e[1]}">${valAff(d, c.m)}${d.spec.eff && c.m.v != null ? `<small>${c.m.v <= -0.5 ? 'sous-effectif' : c.m.v < 0.5 ? 'juste' : 'sureffectif'}</small>` : ''}</span>`; }).join('')}
+          <span class="dots" style="color:${x.couleur}">${'●'.repeat(x.nOk)}${'○'.repeat(cols - x.nOk)}</span></div>`).join('')}</div></div>`;
+    }
+    // Colonne droite
+    const medals = ['#E8B931', '#C9CDD6', '#D9A47A', '#EEECEB', '#EEECEB'];
+    const champ = `<div class="mu-carte mo-champ"><div class="mu-t">Les champions <small>${seul ? 'meilleurs magasins' : 'tous les objectifs tenus'}</small></div><div class="mo-l">
+      ${md.champions.length ? md.champions.map((c, i) => `<div class="mo-c"><span class="md" style="background:${medals[i]}">${i + 1}</span><div class="tx"><b>${esc(c.nom)}</b><small style="color:${c.couleur}">AR ${esc(String(c.ar).split(/\s+/)[0])}</small></div><span class="v${seul ? '' : ' multi'}">${seul ? valAff(i0, c.cells[0].m) : c.cells.map((x, j) => valAff(md.inds[j], x.m)).join(' · ')}</span></div>`).join('') : '<div class="mu-vide">Aucun magasin pour l’instant : à vous de jouer !</div>'}</div></div>`;
+    const sec = seul
+      ? `<div class="mu-carte mo-prog"><div class="mu-t">Les plus fortes progressions <small>vs ${mp}</small></div><div class="mo-l">
+        ${md.progres.length ? md.progres.map(p => `<div class="mo-p"><span class="d">${deltaAff(i0, (i0.spec.vol || i0.spec.rel) ? p.d0 : (i0.spec.sens || 1) * p.d0)}</span><div class="tx"><b style="color:${p.couleur}">${esc(p.nom)}</b><small>AR ${esc(String(p.ar).split(/\s+/)[0])} · ${valAff(i0, p.cells[0].m)}</small></div></div>`).join('') : '<div class="mu-vide">Comparaison disponible avec le mois précédent enregistré.</div>'}</div></div>`
+      : `<div class="mu-carte mo-mob"><div class="mu-t">On se mobilise <small>le plus d’objectifs manqués</small></div><div class="mo-l">
+        ${md.mobilise.length ? md.mobilise.map(m => `<div class="mu-mi"><span class="ex">!</span><div class="tx"><b>${esc(m.nom)}</b><small style="color:${m.couleur}">AR ${esc(String(m.ar).split(/\s+/)[0])}</small></div><span class="v2">${m.cells.map((x, j) => valAff(md.inds[j], x.m)).join(' · ')}</span></div>`).join('') : '<div class="mu-vide">Tous les magasins tiennent leurs objectifs.</div>'}</div></div>`;
+    // Bas gauche : courbe ou écart d'effectif
+    let basG;
+    const dEff = md.inds.find(d => d.spec.eff);
+    if (!seul && dEff) {
+      const mx = Math.max(1, ...dEff.ars.map(a => Math.abs(a.m.v || 0))) * 1.1;
+      basG = `<div class="mu-carte mo-eff"><div class="mu-t">Sous- et sureffectif par AR <small><span style="color:#1565C0">sous-effectif ▼</span> · <span style="color:#B5520A">▲ sureffectif</span> · ETP moyen par magasin</small></div><div class="mo-effs">
+        ${dEff.ars.filter(a => a.m.v != null).map(a => { const h = Math.abs(a.m.v) / mx * 50, c = a.m.v < 0 ? '#1565C0' : '#B5520A';
+          return `<div class="mo-ec"><div class="zone"><i class="axe"></i><i class="bar" style="background:${c};height:${h.toFixed(1)}%;top:${(a.m.v >= 0 ? 50 - h : 50).toFixed(1)}%"></i></div><b style="color:${c}">${FMT_M(a.m.v, 'sg1')}</b><span>${esc(a.ar.split(/\s+/)[0])}</span></div>`; }).join('')}</div></div>`;
+    } else {
+      const s = md.serie;
+      if (!s || s.length < 2) basG = `<div class="mu-carte mu-courbe"><div class="mu-t">Le réseau mois par mois</div><div class="mu-vide">Courbe disponible à partir de deux mois enregistrés.</div></div>`;
+      else {
+        const W = 760, H = 170, ys = s.flatMap(x => [x.v, x.v1]).filter(x => x != null).concat(i0.seuil != null ? [i0.seuil] : []).concat((i0.spec.vol || i0.spec.rel) ? [1] : []);
+        let mn = Math.min(...ys), mx = Math.max(...ys); const pad = (mx - mn) * 0.15 || Math.abs(mx) * 0.1 || 1; mn -= pad; mx += pad;
+        const X = m2 => 24 + (m2 - 1) * (W - 48) / Math.max(1, mo - 1), Y = v => H - 26 - (v - mn) / (mx - mn) * (H - 44);
+        const ligne = (k, c, w, dash) => { const pts = s.filter(x => x[k] != null); return pts.length > 1 ? `<polyline points="${pts.map(x => `${X(x.mois).toFixed(1)},${Y(x[k]).toFixed(1)}`).join(' ')}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round"${dash ? ' stroke-dasharray="8 6"' : ''}/>` : ''; };
+        const der = s[s.length - 1];
+        basG = `<div class="mu-carte mu-courbe"><div class="mu-t">Le réseau mois par mois <small>${esc(i0.lib)} · <span style="color:#E22F2A">━ ${ph.annee}</span>${s.some(x => x.v1 != null) ? ` · <span class="gris">┅ ${ph.annee - 1}</span>` : ''}</small></div>
+          <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">
+          ${i0.seuil != null ? `<line x1="24" x2="${W - 24}" y1="${Y(i0.seuil).toFixed(1)}" y2="${Y(i0.seuil).toFixed(1)}" stroke="#231F20" stroke-width="1.5" stroke-dasharray="6 6"/><text x="${W - 24}" y="${(Y(i0.seuil) - 6).toFixed(1)}" text-anchor="end" class="mu-sv">${esc(objAff(i0))}</text>` : ''}
+          ${(i0.spec.vol || i0.spec.rel) ? `<line x1="24" x2="${W - 24}" y1="${Y(1).toFixed(1)}" y2="${Y(1).toFixed(1)}" stroke="#9A9A9A" stroke-width="2" stroke-dasharray="8 6"/><text x="${W - 24}" y="${(Y(1) - 6).toFixed(1)}" text-anchor="end" class="mu-sv">niveau N-1</text>` : ''}
+          ${ligne('v1', '#9A9A9A', 3, true)}${ligne('v', '#E22F2A', 5)}
+          ${der.v != null ? `<circle cx="${X(der.mois).toFixed(1)}" cy="${Y(der.v).toFixed(1)}" r="8" fill="#E22F2A"/>` : ''}
+          <text x="24" y="${H - 4}" class="mu-sm">${MC[s[0].mois - 1]}</text><text x="${W - 24}" y="${H - 4}" text-anchor="end" class="mu-sm">${MC[der.mois - 1]} · ${(i0.spec.vol || i0.spec.rel) ? FMT_M(der.v - 1, 'evol') + ' vs N-1' : FMT_M(der.v, i0.spec.fmt)}</text></svg></div>`;
+      }
+    }
+    // Bas droite : compteurs
+    let basD;
+    if (seul) {
+      const c = md.comptes[0], r = i0.res;
+      let manque = '';
+      if (i0.seuil != null && r.v != null) { const d = (i0.seuil - r.v) * (i0.spec.sens || 1);
+        manque = d > 0 ? `<div class="mu-bad b3 large"><div class="v">${deltaAff(i0, d).replace(/^[+−]/, '')}</div><div class="l">à aller chercher pour atteindre l’${esc(objAff(i0))} sur le réseau</div></div>`
+          : `<div class="mu-bad b2 large"><div class="v">✓</div><div class="l">Objectif atteint sur le réseau : on garde le cap !</div></div>`; }
+      else if (r.v != null && r.v1 != null) { const d = (i0.spec.vol || i0.spec.rel) ? r.v / r.v1 - 1 : r.v - r.v1;
+        manque = `<div class="mu-bad ${d >= 0 ? 'b2' : 'b3'} large"><div class="v">${(i0.spec.vol || i0.spec.rel) ? FMT_M(d, 'evol') : deltaAff(i0, d)}</div><div class="l">${d >= 0 ? 'd’avance sur N-1 pour le réseau' : 'de retard sur N-1 pour le réseau : on se mobilise !'}</div></div>`; }
+      basD = `<div class="mu-badges"><div class="mu-bad b1"><div class="v">${c.ok}/${c.sur}</div><div class="l">magasins à l’objectif</div></div>
+        <div class="mu-bad b2"><div class="v">${c.avecP ? c.progres + '/' + c.avecP : '–'}</div><div class="l">magasins en progrès vs ${mp}</div></div>${manque}</div>`;
+    } else {
+      basD = `<div class="mo-cpt" style="--nc:${md.inds.length}">${md.inds.map((d, j) => `<div class="mu-bad b2"><div class="v">${md.comptes[j].ok}/${md.comptes[j].sur}</div><div class="l">${esc(d.lib)}<br>${esc(objAff(d))}</div></div>`).join('')}
+        <div class="mu-bad b1 large"><div class="v">${md.tousOk}/${md.nbMags}</div><div class="l">magasins tiennent tous les objectifs à la fois</div></div></div>`;
+    }
+    const sources = md.inds.some(d => d.k === 're') && ph.sources && ph.sources.rentabilites && ph.sources.rentabilites.periode && ph.sources.rentabilites.periode.au
+      ? `RE : reporting trimestriel à fin ${ph.sources.rentabilites.periode.au.slice(5, 7)}/${ph.sources.rentabilites.periode.au.slice(0, 4)}` : `Optical Center · Suivi statistique · généré le ${new Date().toLocaleDateString('fr-FR')}`;
+    return `<div class="cockpit mur moment">${bandeau}
+      <div class="mo-milieu">${gauche}<div class="mo-droite">${champ}${sec}</div></div>
+      <div class="mu-bas">${basG}${basD}</div>
+      <footer class="ck-pied"><span>${esc(sources)}</span><span class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></span><span>Succursales France · ${md.nbMags} magasins</span></footer></div>`;
+  }
+  // Série réseau d'un indicateur mois par mois (photos de l'année)
+  function serieMoment(photos, ref, conf) {
+    const k = listeMoment(conf).ind[0];
+    const succFr = r => r.pays === 'FRANCE' && r.type === 'Succursale' && r.nature !== 'Camion' && norm(r.ar) !== 'OCM';
+    return photos.filter(Boolean).map(ph => { const m = mesure(k, ph, ref.filter(r => succFr(r) && ph.magasins[String(r.code)]));
+      const sp = MSPEC[k]; return { mois: ph.mois, v: sp.vol || sp.rel ? (m.v1 ? m.v / m.v1 : null) : m.v, v1: sp.vol || sp.rel ? null : m.v1 }; })
+      .filter(x => x.v != null).sort((a, b) => a.mois - b.mois);
+  }
+  const api = { construireMoment, rendreMoment, serieMoment, listeMoment, MOMENT_LIBS, MOMENT_THEMES, MOMENT_DEFAUT, construireMur, rendreMur, MUR_INDICS, MUR_DEFAUT, couleursAr, OBJ_AVIS_GOOGLE, definirParis, paris: () => PARIS.slice(), LISTES_CONF_DEFAUT, SIEGE_DEFAUT, perimetres, construire, rendre, THEMES, COL, TAUX_DEFAUT, DEVISE_SYM, agreger, W_PAGE, H_PAGE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Cockpit = api;
 })(typeof self !== 'undefined' ? self : this);
