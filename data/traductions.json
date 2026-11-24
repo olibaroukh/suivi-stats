@@ -1753,6 +1753,15 @@
    "es": "Índice de salud anual",
    "nl": "Jaarlijkse gezondheidsscore",
    "de": "Jährlicher Gesundheitsscore"
+  },
+  {
+   "base": "Prévisionnel",
+   "fr": "Prévisionnel",
+   "he": "תחזית",
+   "en": "Forecast",
+   "es": "Previsión",
+   "nl": "Prognose",
+   "de": "Prognose"
   }
  ],
  "mois": [
