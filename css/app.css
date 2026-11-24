@@ -1020,3 +1020,7 @@ a.bouton[hidden]{display:none}
 .pole-page .pe-head .pe-sur{color:#fff;opacity:.9}
 .pole-page .pe-score small{display:block;font-size:14px;font-weight:700;opacity:.9;margin-top:4px}
 .pole-page .pe-hum{background:rgba(255,255,255,.2);border:3px solid rgba(255,255,255,.6);border-radius:999px;padding:12px 22px;font-size:24px;font-weight:900;text-transform:uppercase;white-space:nowrap}
+
+/* 25/11/2026 : lignes TOTAL noires arrondies partout (comme le total Confidence de la vue Siège) */
+.cockpit tr.tot>td:first-child{border-top-left-radius:8px;border-bottom-left-radius:8px}
+.cockpit tr.tot>td:last-child{border-top-right-radius:8px;border-bottom-right-radius:8px}
