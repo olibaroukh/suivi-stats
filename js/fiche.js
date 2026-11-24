@@ -168,7 +168,7 @@
       ['LA COMPÉTENCE ÉMOTIONNELLE', 'Objectif annuel atteint 3 fois sur les 5 dernières années', v(anneesOk == null ? null : anneesOk >= 3, anneesOk != null ? anneesOk + ' / 5' : null)],
       ['LA NÉGOCIATION GAGNANTE', 'Taux de concrétisation ≥ 95 %', v(n.AF == null ? null : n.AF >= 95, n.AF != null ? n.AF.toFixed(1) + ' %' : null)],
       ['DÉVELOPPER SA CRÉATIVITÉ', 'Évolution du CA', v(n.P == null || !p.P ? null : n.P > p.P, c.ca.evol != null ? (c.ca.evol > 0 ? '+' : '') + pc(c.ca.evol) : null)],
-      ['NOTORIÉTÉ', 'Nombre d’avis Google ≥ 300', v(n.BL == null ? null : n.BL >= 300, n.BL != null ? String(n.BL) : null)],
+      ['NOTORIÉTÉ', 'Nombre d’avis Google ≥ 500', v(n.BL == null ? null : n.BL >= 500, n.BL != null ? String(n.BL) : null)],
       ['COMMUNIQUER EFFICACEMENT', 'Ophta ≥ 10 / ORL ≥ 10 / CE ≥ objectif', vm([
         cond('Ophta', ce == null ? null : ophta >= 10, 'ophta ' + (ce == null ? '–' : ophta)),
         cond('ORL', ce == null ? null : orl >= 10, 'ORL ' + (ce == null ? '–' : orl)),

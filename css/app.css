@@ -839,3 +839,72 @@ a.bouton[hidden]{display:none}
 #voile-diffusion .vd-b i{display:block;height:100%;width:0;background:#E22F2A;transition:width .3s}
 #voile-diffusion .vd-a{font-size:11px;opacity:.7;margin-top:12px}
 @media print{#voile-diffusion{display:none}}
+
+/* ================= Cockpit « Affichage mur » (24/11/2026) : recto lisible à 2-3 m ================= */
+.cockpit.mur{background:#F3F4F8;padding:32px 36px 20px;gap:16px;font-size:14px}
+.cockpit.mur .ok{color:var(--ok)}.cockpit.mur .ko{color:var(--r)}.cockpit.mur .moy{color:#B36F00}
+.mur .mu-band{height:150px;flex:none;border-radius:20px;padding:20px 30px 20px 36px;display:flex;align-items:center;gap:26px;color:#fff}
+.mur .mu-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.mur .mu-lab{font-size:16px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;opacity:.92}
+.mur .mu-band h1{margin:0;font-size:62px;font-weight:900;line-height:1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mur .mu-sous{font-size:18px;font-weight:500;opacity:.92}
+.mur .mu-humeur{display:flex;align-items:center;gap:12px;border-radius:999px;padding:16px 34px;font-size:36px;font-weight:900;letter-spacing:1px;white-space:nowrap;box-shadow:0 0 0 4px rgba(255,255,255,.35)}
+.mur .mu-med{display:flex;align-items:center;gap:14px}
+.mur .mu-med-l{text-align:right;font-size:17px;font-weight:600;line-height:1.3}
+.mur .mu-rond{width:118px;height:118px;border-radius:50%;background:#E8B931;color:#231F20;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.mur .mu-rond .v{font-size:52px;font-weight:900;line-height:1}.mur .mu-rond sup{font-size:24px}
+.mur .mu-rond .g{font-size:13px;font-weight:700}
+.mur .mu-logo{height:64px;background:#fff;border-radius:12px;padding:6px}
+.mur .mu-carte{background:#fff;border-radius:18px;padding:20px 24px;display:flex;flex-direction:column;min-width:0}
+.mur .mu-kpis{height:196px;flex:none;display:grid;grid-template-columns:1.35fr repeat(4,minmax(0,1fr));gap:14px}
+.mur .mu-pos{flex-direction:row;align-items:center;gap:16px}
+.mur .mu-anv{font-family:inherit;font-size:36px;font-weight:900;fill:#231F20}
+.mur .mu-k{font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#5A5557}
+.mur .mu-ks{font-size:15px;color:#5A5557;margin:6px 0}
+.mur .mu-kr{font-size:17px;font-weight:800;line-height:1.25}
+.mur .mu-ind{justify-content:space-between;border-top:8px solid #D8D3D2}
+.mur .mu-ind.e-ok{border-top-color:var(--ok)}.mur .mu-ind.e-ko{border-top-color:var(--r)}.mur .mu-ind.e-moy{border-top-color:#D98A00}
+.mur .mu-v{font-size:48px;font-weight:900;line-height:1;white-space:nowrap}
+.mur .mu-t{font-size:22px;font-weight:900;text-transform:uppercase;display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.mur .mu-t small{font-size:14px;font-weight:600;text-transform:none;color:#5A5557}.mur .mu-t .gris{color:#8C8C8C}
+.mur .mu-milieu{height:372px;flex:none;display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:14px}
+.mur .mu-barres{flex:1;display:flex;flex-direction:column;justify-content:space-evenly}
+.mur .mu-b{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600}
+.mur .mu-b .r{width:28px;text-align:right;color:#5A5557;font-weight:800}
+.mur .mu-b .n{width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mur .mu-b .piste{flex:1;height:22px;background:#EEECEB;border-radius:999px;position:relative}
+.mur .mu-b .piste i{display:block;height:22px;border-radius:999px;opacity:.55}
+.mur .mu-b .piste b{position:absolute;top:-4px;width:3px;height:30px;background:#231F20}
+.mur .mu-b .v{width:66px;text-align:right;font-weight:800;font-size:18px}
+.mur .mu-b.moi{font-weight:900}.mur .mu-b.moi .piste i{opacity:1}.mur .mu-b.moi .n{font-size:19px}
+.mur .mu-marches{flex:1;display:flex;align-items:flex-end;gap:10px}
+.mur .mu-m{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.mur .mu-m .nm{font-size:16px;font-weight:800;text-align:center;line-height:1.15;max-height:2.4em;overflow:hidden}
+.mur .mu-m .pc{font-size:26px;font-weight:900}
+.mur .mu-m .bloc{width:100%;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:center;font-weight:900;color:#231F20}
+.mur .mu-m.p1 .bloc{height:160px;background:#E8B931;font-size:60px}
+.mur .mu-m.p2 .bloc{height:115px;background:#C9CDD6;font-size:52px}
+.mur .mu-m.p3 .bloc{height:85px;background:#D9A47A;font-size:44px}
+.mur .mu-ml{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;gap:10px}
+.mur .mu-mi{display:flex;align-items:center;gap:12px;background:#FFF3E3;border-radius:14px;padding:12px 16px}
+.mur .mu-mi .ex{width:42px;height:42px;flex:none;border-radius:50%;background:#D98A00;color:#fff;font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center}
+.mur .mu-mi .tx{flex:1;min-width:0;display:flex;flex-direction:column}
+.mur .mu-mi .tx b{font-size:19px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mur .mu-mi .tx small{font-size:14px;font-weight:600;color:#7A4300}
+.mur .mu-mi .v{font-size:24px;font-weight:900;color:#7A4300}
+.mur .mu-vide{flex:1;display:flex;align-items:center;justify-content:center;color:#8C8C8C;font-size:16px}
+.mur .mu-bas{flex:1;min-height:0;display:grid;grid-template-columns:1.25fr 1fr;gap:14px}
+.mur .mu-courbe{padding:16px 24px}
+.mur .mu-sv{font-family:inherit;font-size:13px;font-weight:700;fill:#231F20}.mur .mu-sm{font-family:inherit;font-size:13px;font-weight:600;fill:#5A5557}
+.mur .mu-badges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mur .mu-bad{border-radius:16px;padding:12px 18px;display:flex;align-items:center;gap:14px;min-width:0}
+.mur .mu-bad .v{font-size:34px;font-weight:900;white-space:nowrap;line-height:1}
+.mur .mu-bad .l{font-size:14px;font-weight:700;line-height:1.25;display:flex;flex-direction:column;gap:3px}
+.mur .mu-bad .l b{font-size:23px;font-weight:900;line-height:1.05;text-transform:uppercase}
+.mur .mu-bad.b1{background:#231F20;color:#fff}.mur .mu-bad.b2{background:#E4F2EA;color:#145C35}
+.mur .mu-bad.b3{background:#FBEFEE;color:#8E1B16}.mur .mu-bad.b4{background:#FFF3D1;color:#5E4500}
+.mur .ck-pied{border-top:none;padding-top:0}
+.mur-c{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:inherit}
+.mur-c input[type=color]{width:38px;height:26px;padding:0;border:1px solid #ddd;border-radius:6px;background:none}
+.mur .mu-bad.b4 .v{font-size:30px}
+.mur .mu-badges>.mu-bad:only-child,.mur .mu-badges>.mu-bad:nth-child(3):last-child{grid-column:1 / -1}
