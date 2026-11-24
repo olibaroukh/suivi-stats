@@ -1162,7 +1162,7 @@
     if (!(Store.estAdmin() || !Store.cloud())) return;
     const carte = $('#carte-mur'); if (!carte) return; carte.hidden = false;
     const cfg = await confMur();
-    const opts = Object.entries(Cockpit.MUR_INDICS).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('');
+    const opts = Object.entries(Cockpit.MUR_INDICS).sort((x, y) => x[1].localeCompare(y[1], 'fr', { sensitivity: 'base' })).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('');
     $('#mur-indics').innerHTML = [0, 1, 2, 3].map(i => `<label>Case ${i + 1} <select data-i="${i}">${opts}</select></label>`).join(' ');
     $('#mur-indics').querySelectorAll('select').forEach((x, i) => { x.value = cfg.indicateurs[i] || Cockpit.MUR_DEFAUT.indicateurs[i]; });
     const succFr = r => r.pays === 'FRANCE' && r.type === 'Succursale' && r.nature !== 'Camion' && normTxt(r.ar) !== 'OCM';
