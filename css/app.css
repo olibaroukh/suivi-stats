@@ -908,3 +908,71 @@ a.bouton[hidden]{display:none}
 .mur-c input[type=color]{width:38px;height:26px;padding:0;border:1px solid #ddd;border-radius:6px;background:none}
 .mur .mu-bad.b4 .v{font-size:30px}
 .mur .mu-badges>.mu-bad:only-child,.mur .mu-badges>.mu-bad:nth-child(3):last-child{grid-column:1 / -1}
+
+/* Cockpit mur : bloc Équipe & productivité (24/11/2026) */
+.mur .mu-eqts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.mur .mu-equipe{overflow:hidden}
+.mur .mu-eqt{border-radius:14px;padding:10px 12px;background:#F1F0EF;border-top:6px solid #D8D3D2;display:flex;flex-direction:column;gap:4px}
+.mur .mu-eqt.ok{background:#E4F2EA;border-top-color:var(--ok)}.mur .mu-eqt.ko{background:#FBE3E2;border-top-color:var(--r)}
+.mur .mu-eqt.moy{background:#FFF0D6;border-top-color:#D98A00}.mur .mu-eqt.sous{background:#E3EEFB;border-top-color:#1565C0}
+.mur .mu-eqt .k{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#5A5557}
+.mur .mu-eqt .v{font-size:28px;font-weight:900;line-height:1.05;white-space:nowrap}
+.mur .mu-eqt .s{font-size:12px;font-weight:600;color:#5A5557;line-height:1.25}
+.mur .mu-aj-t{font-size:14px;font-weight:800;text-transform:uppercase;margin:10px 0 4px;color:#5A5557}
+.mur .mu-ajs{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-evenly;gap:5px}
+.mur .mu-aj{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;column-gap:10px;border-left:6px solid;padding:4px 10px;border-radius:6px}
+.mur .mu-aj.sous{border-color:#1565C0;background:#F2F7FD}.mur .mu-aj.sur{border-color:#B5520A;background:#FDF5EE}
+.mur .mu-aj b{font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mur .mu-aj .e{grid-row:span 2;align-self:center;font-size:22px;font-weight:900}.mur .mu-aj.sous .e{color:#0D4C92}.mur .mu-aj.sur .e{color:#8A3E06}
+.mur .mu-aj .d{font-size:12.5px;font-weight:600;color:#5A5557}
+
+/* Indicateur du moment (24/11/2026) */
+.moment .mo-band{height:170px;flex:none;border-radius:20px;background:#231F20;color:#fff;padding:20px 30px 20px 36px;display:flex;align-items:center;gap:18px}
+.moment .mo-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.moment .mo-lab{font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#FF6B66;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.moment .mo-band h1{margin:0;font-size:72px;font-weight:900;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.moment .mo-msg{font-size:19px;font-weight:500;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.moment .mo-res{border-radius:18px;padding:14px 26px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.moment .mo-res .l{font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase}.moment .mo-res .v{font-size:54px;font-weight:900;line-height:1}
+.moment .mo-res .o{font-size:14px;font-weight:700}
+.moment .mo-evs{display:flex;flex-direction:column;gap:8px;font-size:18px;font-weight:800}.moment .mo-evs div{background:rgba(255,255,255,.12);border-radius:12px;padding:8px 14px;white-space:nowrap}
+.moment .mo-tu{width:158px;border-radius:16px;padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
+.moment .mo-tu .l{font-size:12.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;line-height:1.2}.moment .mo-tu .v{font-size:38px;font-weight:900;line-height:1.05;white-space:nowrap}
+.moment .mo-tu .o{font-size:12px;font-weight:700;line-height:1.2}
+.moment .mo-milieu{height:560px;flex:none;display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+.moment .mo-droite{display:flex;flex-direction:column;gap:14px;min-height:0}.moment .mo-droite>.mu-carte{flex:1;min-height:0}
+.moment .mo-barres,.moment .mo-lignes,.moment .mo-l{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;min-height:0}
+.moment .mo-b{display:flex;align-items:center;gap:12px}
+.moment .mo-b .r,.moment .mo-ligne .r{width:34px;text-align:right;font-size:22px;font-weight:900}
+.moment .pa{width:46px;height:46px;flex:none;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900}
+.moment .mo-b .n{width:120px;font-size:21px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.moment .mo-b .piste{flex:1;height:30px;background:#EEECEB;border-radius:999px;position:relative}
+.moment .mo-b .piste i{display:block;height:30px;border-radius:999px}
+.moment .mo-b .piste b{position:absolute;top:-6px;width:4px;height:42px;background:#231F20}
+.moment .mo-b .v{width:110px;text-align:right;font-size:24px;font-weight:900;white-space:nowrap}
+.moment .mo-b .g{width:52px;font-size:17px;font-weight:800;color:#8C8C8C}.moment .mo-b .g.ok{color:var(--ok)}.moment .mo-b .g.ko{color:var(--r)}
+.moment .mo-ligne{display:grid;grid-template-columns:34px 46px minmax(90px,1fr) repeat(var(--nc),minmax(0,1.1fr)) 96px;gap:8px;align-items:center}
+.moment .mo-ligne .n{font-size:20px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.moment .mo-tete{font-size:12.5px;font-weight:700;color:#5A5557;text-align:center;line-height:1.2;padding-bottom:4px}.moment .mo-tete small{font-weight:600}
+.moment .mo-ligne .ce{height:44px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:20px;font-weight:900;line-height:1.05;white-space:nowrap}
+.moment .mo-ligne .ce small{font-size:10.5px;font-weight:700}
+.moment .mo-ligne .dots{font-size:24px;letter-spacing:2px;text-align:center}
+.moment .mo-c,.moment .mo-p{display:flex;align-items:center;gap:12px}
+.moment .mo-c .md{width:38px;height:38px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#231F20}
+.moment .tx{flex:1;min-width:0;display:flex;flex-direction:column}.moment .tx b{font-size:19px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.moment .tx small{font-size:13px;font-weight:700}
+.moment .mo-c .v{font-size:22px;font-weight:900;white-space:nowrap}
+.moment .mo-prog{background:#FFF3D1}.moment .mo-prog .mu-t,.moment .mo-prog .tx small{color:#5E4500}
+.moment .mo-p .d{width:118px;font-size:24px;font-weight:900;color:var(--ok);white-space:nowrap}.moment .mo-p .tx b{text-transform:uppercase}
+.moment .mo-mob{background:#FFF3E3}.moment .mo-mob .mu-mi{background:none;padding:4px 0}
+.moment .mu-mi .v2{font-size:16px;font-weight:800;color:#7A4300;white-space:nowrap}
+.moment .mo-effs{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px}
+.moment .mo-ec{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.moment .mo-ec .zone{flex:1;width:100%;position:relative}.moment .mo-ec .axe{position:absolute;left:0;right:0;top:50%;height:2px;background:#231F20}
+.moment .mo-ec .bar{position:absolute;left:22%;right:22%;border-radius:5px}
+.moment .mo-ec b{font-size:16px;font-weight:900}.moment .mo-ec span{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.moment .mu-bad.large{grid-column:1 / -1}
+.moment .mo-cpt{display:grid;grid-template-columns:repeat(var(--nc),minmax(0,1fr));gap:10px}
+.moment .mo-cpt .mu-bad{flex-direction:column;align-items:flex-start;gap:4px}.moment .mo-cpt .mu-bad.large{flex-direction:row;align-items:center}
+.moment .mo-cpt .mu-bad .v{font-size:30px}
+.moment .mo-droite>.mo-champ{flex:1.4}
+.moment .mo-c .v.multi{font-size:16px;font-weight:800}

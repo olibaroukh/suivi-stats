@@ -68,7 +68,7 @@
       b.hidden = !ok || v === 'recrutement'; // Recrutement : affiché seulement si un lien est enregistré
     });
     brancherLiens(admin, p);
-    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherMur(); if (admin) brancherIddigital(); if (admin) brancherDiffusion(); if (admin) brancherEcrans(); $('#zone-zimbra').hidden = !admin;
+    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherMur(); if (admin) brancherMoment(); if (admin) brancherIddigital(); if (admin) brancherDiffusion(); if (admin) brancherEcrans(); $('#zone-zimbra').hidden = !admin;
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
@@ -629,13 +629,13 @@
     const thChoisi = $('#ck-theme').value; let tri = $('#ck-tri').value;
     if (tri === '__theme') tri = thChoisi !== 'siege' ? Cockpit.THEMES[thChoisi].tri : 'code';
     // 24/11/2026 : « Affichage mur » = recto mur + verso cockpit complet du même périmètre
-    const murOn = thChoisi === 'mur', th = murOn ? 'complet' : thChoisi;
+    const murOn = thChoisi === 'mur', momentOn = thChoisi === 'moment', th = murOn ? 'complet' : momentOn ? 'ca' : thChoisi;
     const siege = (await Store.lireJSON(`config/objectifs-siege-${CK.cle.slice(0, 4)}.json`)) || {};
     const exclus = CK.diffusion ? new Set() : selCockpit(p.id); // diffusion : pas les choix locaux d'Olivier
     const exP = (CK.exclusPays || []).map(x => normTxt(x));
     const pAff = (p.filtre && (exclus.size || exP.length)) ? { ...p, filtre: r => p.filtre(r) && !exclus.has(String(r.code)) && !exP.includes(normTxt(r.pays)) } : p;
     majBoutonSel(p, exclus);
-    const precedente = (th === 'restes' || murOn) ? await photoMois(moisPrec(CK.cle)).catch(() => null) : null;
+    const precedente = (th === 'restes' || murOn || momentOn) ? await photoMois(moisPrec(CK.cle)).catch(() => null) : null;
     const tx = await tauxChange();
     const listesConf = th === 'confidence' ? await listesConfChoisies() : null;
     $('#ck-conf-btn').hidden = th !== 'confidence'; if (th !== 'confidence') $('#ck-conf').hidden = true;
@@ -667,6 +667,16 @@
       const serieRef = fr ? await seriePerimetre(fr, tx).catch(() => null) : null;
       const mm = Cockpit.construireMur(CK.photo, S.ref, pAff, { taux: tx, objectifs: S.objectifs, precedente, mur, chal: S.photo && S.photo.annee === CK.photo.annee ? S.chal : undefined, serie: md.serie, serieRef });
       $('#ck-apercu .ck-echelle').insertAdjacentHTML('afterbegin', Cockpit.rendreMur(mm));
+      pages = [...$('#ck-apercu').querySelectorAll('.cockpit')];
+    }
+    if (momentOn) {
+      // 24/11/2026 : affiche « Indicateur du moment » (réseau succursales France, 1 page A3)
+      const cm = await confMoment(), mur = await confMur();
+      const phs = [];
+      for (let mo = 1; mo <= CK.photo.mois; mo++) { const k = `${CK.photo.annee}-${pad(mo)}`; if (mo === CK.photo.mois) phs.push(CK.photo); else if ((S.moisDispo || []).includes(k)) phs.push(await photoMois(k).catch(() => null)); }
+      const serie = Cockpit.serieMoment(phs, S.ref, cm);
+      const mm = Cockpit.construireMoment(CK.photo, S.ref, cm, { precedente, objectifs: S.objectifs, couleurs: mur.couleurs, serie });
+      $('#ck-apercu .ck-echelle').innerHTML = Cockpit.rendreMoment(mm);
       pages = [...$('#ck-apercu').querySelectorAll('.cockpit')];
     }
     page = pages[0];
@@ -1158,6 +1168,31 @@
 
   // Cockpit « mur » (24/11/2026) : 4 indicateurs au choix + couleur de chaque AR (config/cockpit-mur.json)
   async function confMur() { return Object.assign({}, Cockpit.MUR_DEFAUT, (await Store.lireJSON('config/cockpit-mur.json').catch(() => null)) || {}); }
+  async function confMoment() { return Object.assign({}, Cockpit.MOMENT_DEFAUT, (await Store.lireJSON('config/indicateur-moment.json').catch(() => null)) || {}); }
+  async function brancherMoment() {
+    if (!(Store.estAdmin() || !Store.cloud())) return;
+    const carte = $('#carte-moment'); if (!carte) return; carte.hidden = false;
+    const cfg = await confMoment();
+    const tri = Object.entries(Cockpit.MOMENT_LIBS).sort((x, y) => x[1].localeCompare(y[1], 'fr', { sensitivity: 'base' }));
+    const opts = tri.map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('');
+    $('#mo-ind').innerHTML = opts; $('#mo-ind').value = cfg.indicateur;
+    $('#mo-theme').innerHTML = Object.entries(Cockpit.MOMENT_THEMES).map(([k, t]) => `<option value="${k}">${esc(t.lib)} (${t.ind.map(i => Cockpit.MOMENT_LIBS[i]).join(', ')})</option>`).join('') + '<option value="perso">Thème personnalisé…</option>';
+    $('#mo-theme').value = cfg.theme;
+    $('#mo-perso').innerHTML = [0, 1, 2, 3].map(i => `<select data-i="${i}"><option value="">${i < 2 ? '(choisir)' : '(aucun)'}</option>${opts}</select>`).join(' ');
+    $('#mo-perso').querySelectorAll('select').forEach((x, i) => { x.value = (cfg.perso || [])[i] || ''; });
+    $('#mo-titre').value = cfg.titrePerso || ''; $('#mo-message').value = cfg.message || '';
+    const maj = () => { const m = carte.querySelector('input[name=mo-mode]:checked').value; $('#mo-z-seul').hidden = m !== 'seul'; $('#mo-z-theme').hidden = m !== 'theme'; $('#mo-z-perso').hidden = m !== 'theme' || $('#mo-theme').value !== 'perso'; };
+    carte.querySelectorAll('input[name=mo-mode]').forEach(x => { x.checked = x.value === cfg.mode; x.onchange = maj; });
+    $('#mo-theme').onchange = maj; maj();
+    $('#btn-moment').onclick = async () => {
+      const mode = carte.querySelector('input[name=mo-mode]:checked').value;
+      const perso = [...$('#mo-perso').querySelectorAll('select')].map(x => x.value).filter(Boolean);
+      if (mode === 'theme' && $('#mo-theme').value === 'perso' && new Set(perso).size < 2) return alert('Choisissez au moins 2 indicateurs différents pour le thème personnalisé.');
+      await Store.ecrireJSON('config/indicateur-moment.json', { mode, indicateur: $('#mo-ind').value, theme: $('#mo-theme').value, perso: [...new Set(perso)],
+        titrePerso: $('#mo-titre').value.trim(), message: $('#mo-message').value.trim(), maj: new Date().toISOString().slice(0, 10) });
+      $('#mo-info').textContent = '✓ Enregistré — Cockpits › France – succursales › Indicateur du moment';
+    };
+  }
   async function brancherMur() {
     if (!(Store.estAdmin() || !Store.cloud())) return;
     const carte = $('#carte-mur'); if (!carte) return; carte.hidden = false;
