@@ -624,7 +624,7 @@
   const OBJ_AVIS_GOOGLE = 500; // objectif 2026 (aussi critère 9 du Manager Leader)
   const MUR_INDICS = {
     ca: 'Chiffre d’affaires', mdc: 'Taux de MdC', re: 'Rentabilité (RE)', indus: 'Taux d’indus', avis: 'Avis Google',
-    caCollab: 'CA / mois / collaborateur', pc: '% Pack confort', tc: 'Taux de concrétisation', panier: 'Panier moyen',
+    caCollab: 'CA / mois / ETP', pc: '% Pack confort', tc: 'Taux de concrétisation', panier: 'Panier moyen',
     audio: 'CA audio', protheses: 'Prothèses', note: 'Note Google', confidence: 'Confidence', rentaSal: 'Renta salariale', absent: 'Absentéisme',
   };
   const MUR_DEFAUT = { indicateurs: ['ca', 're', 'avis', 'indus'], couleurs: {} };
