@@ -130,7 +130,7 @@
     const succFr = r => fr(r) && r.type === 'Succursale' && r.nature !== 'Camion' && norm(r.ar) !== 'OCM';
     const out = [
       { id: 'siege', lib: 'Réseau – vue Siège', groupeLib: 'Synthèse', special: 'siege', themes: ['siege'] },
-      { id: 'france', lib: 'France – succursales', groupeLib: 'France', filtre: succFr, sousTotal: r => r.ar, themes: ['moment', 'ca', 'optique', 'audio', 'restes', 'renta'] },
+      { id: 'france', lib: 'France – succursales', groupeLib: 'France', filtre: succFr, sousTotal: r => r.ar, themes: ['pole', 'moment', 'ca', 'optique', 'audio', 'restes', 'renta'] },
     ];
     [...new Set(act.filter(succFr).map(r => r.ar))].filter(Boolean).sort().forEach(a =>
       out.push({ id: 'ar:' + a, lib: 'AR – ' + a, groupeLib: 'France', filtre: r => succFr(r) && r.ar === a, themes: ['complet', 'mur', 'ca', 'optique', 'audio', 'restes', 'renta'] }));

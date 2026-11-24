@@ -15,6 +15,7 @@
     const base = [
       { id: 'reseau', lib: 'Tout le réseau', f: () => true },
       { id: 'france_succ', lib: 'France – succursales (avec OCM)', f: r => r.pays === 'FRANCE' && r.type === 'Succursale' },
+      { id: 'france_succ_mag', lib: 'France – succursales (hors OCM)', f: r => r.pays === 'FRANCE' && r.type === 'Succursale' && r.nature !== 'Camion' && String(r.ar || '').toUpperCase() !== 'OCM' },
       { id: 'france_franch', lib: 'France – franchises (avec OCM)', f: r => r.pays === 'FRANCE' && r.type === 'Franchise' },
       { id: 'france', lib: 'France – tout', f: r => r.pays === 'FRANCE' },
       { id: 'international', lib: 'International (avec OCM)', f: r => r.pays !== 'FRANCE' },
@@ -48,6 +49,11 @@
     mag100: { lib: 'Nombre de magasins à 100 %', fmt: 'nb' },
     nbML: { lib: 'Nombre de Managers Leaders qualifiés (≥ 7/10)', fmt: 'nb' },
     nbME: { lib: 'Nombre de Magasins d’Excellence qualifiés (≥ 7/10)', fmt: 'nb' },
+    // 24/11/2026 : critères du Pôle d'excellence
+    avisMoy: { lib: 'Avis Google par magasin (moyenne)', fmt: 'nb' },
+    confTaux: { lib: 'Confidence : clients contactés / clients des listes', fmt: 'pct1' },
+    mrQualite: { lib: 'Clients mystères (Mr Qualité, moyenne /100)', fmt: 'note1' },
+    turnover: { lib: 'Turn-over (départs depuis janvier / effectif moyen)', fmt: 'pct1' },
   };
 
   function calculer(a, photo, ref, taux, ctx = {}) {
@@ -91,6 +97,22 @@
           return (ind.mesure === 'nbML' ? ch.sml.ok : ch.sme.ok) >= 7; }).length;
         break;
       }
+      case 'avisMoy': { const l = actifs.map(r => ((photo.magasins[String(r.code)] || {}).N || {}).BL).filter(x => x != null); v = l.length ? l.reduce((a, x) => a + x, 0) / l.length : null; extra = `sur ${nb(l.length)} mag.`; break; }
+      case 'confTaux': v = agg.N.DP ? (agg.N.DO || 0) / agg.N.DP : null; break;
+      case 'mrQualite': { const l = actifs.map(r => ((photo.magasins[String(r.code)] || {}).N || {}).CK).filter(x => x != null); v = l.length ? l.reduce((a, x) => a + x, 0) / l.length : null; extra = `sur ${nb(l.length)} mag.`; break; }
+      case 'turnover': {
+        // Départs = personnes présentes dans un export RH antérieur de l'année et absentes du dernier ; effectif moyen des mois avec export RH
+        const codes = new Set(rs.map(r => String(r.code)));
+        const ens = ph => { if (!ph || !ph.equipes) return null; const e = new Set(); for (const c in ph.equipes) if (codes.has(String(c))) ph.equipes[c].forEach(p => p.matricule && e.add(String(p.matricule))); return e.size ? e : null; };
+        const mois = (ctx.photosAnnee || []).filter(ph => ph && ph.annee === photo.annee && ph.mois <= photo.mois).sort((a, b) => a.mois - b.mois).map(ph => ({ m: ph.mois, e: ens(ph) })).filter(x => x.e);
+        const der = mois.find(x => x.m === photo.mois) || null;
+        if (der && mois.length) {
+          const vus = new Set(); mois.forEach(x => x.e.forEach(mt => vus.add(mt)));
+          const departs = [...vus].filter(mt => !der.e.has(mt)).length, moy = mois.reduce((a, x) => a + x.e.size, 0) / mois.length;
+          v = moy ? departs / moy : null; extra = `${nb(departs)} départs · depuis ${MOIS[mois[0].m - 1]}`;
+        }
+        break;
+      }
       case 'mag100': v = actifs.filter(r => { const d = photo.magasins[String(r.code)]; const p = d ? Cockpit.COL.posit.f(d.N || {}, d.N1 || {}, m) : null; return p != null && p >= 1; }).length; break;
     }
     // Période propre à la source
@@ -111,7 +133,7 @@
       case 'pct1': return nb(v * 100, 1) + ' %';
       case 'pct2': return nb(v * 100, 2) + ' %';
       case 'conf': return nb(v * 100) + ' %';
-      case 'note': return nb(v, 1);
+      case 'note': case 'note1': return nb(v, 1);
       default: return nb(v);
     }
   }
@@ -151,6 +173,53 @@
     </div>`;
   }
 
-  const api = { MESURES, perimetres, calculer, rendre, formater };
+  // ---------- Pôle d'excellence (24/11/2026) : critères paramétrables par année (config/pole-excellence-AAAA.json) ----------
+  const auto = (num, libelle, texte, valeur, sens, mesure, perimetre = 'france_succ_mag') => ({ num, resp: '', libelle, objectif: { texte, valeur, sens }, mode: 'auto', indicateur: { mesure, perimetre }, manuel: { valeur: '', statut: '' } });
+  const POLE_MODELE_2026 = { titre: 'Pôle d’excellence 2026', objectifCriteres: 7, _modele: true, actions: [
+    auto(1, 'CA succursales France', '100 %', 100, '>=', 'posit'),
+    auto(2, 'Nombre d’avis Google par magasin', '500', 500, '>=', 'avisMoy'),
+    auto(3, 'Taux d’utilisation de Confidence', '100 %', 100, '>=', 'confUtil'),
+    auto(4, 'Taux d’indus', '< 1 %', 1, '<=', 'indus'),
+    auto(5, 'Rentabilité salariale', '28 %', 28, '<=', 'rentaSal'),
+    auto(6, 'Moyenne des clients mystères', '70/100', 70, '>=', 'mrQualite'),
+    { num: 7, resp: '', libelle: 'Réactivité et efficacité du pôle', objectif: { texte: '≥ 8/10', valeur: null, sens: '>=' }, mode: 'manuel', indicateur: {}, manuel: { valeur: 'Atteint', statut: 'ok' } },
+    auto(8, 'Nombre de Managers Leaders', '15', 15, '>=', 'nbML'),
+    auto(9, 'Nombre de magasins d’excellence', '20', 20, '>=', 'nbME'),
+    auto(10, 'Turn-over', '≤ 10 %', 10, '<=', 'turnover'),
+  ] };
+  function rendrePole(conf, photo, ref, taux, opts = {}) {
+    const crit = (conf.actions || []).slice().sort((a, b) => (+a.num || 0) - (+b.num || 0));
+    const lignes = crit.map(a => {
+      const r = a.mode === 'auto' ? calculer(a, photo, ref, taux, opts) : { valeur: null, texte: (a.manuel && a.manuel.valeur) || '', extra: 'suivi manuel' };
+      const st = statut(a, r), mes = MESURES[(a.indicateur || {}).mesure] || {};
+      let prog = null;
+      if (a.mode === 'auto' && r.valeur != null && a.objectif && a.objectif.valeur != null) {
+        const cible = ['pct1', 'pct2', 'conf'].includes(mes.fmt) ? a.objectif.valeur / 100 : a.objectif.valeur;
+        prog = a.objectif.sens === '<=' ? (r.valeur <= cible ? 1 : cible / r.valeur) : (cible ? r.valeur / cible : null);
+      } else if (a.mode === 'manuel') prog = st === 'ok' ? 1 : null;
+      return { a, r, st, prog };
+    });
+    const ok = lignes.filter(l => l.st === 'ok').length, n = lignes.length;
+    // Objectif final : 7 critères sur 10 (vert), orange à 2 critères près, rouge en dessous
+    const obj = Math.min(n, +conf.objectifCriteres || Math.ceil(n * 0.7));
+    const humeur = ok >= obj ? 'vert' : ok >= obj - 2 ? 'orange' : 'rouge';
+    const lib = { vert: 'Objectif atteint', orange: `Encore ${obj - ok} critère${obj - ok > 1 ? 's' : ''}`, rouge: `Encore ${obj - ok} critères` }[humeur];
+    const C = 2 * Math.PI * 64, logo = opts.logo || 'assets/logo-optical-center.png';
+    const carte = ({ a, r, st, prog }) => `<div class="pe-c ${st || 'na'}">
+      <div class="pe-h"><span class="pe-n">${esc(a.num)}</span><span class="pe-st">${st === 'ok' ? '✓ Atteint' : st === 'ko' ? 'En cours' : '–'}</span></div>
+      <div class="pe-lib">${esc(a.libelle)}</div>
+      <div class="pe-v">${esc(r.texte || '–')}</div>
+      <div class="pe-obj">Objectif <b>${esc((a.objectif && a.objectif.texte) || '–')}</b></div>
+      ${prog != null ? `<div class="pe-bar"><i style="width:${Math.max(3, Math.min(100, prog * 100)).toFixed(0)}%"></i></div>` : '<div class="pe-bar vide"></div>'}
+      <div class="pe-x">${esc(r.extra || (a.mode === 'manuel' ? 'suivi manuel' : ''))}</div></div>`;
+    return `<div class="pole-page" lang="fr">
+      <header class="pe-head ${humeur}"><img src="${logo}" alt=""><div class="pe-t"><div class="pe-sur">Suivi automatique · mise à jour ${photo ? esc(MOIS[photo.mois - 1]) + ' ' + photo.annee : '–'}</div><h1>${esc(conf.titre || `Pôle d’excellence ${photo ? photo.annee : ''}`)}</h1></div>
+        <div class="pe-score"><svg viewBox="0 0 150 150" width="140" height="140"><circle cx="75" cy="75" r="64" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="16"/><circle cx="75" cy="75" r="64" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round" stroke-dasharray="${(n ? ok / n * C : 0).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 75 75)"/><text x="75" y="86" text-anchor="middle">${ok}/${n}</text></svg><div>critères<br>atteints<small>objectif ${obj}/${n}</small></div></div><div class="pe-hum">${lib}</div></header>
+      <div class="pe-grille" style="--l:${Math.ceil(n / 5) || 1}">${lignes.map(carte).join('')}</div>
+      <footer class="act-pied"><div>Vert : objectif atteint · rouge : pas encore · périmètre : succursales France (hors OCM)</div><div class="slogan">Entendre et voir UNIQUEMENT le <b>BIEN</b></div></footer>
+    </div>`;
+  }
+
+  const api = { MESURES, perimetres, calculer, rendre, rendrePole, POLE_MODELE_2026, formater };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Actions = api;
 })(typeof self !== 'undefined' ? self : this);

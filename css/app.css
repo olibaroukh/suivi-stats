@@ -990,3 +990,33 @@ a.bouton[hidden]{display:none}
 .moment .mo-cp .g{width:40px;font-size:14px;font-weight:800;color:#8C8C8C}.moment .mo-cp .g.ok{color:var(--ok)}.moment .mo-cp .g.ko{color:var(--r)}
 .moment .mu-t{white-space:nowrap}.moment .mu-t small{overflow:hidden;text-overflow:ellipsis}
 .moment .mo-band h1{text-transform:none}
+
+/* ---------- Pôle d'excellence (24/11/2026) ---------- */
+.pole-page{width:1587px;height:1123px;box-sizing:border-box;background:#F3F4F8;padding:32px 36px 20px;display:flex;flex-direction:column;gap:18px;color:#231F20;font-family:inherit}
+.pole-page .pe-head{height:170px;flex:none;box-sizing:border-box;background:#231F20;color:#fff;border-radius:20px;padding:20px 36px;display:flex;align-items:center;gap:26px}
+.pole-page .pe-head img{height:70px;background:#fff;border-radius:12px;padding:6px}
+.pole-page .pe-t{flex:1;min-width:0}
+.pole-page .pe-sur{font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#FF6B66}
+.pole-page .pe-head h1{margin:6px 0 0;font-size:52px;font-weight:900;line-height:1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pole-page .pe-score{display:flex;align-items:center;gap:14px;font-size:20px;font-weight:800;line-height:1.2}
+.pole-page .pe-score text{font-family:inherit;font-size:38px;font-weight:900;fill:#fff}
+.pole-page .pe-grille{flex:1;min-height:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(var(--l),minmax(0,1fr));gap:14px}
+.pole-page .pe-c{background:#fff;border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:8px;border-top:10px solid #C9C4C2;min-width:0}
+.pole-page .pe-c.ok{border-top-color:#1E8A52}.pole-page .pe-c.ko{border-top-color:#E22F2A}
+.pole-page .pe-h{display:flex;justify-content:space-between;align-items:center}
+.pole-page .pe-n{width:40px;height:40px;border-radius:50%;background:#231F20;color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900}
+.pole-page .pe-st{font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;padding:5px 12px;border-radius:999px;background:#EEECEB;color:#5A5557}
+.pole-page .pe-c.ok .pe-st{background:#E4F2EA;color:#145C35}.pole-page .pe-c.ko .pe-st{background:#FBE3E2;color:#A11D18}
+.pole-page .pe-lib{font-size:22px;font-weight:800;line-height:1.2;min-height:2.4em}
+.pole-page .pe-v{font-size:64px;font-weight:900;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:auto}
+.pole-page .pe-c.ok .pe-v{color:#1E8A52}.pole-page .pe-c.ko .pe-v{color:#C0392B}
+.pole-page .pe-obj{font-size:16px;font-weight:600;color:#5A5557}.pole-page .pe-obj b{color:#231F20;font-weight:900}
+.pole-page .pe-bar{height:12px;border-radius:999px;background:#EEECEB;overflow:hidden}.pole-page .pe-bar.vide{visibility:hidden}
+.pole-page .pe-bar i{display:block;height:100%;border-radius:999px;background:#C0392B}.pole-page .pe-c.ok .pe-bar i{background:#1E8A52}
+.pole-page .pe-x{font-size:12.5px;font-weight:600;color:#6d6566;min-height:1.3em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pole-page .act-pied{display:flex;align-items:center;gap:30px;font-size:12px;color:#6d6566}
+.pole-page .slogan{margin-left:auto;color:#231F20;font-size:16px;font-weight:800}.pole-page .slogan b{color:var(--accent,#E22F2A)}
+.pole-page .pe-head.vert{background:#1E8A52}.pole-page .pe-head.orange{background:#D27A00}.pole-page .pe-head.rouge{background:#C0392B}
+.pole-page .pe-head .pe-sur{color:#fff;opacity:.9}
+.pole-page .pe-score small{display:block;font-size:14px;font-weight:700;opacity:.9;margin-top:4px}
+.pole-page .pe-hum{background:rgba(255,255,255,.2);border:3px solid rgba(255,255,255,.6);border-radius:999px;padding:12px 22px;font-size:24px;font-weight:900;text-transform:uppercase;white-space:nowrap}
