@@ -291,6 +291,13 @@
         <textarea id="paris-codes" rows="3" style="width:100%"></textarea>
         <div style="margin-top:6px"><button id="btn-paris">Enregistrer</button> <span class="muted" id="paris-info"></span></div>
       </div>
+      <div class="carte" id="carte-mur" hidden>
+        <h2>Cockpit « Affichage mur »</h2>
+        <p class="aide">Recto lisible de loin (cockpits par AR et Paris, thème « Affichage mur ») ; le verso reprend le cockpit complet. Choisissez les 4 indicateurs affichés à côté du positionnement et la couleur du bandeau de chaque AR.</p>
+        <div id="mur-indics" class="ligne-outils" style="flex-wrap:wrap;gap:10px"></div>
+        <div id="mur-couleurs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 14px;margin-top:10px"></div>
+        <div style="margin-top:8px"><button id="btn-mur">Enregistrer</button> <span class="muted" id="mur-info"></span></div>
+      </div>
       <div class="carte" id="carte-pins" hidden>
         <h2>Accès magasins (code PIN)</h2>
         <p class="aide">Pour les applis utilisées en magasin (Pour être dans le vert, Suivi magasin, Kaizen) : un code à 6 chiffres par magasin, envoyé par mail sur la boîte du magasin et saisi une seule fois par poste. Régénérer un code déconnecte les postes du magasin.</p>

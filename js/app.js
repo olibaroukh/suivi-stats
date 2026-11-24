@@ -68,7 +68,7 @@
       b.hidden = !ok || v === 'recrutement'; // Recrutement : affiché seulement si un lien est enregistré
     });
     brancherLiens(admin, p);
-    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherIddigital(); if (admin) brancherDiffusion(); if (admin) brancherEcrans(); $('#zone-zimbra').hidden = !admin;
+    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherMur(); if (admin) brancherIddigital(); if (admin) brancherDiffusion(); if (admin) brancherEcrans(); $('#zone-zimbra').hidden = !admin;
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
@@ -626,14 +626,16 @@
     modeActions(false);
     if (CK.cle !== k) { CK.photo = await Store.lireJSON(`donnees/${k}/photo.json`); CK.cle = k; }
     const p = CK.perims.find(x => x.id === $('#ck-perim').value); if (!p || !CK.photo) return;
-    const th = $('#ck-theme').value; let tri = $('#ck-tri').value;
-    if (tri === '__theme') tri = th !== 'siege' ? Cockpit.THEMES[th].tri : 'code';
+    const thChoisi = $('#ck-theme').value; let tri = $('#ck-tri').value;
+    if (tri === '__theme') tri = thChoisi !== 'siege' ? Cockpit.THEMES[thChoisi].tri : 'code';
+    // 24/11/2026 : « Affichage mur » = recto mur + verso cockpit complet du même périmètre
+    const murOn = thChoisi === 'mur', th = murOn ? 'complet' : thChoisi;
     const siege = (await Store.lireJSON(`config/objectifs-siege-${CK.cle.slice(0, 4)}.json`)) || {};
     const exclus = CK.diffusion ? new Set() : selCockpit(p.id); // diffusion : pas les choix locaux d'Olivier
     const exP = (CK.exclusPays || []).map(x => normTxt(x));
     const pAff = (p.filtre && (exclus.size || exP.length)) ? { ...p, filtre: r => p.filtre(r) && !exclus.has(String(r.code)) && !exP.includes(normTxt(r.pays)) } : p;
     majBoutonSel(p, exclus);
-    const precedente = th === 'restes' ? await photoMois(moisPrec(CK.cle)) : null;
+    const precedente = (th === 'restes' || murOn) ? await photoMois(moisPrec(CK.cle)).catch(() => null) : null;
     const tx = await tauxChange();
     const listesConf = th === 'confidence' ? await listesConfChoisies() : null;
     $('#ck-conf-btn').hidden = th !== 'confidence'; if (th !== 'confidence') $('#ck-conf').hidden = true;
@@ -659,6 +661,13 @@
     // Franchisés : plusieurs pages autorisées quand il y a trop de lignes
     if (!ok && md.type === 'multi' && p.multiPages) {
       for (let nP = 2; nP <= 6 && !ok; nP++) { pages = poser(hL, nP); ok = pages.every(ajusterCockpit); }
+    }
+    if (murOn) {
+      const mur = await confMur(), fr = CK.perims.find(x => x.id === 'france');
+      const serieRef = fr ? await seriePerimetre(fr, tx).catch(() => null) : null;
+      const mm = Cockpit.construireMur(CK.photo, S.ref, pAff, { taux: tx, objectifs: S.objectifs, precedente, mur, chal: S.photo && S.photo.annee === CK.photo.annee ? S.chal : undefined, serie: md.serie, serieRef });
+      $('#ck-apercu .ck-echelle').insertAdjacentHTML('afterbegin', Cockpit.rendreMur(mm));
+      pages = [...$('#ck-apercu').querySelectorAll('.cockpit')];
     }
     page = pages[0];
     const echelle = () => { const w = $('#ck-apercu').clientWidth - 28; const sc = Math.min(1, w / Cockpit.W_PAGE); const e = $('#ck-apercu .ck-echelle'); e.style.transform = `scale(${sc})`; e.style.height = ((Cockpit.H_PAGE + 18) * pages.length * sc) + 'px'; };
@@ -1144,6 +1153,29 @@
       LIENS = { ...LIENS, recrutement: u, maj: new Date().toISOString().slice(0, 10) };
       await Store.ecrireJSON('config/liens.json', LIENS);
       if (b) b.hidden = !u; $('#liens-info').textContent = u ? '✓ Enregistré · onglet « Recrutement » affiché' : '✓ Lien retiré · onglet masqué';
+    };
+  }
+
+  // Cockpit « mur » (24/11/2026) : 4 indicateurs au choix + couleur de chaque AR (config/cockpit-mur.json)
+  async function confMur() { return Object.assign({}, Cockpit.MUR_DEFAUT, (await Store.lireJSON('config/cockpit-mur.json').catch(() => null)) || {}); }
+  async function brancherMur() {
+    if (!(Store.estAdmin() || !Store.cloud())) return;
+    const carte = $('#carte-mur'); if (!carte) return; carte.hidden = false;
+    const cfg = await confMur();
+    const opts = Object.entries(Cockpit.MUR_INDICS).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('');
+    $('#mur-indics').innerHTML = [0, 1, 2, 3].map(i => `<label>Case ${i + 1} <select data-i="${i}">${opts}</select></label>`).join(' ');
+    $('#mur-indics').querySelectorAll('select').forEach((x, i) => { x.value = cfg.indicateurs[i] || Cockpit.MUR_DEFAUT.indicateurs[i]; });
+    const succFr = r => r.pays === 'FRANCE' && r.type === 'Succursale' && r.nature !== 'Camion' && normTxt(r.ar) !== 'OCM';
+    const ars = [...new Set(S.ref.filter(r => r.actif === 'Oui' && succFr(r)).map(r => r.ar))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'fr'));
+    const coul = Cockpit.couleursAr(ars, cfg.couleurs || {});
+    $('#mur-couleurs').innerHTML = ars.map(a => `<label class="mur-c"><input type="color" data-ar="${esc(a)}" value="${coul[a]}"> ${esc(a)}</label>`).join('');
+    $('#btn-mur').onclick = async () => {
+      const indicateurs = [...$('#mur-indics').querySelectorAll('select')].map(x => x.value);
+      if (new Set(indicateurs).size < 4) return alert('Choisissez 4 indicateurs différents.');
+      const couleurs = {}; $('#mur-couleurs').querySelectorAll('input[type=color]').forEach(x => { couleurs[x.dataset.ar] = x.value; });
+      const vus = Object.values(couleurs).map(c => c.toUpperCase()); if (new Set(vus).size < vus.length && !confirm('Deux AR ont la même couleur. Enregistrer quand même ?')) return;
+      await Store.ecrireJSON('config/cockpit-mur.json', { indicateurs, couleurs, maj: new Date().toISOString().slice(0, 10) });
+      $('#mur-info').textContent = '✓ Enregistré';
     };
   }
 

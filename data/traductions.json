@@ -1359,13 +1359,13 @@
    "de": "BEKANNTHEIT"
   },
   {
-   "base": "Nombre d’avis Google ≥ 300",
-   "fr": "Nombre d’avis Google ≥ 300",
-   "he": "מספר ביקורות גוגל ≥ 300",
-   "en": "Number of Google reviews ≥ 300",
-   "es": "Número de reseñas de Google ≥ 300",
-   "nl": "Aantal Google-reviews ≥ 300",
-   "de": "Anzahl Google-Bewertungen ≥ 300"
+   "base": "Nombre d’avis Google ≥ 500",
+   "fr": "Nombre d’avis Google ≥ 500",
+   "he": "מספר ביקורות גוגל ≥ 500",
+   "en": "Number of Google reviews ≥ 500",
+   "es": "Número de reseñas de Google ≥ 500",
+   "nl": "Aantal Google-reviews ≥ 500",
+   "de": "Anzahl Google-Bewertungen ≥ 500"
   },
   {
    "base": "COMMUNIQUER EFFICACEMENT",
