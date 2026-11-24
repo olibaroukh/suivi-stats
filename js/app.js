@@ -589,7 +589,7 @@
     const dr = droitsCk();
     return (dr.cockpits && dr.siegeComplet ? p.themes : []).concat(dr.actions ? ['actions'] : []);
   }
-  const libTheme = t => t === 'siege' ? 'Synthèse réseau' : t === 'actions' ? 'Actions de l’année' : Cockpit.THEMES[t].lib;
+  const libTheme = t => t === 'siege' ? 'Synthèse réseau' : t === 'actions' ? 'Actions de l’année' : t === 'pole' ? 'Pôle d’excellence' : Cockpit.THEMES[t].lib;
   function remplirThemes() {
     const p = CK.perims.find(x => x.id === $('#ck-perim').value); if (!p) return;
     const avant = $('#ck-theme').value, themes = themesPerim(p);
@@ -616,13 +616,13 @@
     if (!CK.perims.some(p => p.id === 'siege')) return;
     $('#ck-perim').value = 'siege'; remplirThemes();
     if (![...$('#ck-theme').options].some(o => o.value === 'actions')) return;
-    $('#ck-theme').value = 'actions';
+    $('#ck-theme').value = 'actions'; ACT.type = 'actions';
     if (k && [...$('#ck-photo').options].some(o => o.value === k)) $('#ck-photo').value = k;
     await afficherCockpit();
   }
   async function afficherCockpit() {
     const k = $('#ck-photo').value; if (!k) return;
-    if ($('#ck-theme').value === 'actions') { modeActions(true); await afficherActions(k); return true; }
+    if ($('#ck-theme').value === 'actions' || $('#ck-theme').value === 'pole') { ACT.type = $('#ck-theme').value; modeActions(true); await afficherActions(k); return true; }
     modeActions(false);
     if (CK.cle !== k) { CK.photo = await Store.lireJSON(`donnees/${k}/photo.json`); CK.cle = k; }
     const p = CK.perims.find(x => x.id === $('#ck-perim').value); if (!p || !CK.photo) return;
@@ -1004,12 +1004,15 @@
   }
 
   // ---------- Les Actions de l'Année ----------
-  const ACT = { conf: null, annee: null };
+  // type : « actions » (Les Actions de l'Année) ou « pole » (Pôle d'excellence, 24/11/2026) — même moteur, fichiers séparés
+  const ACT = { conf: null, annee: null, type: 'actions', confType: null };
+  const fichierAct = (type, annee) => `config/${type === 'pole' ? 'pole-excellence' : 'actions'}-${annee}.json`;
   async function confActions(annee) {
-    if (ACT.conf && ACT.annee === annee) return ACT.conf;
-    let c = await Store.lireJSON(`config/actions-${annee}.json`);
-    if (!c && annee === 2026) { try { c = await (await fetch('data/actions-modele-2026.json?v=' + (window.APP_VERSION || ''))).json(); c._modele = true; } catch (e) {} }
-    ACT.conf = c || { titre: `Les Actions ${annee}`, actions: [] }; ACT.annee = annee; return ACT.conf;
+    if (ACT.conf && ACT.annee === annee && ACT.confType === ACT.type) return ACT.conf;
+    let c = await Store.lireJSON(fichierAct(ACT.type, annee));
+    if (!c && annee === 2026 && ACT.type === 'pole') c = JSON.parse(JSON.stringify(Actions.POLE_MODELE_2026));
+    if (!c && annee === 2026 && ACT.type === 'actions') { try { c = await (await fetch('data/actions-modele-2026.json?v=' + (window.APP_VERSION || ''))).json(); c._modele = true; } catch (e) {} }
+    ACT.conf = c || (ACT.type === 'pole' ? { titre: `Pôle d’excellence ${annee}`, actions: [] } : { titre: `Les Actions ${annee}`, actions: [] }); ACT.annee = annee; ACT.confType = ACT.type; return ACT.conf;
   }
   async function afficherActions(kForce) {
     const ks = S.moisDispo || [];
@@ -1019,8 +1022,15 @@
     const photo = k === `${S.photo && S.photo.annee}-${pad(S.photo && S.photo.mois)}` ? S.photo : await photoMois(k);
     const conf = await confActions(+k.slice(0, 4));
     $('#ac-param').hidden = !(Store.estAdmin() || !Store.cloud());
-    $('#ac-info').textContent = conf._modele ? 'Modèle 2026 repris de votre tableau : vérifiez-le dans « Paramétrer les actions », puis enregistrez-le.' : `${(conf.actions || []).length} actions · les réalisés automatiques se mettent à jour à chaque mois enregistré.`;
-    $('#ac-apercu').innerHTML = `<div class="ac-echelle">${Actions.rendre(conf, photo, S.ref, await tauxChange(), { objectifs: S.objectifs, challenges: await confChallenges(photo.annee) })}</div>`;
+    const pole = ACT.type === 'pole';
+    $('#ac-param').textContent = pole ? 'Paramétrer les critères' : 'Paramétrer les actions';
+    $('#ac-info').textContent = conf._modele ? `Modèle 2026 repris de votre tableau : vérifiez-le dans « ${pole ? 'Paramétrer les critères' : 'Paramétrer les actions'} », puis enregistrez-le.` : `${(conf.actions || []).length} ${pole ? 'critères' : 'actions'} · les réalisés automatiques se mettent à jour à chaque mois enregistré.`;
+    const optsAc = { objectifs: S.objectifs, challenges: await confChallenges(photo.annee) };
+    if (pole && (conf.actions || []).some(a => a.mode === 'auto' && (a.indicateur || {}).mesure === 'turnover')) {
+      optsAc.photosAnnee = [];
+      for (let mo = 1; mo <= photo.mois; mo++) { const kk = `${photo.annee}-${pad(mo)}`; if (mo === photo.mois) optsAc.photosAnnee.push(photo); else if (ks.includes(kk)) optsAc.photosAnnee.push(await photoMois(kk).catch(() => null)); }
+    }
+    $('#ac-apercu').innerHTML = `<div class="ac-echelle">${(pole ? Actions.rendrePole : Actions.rendre)(conf, photo, S.ref, await tauxChange(), optsAc)}</div>`;
     const e = $('#ac-apercu .ac-echelle'), sc = Math.min(1, ($('#ac-apercu').clientWidth - 4) / 1587);
     e.style.transform = `scale(${sc})`; e.style.height = (1123 * sc) + 'px';
   }
@@ -1040,7 +1050,7 @@
         <td class="manuel-seul"><input data-k="manValeur" value="${esc(mn.valeur || '')}" placeholder="réalisé"><select data-k="manStatut">${opt([['', 'neutre'], ['ok', 'atteint (vert)'], ['ko', 'pas encore (rouge)']], mn.statut || '')}</select></td>
         <td><button data-suppr="${i}" title="Supprimer">✕</button></td></tr>`; };
     const dessiner = () => {
-      $('#ac-editeur').innerHTML = `<div class="ligne-outils"><label style="flex:1">Titre <input id="ac-titre" value="${esc(conf.titre || '')}"></label>
+      $('#ac-editeur').innerHTML = `<div class="ligne-outils"><label style="flex:1">Titre <input id="ac-titre" value="${esc(conf.titre || '')}"></label>${ACT.type === 'pole' ? `<label>Objectif : <input id="ac-objcrit" type="number" min="1" style="width:60px" value="${conf.objectifCriteres || 7}"> critères atteints</label>` : ''}
         <button id="ac-plus">+ Ajouter une action</button><button id="ac-copier">Reprendre l’année précédente</button><button class="primaire" id="ac-enr">Enregistrer</button><button id="ac-ann">Fermer</button></div>
         <p class="aide">Automatique : le réalisé est calculé chaque mois (mesure + périmètre) et colorié selon l’objectif chiffré. Manuel : saisissez le réalisé ; il est conservé d’un mois sur l’autre. Pays multiples : choisissez un pays puis complétez l’identifiant (ex. pays:BELGIQUE|SUISSE).</p>
         <table><thead><tr><th>N°</th><th>Resp.</th><th>Libellé</th><th>Objectif</th><th>Suivi</th><th>Mesure automatique</th><th>Réalisé manuel</th><th></th></tr></thead><tbody>${conf.actions.map(ligne).join('')}</tbody></table>`;
@@ -1056,10 +1066,10 @@
       };
       $('#ac-editeur tbody').onclick = e => { const i = e.target.dataset.suppr; if (i != null && confirm('Supprimer cette action ?')) { conf.actions.splice(+i, 1); dessiner(); } };
       $('#ac-plus').onclick = () => { conf.actions.push({ num: conf.actions.length + 1, resp: '', libelle: '', objectif: { texte: '', valeur: null, sens: '>=' }, mode: 'manuel', indicateur: {}, manuel: { valeur: '', statut: '' } }); dessiner(); };
-      $('#ac-copier').onclick = async () => { const p = await Store.lireJSON(`config/actions-${ACT.annee - 1}.json`); if (!p) return alert(`Pas d’actions enregistrées pour ${ACT.annee - 1}.`); if (!confirm(`Remplacer par les ${p.actions.length} actions de ${ACT.annee - 1} (réalisés manuels remis à zéro) ?`)) return; conf.titre = (p.titre || '').replace(String(ACT.annee - 1), String(ACT.annee)); conf.actions = p.actions.map(a => ({ ...a, manuel: { valeur: '', statut: '' } })); dessiner(); };
+      $('#ac-copier').onclick = async () => { const p = await Store.lireJSON(fichierAct(ACT.type, ACT.annee - 1)); if (!p) return alert(`Rien d’enregistré pour ${ACT.annee - 1}.`); if (!confirm(`Remplacer par les ${p.actions.length} lignes de ${ACT.annee - 1} (réalisés manuels remis à zéro) ?`)) return; conf.titre = (p.titre || '').replace(String(ACT.annee - 1), String(ACT.annee)); conf.actions = p.actions.map(a => ({ ...a, manuel: { valeur: '', statut: '' } })); dessiner(); };
       $('#ac-ann').onclick = () => { $('#ac-editeur').hidden = true; };
-      $('#ac-enr').onclick = async () => { conf.titre = $('#ac-titre').value; delete conf._modele; conf.maj = new Date().toISOString().slice(0, 10);
-        await Store.ecrireJSON(`config/actions-${ACT.annee}.json`, conf); ACT.conf = conf; $('#ac-editeur').hidden = true; afficherActions(); };
+      $('#ac-enr').onclick = async () => { conf.titre = $('#ac-titre').value; if ($('#ac-objcrit')) conf.objectifCriteres = +$('#ac-objcrit').value || 7; delete conf._modele; conf.maj = new Date().toISOString().slice(0, 10);
+        await Store.ecrireJSON(fichierAct(ACT.type, ACT.annee), conf); ACT.conf = conf; ACT.confType = ACT.type; $('#ac-editeur').hidden = true; afficherActions(); };
     };
     dessiner(); $('#ac-editeur').hidden = false;
   }
@@ -1072,12 +1082,12 @@
     telecharger(doc.output('blob'), `Managers Leaders et Magasins d'Excellence - ${$('#chg-mois').value}.pdf`);
   }
   async function pdfActions() {
-    const page = $('#ac-apercu .actions-page'); if (!page) return;
+    const page = $('#ac-apercu .actions-page, #ac-apercu .pole-page'); if (!page) return;
     const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' });
     const clone = page.cloneNode(true), hote = document.createElement('div'); hote.style.cssText = 'position:fixed;left:-10000px;top:0'; hote.appendChild(clone); document.body.appendChild(hote);
     const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', logging: false }); hote.remove();
     doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 420, 297);
-    telecharger(doc.output('blob'), `Actions ${ACT.annee} - ${$('#ac-mois').value}.pdf`);
+    telecharger(doc.output('blob'), `${ACT.type === 'pole' ? 'Pôle d’excellence' : 'Actions'} ${ACT.annee} - ${$('#ac-mois').value}.pdf`);
   }
 
 
