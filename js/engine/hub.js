@@ -82,6 +82,27 @@
     r.ET = n(div(r.U * 100, r.AF));                                 // NB de Devis Optique
   }
 
-  const api = { build, calc };
+  // 25/11/2026 (règle d'Olivier) : % MdC des succursales (France et international) = % Marque Excl. + % Marque Intemp.
+  // de la synthèse Stat Optique ; franchisés = % Marque Excl. seul. Valeur brute gardée dans ANx : la fonction peut être
+  // appliquée plusieurs fois (photos anciennes, reprises, compléments) sans compter deux fois les intemporelles.
+  // Même règle pour les stats par vendeur (mdcExcl / mdcIntemp, à partir des imports de décembre 2026).
+  function mdcIntemp(photo, ref) {
+    if (!photo || !photo.magasins || !ref || !ref.length) return photo;
+    const type = {}; ref.forEach(r => type[String(r.code)] = r.type);
+    for (const c in photo.magasins) {
+      const N = photo.magasins[c] && photo.magasins[c].N; if (!N) continue;
+      if (!('ANx' in N)) N.ANx = N.AN == null ? null : N.AN;
+      const succ = type[c] === 'Succursale';
+      N.AN = succ ? ((N.ANx == null && N.AR == null) ? null : (N.ANx || 0) + (N.AR || 0)) : N.ANx;
+    }
+    for (const c in (photo.equipes || {})) {
+      const succ = type[c] === 'Succursale';
+      for (const p of (photo.equipes[c] || [])) { const s = p && p.s; if (!s || !('mdcExcl' in s)) continue;
+        s.mdc = succ ? ((s.mdcExcl == null && s.mdcIntemp == null) ? null : (s.mdcExcl || 0) + (s.mdcIntemp || 0)) : s.mdcExcl; }
+    }
+    return photo;
+  }
+
+  const api = { build, calc, mdcIntemp };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Hub = api;
 })(typeof self !== 'undefined' ? self : this);

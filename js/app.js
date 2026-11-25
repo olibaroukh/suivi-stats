@@ -87,6 +87,7 @@
     $('#carte-dossier-requis').hidden = true;
     $('#etat-dossier').textContent = '📁 ' + (Store.nomDossier() || 'mémoire (non enregistré)');
     S.ref = (await Store.lireJSON('config/referentiel.json')) || [];
+    Store.transformerPhoto = ph => Hub.mdcIntemp(ph, S.ref);
     S.objectifs = (await Store.lireJSON(`config/objectifs-${$('#imp-annee').value}.json`)) || (await Store.lireJSON('config/objectifs.json')) || {};
     majInfosReglages(); await listerPhotos(); remplirPerimetres(); brancherTaux(); brancherObjSiege();
     await apresChargement();
