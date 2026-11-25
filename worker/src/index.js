@@ -832,6 +832,14 @@ export class SuiviStatsInterne extends WorkerEntrypoint {
     const photo = await lireJSON(this.env, `donnees/${m}/photo.json`);
     const c = String(code);
     if (!photo || !photo.magasins || !photo.magasins[c]) return { mois: m, magasin: null };
-    return { mois: m, magasin: photo.magasins[c], equipe: (photo.equipes || {})[c] || null };
+    // 25/11/2026 : % MdC des succursales = % Marque Excl. + % Marque Intemp. (même règle que Hub.mdcIntemp côté appli)
+    const ref = (await lireJSON(this.env, 'config/referentiel.json')) || [];
+    const r = ref.find(x => String(x.code) === c), succ = !!r && r.type === 'Succursale';
+    const d = JSON.parse(JSON.stringify(photo.magasins[c])), N = d.N || {};
+    if (!('ANx' in N)) N.ANx = N.AN == null ? null : N.AN;
+    N.AN = succ ? ((N.ANx == null && N.AR == null) ? null : (N.ANx || 0) + (N.AR || 0)) : N.ANx;
+    const eq = ((photo.equipes || {})[c] || []).map(p => { if (!p || !p.s || !('mdcExcl' in p.s)) return p; const s = { ...p.s };
+      s.mdc = succ ? ((s.mdcExcl == null && s.mdcIntemp == null) ? null : (s.mdcExcl || 0) + (s.mdcIntemp || 0)) : s.mdcExcl; return { ...p, s }; });
+    return { mois: m, magasin: d, equipe: (photo.equipes || {})[c] ? eq : null };
   }
 }

@@ -39,6 +39,8 @@
     for (const v of vendeurs) { const k = cible[v.report]; if (!k) continue; v.rows.forEach(r => { const m = mat(r.matricule); if (m) get(m)[k].push(r); }); }
     const somme = (l, c) => l.reduce((a, r) => a + (+r[c] || 0), 0);
     const pond = (l, c, w) => { const t = somme(l, w); return t ? l.reduce((a, r) => a + (+r[c] || 0) * (+r[w] || 0), 0) / t : (l.length ? +l[0][c] || 0 : null); };
+    // Colonne « % Marque Intemp… » de l'export par vendeur (nom exact non figé : repérée par son libellé)
+    const colIntemp = l => { for (const r of l) { const k = Object.keys(r).find(x => /marque\s*intemp/i.test(x)); if (k) return k; } return null; };
     const out = {};
     for (const m in idx) {
       const x = idx[m];
@@ -52,7 +54,9 @@
         sop: x.opt.length ? pond(x.opt, '% Garantie', 'Nb Vente Opt') : null,
         pcPct: x.opt.length ? pond(x.opt, '% Pack Confort', 'Nb Vente Opt') : null,
         pcEur: x.opt.length ? pond(x.opt, 'PM Pack Confort', 'Nb Vente Opt') : null,
-        mdc: x.opt.length ? pond(x.opt, '% Marque Exclusive', 'Nb Vente Opt') : null,
+        // 25/11/2026 : % MdC = Marque Exclusive + Marque Intemporelle (succursales) ; les franchisés gardent mdcExcl (Hub.mdcIntemp)
+        mdcExcl: x.opt.length ? pond(x.opt, '% Marque Exclusive', 'Nb Vente Opt') : null,
+        mdcIntemp: x.opt.length && colIntemp(x.opt) ? pond(x.opt, colIntemp(x.opt), 'Nb Vente Opt') : null,
         pm1: x.pm.length ? (x.pm.map(r => +r['Prix de vente moyen']).find(v => v > 0) || null) : null,
         transition: x.ver.length ? pond(x.ver, 'TRANS+PHOTO %', 'TOTAL Qt') : null,
         // AR 3 / antireflet HG (même définition que la colonne X du magasin : verres ARRESIST UV et AR MAX BLUE UV / total verres)
@@ -69,6 +73,7 @@
           ca: x.caa.length ? somme(x.caa, 'CA Généré Audio') : null, ventesAdd: x.caa.length ? pond(x.caa, '% Vente Additionnelle', 'CA Généré Audio') : null,
         } : null,
       };
+      const o = out[m]; o.mdc = (o.mdcExcl == null && o.mdcIntemp == null) ? null : (o.mdcExcl || 0) + (o.mdcIntemp || 0);
     }
     return out;
   }

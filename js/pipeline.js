@@ -9,7 +9,7 @@
 
   // Colonnes du tableau central alimentées par chaque source (pour la reprise du mois précédent)
   const COLONNES_SOURCE = {
-    cosium_n: ['O','P','Q','R','U','V','W','Y','AA','AB','AC','AD','AE','AF','AG','AH','AI','AN','AO','AP','AR','AW','AX','AY','AZ','BA','BB','BC','BD','BE','BF','BH','EV','X','Z','AT','AQ','AS','BG','EH','EI','EJ','EK','EL','EM','EN','EO','EP','EQ','ER','ES','ET'],
+    cosium_n: ['O','P','Q','R','U','V','W','Y','AA','AB','AC','AD','AE','AF','AG','AH','AI','AN','ANx','AO','AP','AR','AW','AX','AY','AZ','BA','BB','BC','BD','BE','BF','BH','EV','X','Z','AT','AQ','AS','BG','EH','EI','EJ','EK','EL','EM','EN','EO','EP','EQ','ER','ES','ET'],
     marges: ['CA','CB','CC','CD','CE','CF','CG','CH','CI'],
     renta_sal: ['CM','CN','CO'],
     restes_dus: ['BR','BS','BT','BU','BV','BW'],
@@ -320,7 +320,7 @@
       for (const c in demo) if (mag[c] && mag[c].N) Object.assign(mag[c].N, demo[c]);
       personnes = personnes.map(({ genre, naissance, ...reste }) => reste);
     }
-    const photo = { version: 2, annee, mois, genereLe: new Date().toISOString(), sources, magasins: mag, groupe, rh: personnes, statsVendeurs: stats, equipes, ocmActivite };
+    const photo = Hub.mdcIntemp({ version: 2, annee, mois, genereLe: new Date().toISOString(), sources, magasins: mag, groupe, rh: personnes, statsVendeurs: stats, equipes, ocmActivite }, ref);
     return { photo, etatAnnee: etat, rapport: { journal, alertes, ignores, listesConfidence: listesTrouvees, sources } };
   }
 

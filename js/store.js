@@ -36,7 +36,10 @@
     try { const f = await (await fichierHandle(chemin)).getFile(); return f; } catch (e) { return null; }
   }
   async function lireTexte(chemin) { const f = await lire(chemin); if (f == null) return null; return typeof f === 'string' ? f : f.text ? f.text() : new TextDecoder().decode(f); }
-  async function lireJSON(chemin) { const t = await lireTexte(chemin); try { return t ? JSON.parse(t) : null; } catch (e) { return null; } }
+  async function lireJSON(chemin) { const t = await lireTexte(chemin); let d; try { d = t ? JSON.parse(t) : null; } catch (e) { return null; }
+    // 25/11/2026 : photos du mois relues avec la règle MdC + Intemporelles (succursales), y compris les mois déjà enregistrés
+    if (d && root.Store && root.Store.transformerPhoto && /^donnees\/\d{4}-\d{2}\/photo\.json$/.test(chemin)) { try { root.Store.transformerPhoto(d); } catch (e) {} }
+    return d; }
   async function lireBinaire(chemin) { const f = await lire(chemin); if (f == null) return null; return f.arrayBuffer ? f.arrayBuffer() : f; }
   async function ecrire(chemin, contenu) {
     if (cloud()) return cloudEcrire(chemin, contenu);
