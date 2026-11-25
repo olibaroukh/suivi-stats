@@ -964,14 +964,14 @@
       $('#chg-pays').value = paysSucc.includes(v0) || v0 === '' ? v0 : 'FRANCE'; }
     const ars = [...new Set(S.ref.filter(r => r.type === 'Succursale' && r.ar && (!$('#chg-pays').value || r.pays === $('#chg-pays').value)).map(r => r.ar))].sort();
     if ($('#chg-ar').options.length !== ars.length + 1) $('#chg-ar').innerHTML = '<option value="">Tous les AR</option>' + ars.map(x => `<option>${esc(x)}</option>`).join('');
-    const pays = $('#chg-pays').value, ar = $('#chg-ar').value, q = ($('#chg-q').value || '').toLowerCase();
-    const filtre = r => (!pays || r.pays === pays) && (!ar || r.ar === ar) && (!q || `${r.code} ${r.magasin}`.toLowerCase().includes(q));
+    const pays = $('#chg-pays').value, ar = $('#chg-ar').value, q = norm($('#chg-q').value || '');
+    const filtre = r => (!pays || r.pays === pays) && (!ar || r.ar === ar) && (!q || norm(`${r.code} ${r.magasin}`).includes(q));
     const taux = await tauxChange();
     const ls = Challenges.lignes(photo, S.ref, S.objectifs, conf, filtre, taux);
     const admin = Store.estAdmin() || !Store.cloud();
     $('#chg-pdf').hidden = CHG.vue !== 'cockpit';
     if (CHG.vue === 'cockpit') {
-      const per = [pays ? pays.charAt(0) + pays.slice(1).toLowerCase() : 'Toutes les succursales', ar ? 'AR ' + ar : '', q ? '« ' + q + ' »' : ''].filter(Boolean).join(' · ');
+      const per = [pays ? pays.charAt(0) + pays.slice(1).toLowerCase() : 'Toutes les succursales', ar ? 'AR ' + ar : '', q ? '« ' + $('#chg-q').value.trim() + ' »' : ''].filter(Boolean).join(' · ');
       $('#chg-info').textContent = `${ls.length} succursales · critères à fin ${MOIS[photo.mois - 1]} ${photo.annee}.`;
       $('#chg-apercu').innerHTML = `<div class="mc-echelle">${MlmeCockpit.rendre(ls, { periode: `À fin ${MOIS[photo.mois - 1]} ${photo.annee}`, perimetre: 'Succursales – ' + per })}</div>`;
       // Listes « qualifiés et plus proches » : on retire les lignes qui ne tiennent pas entièrement (jamais de ligne coupée)
@@ -1256,8 +1256,8 @@
     if (!(Store.cloud() && Store.estAdmin())) return;
     $('#carte-pins').hidden = false;
     const dessiner = () => {
-      const q = ($('#pin-filtre').value || '').toLowerCase(), sans = $('#pin-sans').checked, sansPoste = $('#pin-sans-poste').checked;
-      const l = PIN.liste.filter(m => (!sans || !m.pin) && (!sansPoste || !(m.pin && m.pin.derniereConnexion)) && (!q || `${m.code} ${m.libelle} ${m.animateur}`.toLowerCase().includes(q)));
+      const q = norm($('#pin-filtre').value || ''), sans = $('#pin-sans').checked, sansPoste = $('#pin-sans-poste').checked;
+      const l = PIN.liste.filter(m => (!sans || !m.pin) && (!sansPoste || !(m.pin && m.pin.derniereConnexion)) && (!q || norm(`${m.code} ${m.libelle} ${m.animateur}`).includes(q)));
       PIN.affiches = l;
       $('#pin-liste').innerHTML = `<table><thead><tr><th></th><th>Magasin</th><th>Animateur</th><th>Code PIN</th><th>Postes enregistrés</th></tr></thead><tbody>${l.map(m => `<tr><td><input type="checkbox" data-c="${esc(m.code)}"${PIN.choix.has(m.code) ? ' checked' : ''}></td><td><b>${esc(m.code)}</b> ${esc(m.libelle)}<br><small class="muted">${esc(m.email || 'pas d’e-mail')}</small></td><td>${esc(m.animateur)}</td><td>${m.pin ? `envoyé le ${String(m.pin.creeLe || '').slice(0, 10).split('-').reverse().join('/')}${m.pin.envoyeA ? '' : ' (non envoyé)'}` : '<span class="muted">aucun</span>'}</td><td>${m.pin && m.pin.derniereConnexion ? `✓ ${m.pin.nbConnexions} poste(s), dernier le ${String(m.pin.derniereConnexion).slice(0, 10).split('-').reverse().join('/')}` : (m.pin ? '<span class="muted">aucun poste</span>' : '')}</td></tr>`).join('')}</tbody></table>`;
       $('#pin-info').textContent = `${PIN.choix.size} magasin(s) coché(s) · ${PIN.liste.filter(m => m.pin).length} / ${PIN.liste.length} ont un code · ${PIN.liste.filter(m => m.pin && m.pin.derniereConnexion).length} avec au moins un poste enregistré`;
@@ -1620,7 +1620,8 @@
   // ---------- Utilitaires ----------
   function telecharger(blob, nom) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nom; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  // 25/11/2026 : recherche sans accents, majuscules ni ponctuation (Vélizy = velizy, St-Germain = st germain, Cœur = coeur)
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/œ/g, 'oe').replace(/æ/g, 'ae').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim(); }
 
   window.App = { afficherCockpit, CK, S, dossierPret, ajouterFichiers, calculer, enregistrer, chargerPhoto, afficherFiche, pdfMagasin, lireRefXlsx, lireObjXlsx };
   init();
