@@ -243,8 +243,15 @@
         <h2>Objectifs</h2>
         <p class="aide" id="obj-info">—</p>
         <div class="ligne-outils">
+          <button class="primaire" id="btn-edit-obj">Modifier les objectifs</button>
           <label class="muted">Importer (Excel)<input type="file" id="inp-obj" accept=".xlsx,.xls"></label>
           <button id="btn-export-obj">Exporter en Excel</button>
+        </div>
+        <div id="obj-editeur" hidden style="margin-top:12px">
+          <p class="aide">Une ligne par pays (succursales) et par franchisé (sinon la ligne du pays s’applique). Pourcentages en %. Les cases modifiées passent en jaune ; rien n’est pris en compte avant « Enregistrer ». L’année est celle choisie dans l’import du mois.</p>
+          <div class="ligne-outils"><input id="obj-filtre" type="search" placeholder="Filtrer (pays, franchisé)…" style="flex:1;min-width:180px"><button id="obj-ajout">+ Ajouter un franchisé</button><button class="primaire" id="obj-enr">Enregistrer</button><button id="obj-ann">Fermer sans enregistrer</button></div>
+          <div style="overflow:auto;max-height:70vh;margin-top:8px"><table id="obj-table"></table></div>
+          <p class="muted" id="obj-edit-info"></p>
         </div>
       </div>
       <div class="carte mode-local">
