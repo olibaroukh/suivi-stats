@@ -600,7 +600,7 @@ async function routes(request, env) {
   }
   if (chemin === '/rappel/tester' && request.method === 'POST' && admin) {
     const b = await request.json().catch(() => ({}));
-    try { return json(b.type === 'preparation' ? await rappelPreparation(env) : await rappelMensuel(env, email), 200, h); } catch (e) { return erreur('Rappel : ' + e.message, 502, h); }
+    try { if (b.type === 'ar25') { if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h); return json(await env.RELAIS.rappelFinDeMoisAR(true), 200, h); } return json(b.type === 'preparation' ? await rappelPreparation(env) : await rappelMensuel(env, email), 200, h); } catch (e) { return erreur('Rappel : ' + e.message, 502, h); }
   }
   if (chemin === '/diffusion/etat' && admin) {
     const m = url.searchParams.get('mois') || ''; if (!/^\d{4}-\d{2}$/.test(m)) return erreur('Paramètre mois requis', 400, h);
