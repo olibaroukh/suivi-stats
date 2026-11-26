@@ -1025,3 +1025,4 @@ a.bouton[hidden]{display:none}
 .cockpit tr.tot>td:first-child{border-top-left-radius:8px;border-bottom-left-radius:8px}
 .cockpit tr.tot>td:last-child{border-top-right-radius:8px;border-bottom-right-radius:8px}
 #an-liste table{border-collapse:collapse}#an-liste th,#an-liste td{text-align:left;vertical-align:top;padding:4px 6px;border-bottom:1px solid #e5e5e5}#an-liste code{font-size:11px;word-break:break-all}
+#obj-table{border-collapse:collapse;font-size:13px}#obj-table th,#obj-table td{padding:3px 4px;border-bottom:1px solid #eee;white-space:nowrap}#obj-table th{position:sticky;top:0;background:#fff;vertical-align:bottom;white-space:normal}

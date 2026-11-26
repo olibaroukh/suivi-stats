@@ -893,6 +893,7 @@
       catch (err) { $('#ref-info-import').textContent = 'Erreur : ' + err.message; } finally { e.target.value = ''; } };
     $('#btn-export-ref').onclick = () => exporterXlsx('Magasins', S.ref, REF_COLS, 'referentiel.xlsx');
     $('#inp-obj').onchange = async e => { const f = e.target.files[0]; if (!f) return; S.objectifs = lireObjXlsx(await f.arrayBuffer()); await Store.ecrireJSON(`config/objectifs-${$('#imp-annee').value}.json`, S.objectifs); majInfosReglages(); };
+    brancherEditeurObjectifs();
     $('#btn-export-obj').onclick = () => exporterXlsx('Objectifs ' + $('#imp-annee').value, (S.objectifs.rows || []), OBJ_COLS, `objectifs_${$('#imp-annee').value}.xlsx`);
     $('#btn-w-save').onclick = () => { localStorage.setItem('workerUrl', $('#w-url').value.trim()); localStorage.setItem('workerCle', $('#w-cle').value.trim()); $('#w-info').textContent = 'Enregistré'; };
     $('#btn-w-test').onclick = async () => { $('#btn-w-save').click(); const r = await workerRatings(); $('#w-info').textContent = !r ? 'Clé manquante' : r.erreur ? 'Erreur : ' + r.erreur : `OK – ${Object.keys(r.ratings).length} magasins`; };
@@ -954,6 +955,48 @@
   }
   function lireRefXlsx(buf) {
     return lignesXlsx(buf, /^Magasins/i).map(r => { const o = {}; for (const k in REF_COLS) o[REF_COLS[k]] = r[k] == null ? null : String(r[k]).trim(); o.code = String(o.code || '').replace(/^0+/, ''); return o; }).filter(o => o.code);
+  }
+  // 26/11/2026 : objectifs modifiables directement dans l'appli (config/objectifs-AAAA.json), sans passer par Excel
+  function brancherEditeurObjectifs() {
+    const cols = Object.entries(OBJ_COLS).filter(([, k]) => k !== 'type' && k !== 'cle');
+    const estPct = lab => /^%/.test(lab);
+    let lignes = [];
+    const aff = (lab, v) => v == null || v === '' ? '' : estPct(lab) ? String(Math.round(v * 10000) / 100) : String(v);
+    const lu = (lab, k, t) => { t = String(t).trim().replace(',', '.').replace('%', ''); if (t === '') return null; if (k === 'devise') return t; const n = +t; if (!isFinite(n)) return undefined; return estPct(lab) ? Math.round(n * 100) / 10000 : n; };
+    const dessiner = () => {
+      const q = norm($('#obj-filtre').value || '');
+      $('#obj-table').innerHTML = `<tr><th>Type</th><th>Pays / franchisé</th>${cols.map(([lab]) => `<th style="font-size:11px;min-width:70px">${esc(lab)}</th>`).join('')}<th></th></tr>`
+        + lignes.map((r, i) => (q && !norm(`${r.type} ${r.cle}`).includes(q)) ? '' : `<tr data-i="${i}"><td>${esc(r.type)}</td><td><b>${r.nouveau ? `<input data-k="cle" value="${esc(r.cle || '')}" placeholder="Nom du franchisé (comme dans le référentiel)" style="width:200px">` : esc(r.cle)}</b></td>
+          ${cols.map(([lab, k]) => `<td><input data-k="${k}" data-lab="${esc(lab)}" value="${esc(aff(lab, r[k]))}" style="width:70px;text-align:right${r._mod && r._mod[k] ? ';background:#FEF3C7' : ''}"></td>`).join('')}
+          <td>${r.type === 'Pays' ? '' : `<button data-suppr="${i}" title="Supprimer ce franchisé (la ligne du pays s’appliquera)">✕</button>`}</td></tr>`).join('');
+      $('#obj-table').querySelectorAll('input[data-k]').forEach(inp => inp.onchange = () => {
+        const r = lignes[+inp.closest('tr').dataset.i], k = inp.dataset.k;
+        if (k === 'cle') { r.cle = inp.value.trim(); return; }
+        const v = lu(inp.dataset.lab, k, inp.value);
+        if (v === undefined) { inp.style.background = '#FECACA'; return; }
+        r[k] = v; (r._mod = r._mod || {})[k] = true; inp.style.background = '#FEF3C7';
+      });
+      $('#obj-table').querySelectorAll('button[data-suppr]').forEach(b => b.onclick = () => { const r = lignes[+b.dataset.suppr]; if (confirm(`Supprimer la ligne « ${r.cle} » ? Ce franchisé prendra les objectifs de son pays.`)) { lignes.splice(+b.dataset.suppr, 1); dessiner(); } });
+    };
+    $('#btn-edit-obj').onclick = () => {
+      lignes = JSON.parse(JSON.stringify((S.objectifs && S.objectifs.rows) || []));
+      lignes.sort((a, b) => (a.type === 'Pays' ? 0 : 1) - (b.type === 'Pays' ? 0 : 1) || String(a.cle).localeCompare(String(b.cle), 'fr'));
+      $('#obj-editeur').hidden = false; $('#obj-edit-info').textContent = `Année ${$('#imp-annee').value}`; dessiner();
+    };
+    $('#obj-filtre').oninput = dessiner;
+    $('#obj-ajout').onclick = () => { lignes.push({ type: 'Franchisé', cle: '', nouveau: true }); $('#obj-filtre').value = ''; dessiner(); $('#obj-table').parentElement.scrollTop = 1e6; };
+    $('#obj-ann').onclick = () => { $('#obj-editeur').hidden = true; };
+    $('#obj-enr').onclick = async () => {
+      const vides = lignes.filter(r => !String(r.cle || '').trim());
+      if (vides.length) { alert('Une ligne ajoutée n’a pas de nom de franchisé.'); return; }
+      const nb = lignes.filter(r => r._mod).length;
+      const rows = lignes.map(r => { const o = Object.assign({}, r); delete o._mod; delete o.nouveau; return o; });
+      try {
+        await Store.ecrireJSON(`config/objectifs-${$('#imp-annee').value}.json`, Object.assign({}, S.objectifs, { rows, modifieLe: new Date().toISOString() }));
+        S.objectifs = Object.assign({}, S.objectifs, { rows }); lignes.forEach(r => { delete r._mod; delete r.nouveau; }); dessiner(); majInfosReglages();
+        $('#obj-edit-info').textContent = `Enregistré pour ${$('#imp-annee').value} (${nb} ligne(s) modifiée(s)). Les fiches et cockpits en tiennent compte dès maintenant (les PDF déjà générés sont à régénérer).`;
+      } catch (e) { $('#obj-edit-info').textContent = 'Erreur : ' + e.message; }
+    };
   }
   function lireObjXlsx(buf) {
     const rows = lignesXlsx(buf, /^Objectifs/i).map(r => { const o = {}; for (const k in OBJ_COLS) { let v = r[k]; if (v != null && OBJ_COLS[k] !== 'type' && OBJ_COLS[k] !== 'cle' && OBJ_COLS[k] !== 'devise') { v = +String(v).replace(',', '.').replace('%', ''); if (String(r[k]).includes('%')) v /= 100; } o[OBJ_COLS[k]] = v; } return o; }).filter(o => o.cle);
