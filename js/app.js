@@ -1486,10 +1486,32 @@
       };
     } catch (e) { z.innerHTML = `<p class="muted" style="margin-top:12px">Relève de la boîte mail : ${esc(e.message)}</p>`; }
   }
+  // 26/11/2026 : écran « Anomalies » (administrateurs, mode cloud) — contrôle calculé par zimbra-relay
+  const AN_TYPES = {
+    kaizen_non_cloture: 'Kaizen jamais clôturé', entretien_date_passee: 'Entretien daté d’un mois passé', lancement_date_passee: 'Lancement daté d’un mois passé',
+    entretien_non_compte: 'Entretien non compté', ld_contredite: 'Absence longue durée contredite', brouillon_ancien: 'Brouillon d’un mois passé non envoyé',
+  };
+  async function afficherAnomalies() {
+    const c = $('#carte-anomalies'); if (!c) return;
+    c.hidden = !(Store.cloud() && Store.estAdmin()); if (c.hidden) return;
+    $('#an-maj').onclick = afficherAnomalies;
+    $('#an-resume').textContent = 'contrôle en cours…'; $('#an-liste').innerHTML = '';
+    try {
+      const d = await (await Store.api('/relais/anomalies')).json(); if (!d.ok) throw new Error(d.erreur || d.error || 'échec');
+      const l = d.items || [];
+      $('#an-resume').textContent = l.length ? `${l.length} à traiter` : '✓ aucune anomalie';
+      if (!l.length) return;
+      const groupes = {}; l.forEach(x => (groupes[x.type] = groupes[x.type] || []).push(x));
+      $('#an-liste').innerHTML = Object.entries(groupes).map(([t, xs]) => `<details ${xs.length <= 5 ? 'open' : ''} style="margin:6px 0"><summary><b>${esc(AN_TYPES[t] || t)}</b> <span class="muted">(${xs.length})</span></summary>
+        <table class="tab" style="width:100%;font-size:13px;margin-top:4px"><tr><th>Magasin</th><th>AR</th><th>Constat</th><th>Correction</th></tr>
+        ${xs.map(x => `<tr><td><b>${esc(x.code)}</b> ${esc(x.libelle)}</td><td>${esc(x.animateur)}</td><td>${esc(x.detail)}</td><td class="muted">${/^D1 :/.test(x.action) ? `<code style="user-select:all">${esc(x.action.replace(/^D1 : /, ''))}</code>` : esc(x.action)}</td></tr>`).join('')}</table></details>`).join('');
+    } catch (e) { $('#an-resume').textContent = 'contrôle indisponible : ' + e.message; }
+  }
   async function afficherAccueil() {
     const admin = !Store.cloud() || Store.estAdmin();
     // 1. Où en est le mois (administrateurs) : mois traité = mois précédent
     $('#carte-mois').hidden = !admin;
+    afficherAnomalies();
     if (admin) {
       const now = new Date(), d = new Date(now.getFullYear(), now.getMonth() - 1, 1), k = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
       const ph = await photoMois(k), jour = now.getDate();
