@@ -533,6 +533,30 @@ async function routes(request, env) {
       return json({ ok: true }, 200, h);
     }
   }
+  // 26/11/2026 : nettoyage du stockage — tout dossier ou fichier à la racine hors des dossiers connus
+  // (ex. première copie mal rangée « 2026-0X/photo.json »). GET = analyse, POST { dossiers } = suppression.
+  if (chemin === '/fichiers/nettoyage') {
+    const CONNUS = new Set(['config', 'donnees', 'diffusion', 'sorties', 'releve']);
+    const racine = new Set(); let cur;
+    do { const r = await env.FICHIERS.list({ delimiter: '/', cursor: cur });
+      r.objects.forEach(o => racine.add(o.key)); (r.delimitedPrefixes || []).forEach(d => racine.add(d.replace(/\/$/, '')));
+      cur = r.truncated ? r.cursor : null; } while (cur);
+    const intrus = [...racine].filter(n => !CONNUS.has(n)).sort();
+    const contenu = async n => { const cles = []; let c2; do { const r = await env.FICHIERS.list({ prefix: n + '/', cursor: c2 });
+      r.objects.forEach(o => cles.push({ cle: o.key, taille: o.size })); c2 = r.truncated ? r.cursor : null; } while (c2);
+      if (!cles.length) { const o = await env.FICHIERS.head(n); if (o) cles.push({ cle: n, taille: o.size }); } return cles; };
+    if (request.method === 'GET') {
+      const res = []; for (const n of intrus) { const c = await contenu(n); res.push({ nom: n, fichiers: c.length, octets: c.reduce((a, x) => a + (x.taille || 0), 0), exemples: c.slice(0, 5).map(x => x.cle) }); }
+      return json({ ok: true, connus: [...CONNUS], intrus: res }, 200, h);
+    }
+    if (request.method === 'POST') {
+      const b = await request.json().catch(() => ({}));
+      const demandes = (Array.isArray(b.dossiers) ? b.dossiers : []).filter(n => intrus.includes(n));
+      let n = 0; for (const d of demandes) { const cles = (await contenu(d)).map(x => x.cle);
+        for (let i = 0; i < cles.length; i += 1000) { await env.FICHIERS.delete(cles.slice(i, i + 1000)); n += cles.slice(i, i + 1000).length; } }
+      return json({ ok: true, supprimes: n, dossiers: demandes }, 200, h);
+    }
+  }
   if (chemin === '/fichiers/liste') {
     const c = (url.searchParams.get('chemin') || '').replace(/\/?$/, '/');
     if (c !== '/' && !cheminValide(c.slice(0, -1))) return erreur('Chemin invalide', 400, h);

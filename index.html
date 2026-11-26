@@ -118,7 +118,6 @@
         <h2>2. Copier-coller</h2>
         <p class="aide">Colle le contenu des pages web (un ou plusieurs mois à la fois).</p>
         <label>Lyleoo</label><textarea id="paste-lyleoo" placeholder="Mois	Profil	Dossiers créés…"></textarea>
-        <label>OCM (Intranet) <span class="muted">— facultatif : repris du fichier Activité OC Mobile</span></label><textarea id="paste-ocm" placeholder="Nom	Type d'implantation	Ville…"></textarea>
         <label>Site internet (les 2 tableaux du mail)</label><textarea id="paste-site" placeholder="#	Panier HT M+verres…"></textarea>
       </div>
     </div>
@@ -356,6 +355,12 @@
         <p class="aide">Chaque destinataire reçoit, depuis ta boîte Zimbra, un PDF A3 avec ses écrans du mois : <b>rien ne part sans ton clic sur « Envoyer maintenant »</b> (envoi automatique désactivé pour le moment). Les PDF sont préparés automatiquement quand tu enregistres la photo du mois ; tu peux aussi les régénérer ici.</p>
         <div id="dif-liste"></div>
         <div class="ligne-outils" style="margin-top:10px"><select id="dif-mois"></select><button id="dif-generer">Générer les PDF</button><button id="dif-test">M’envoyer un test</button><button class="primaire" id="dif-envoyer">Envoyer maintenant</button><button id="dif-rappel" title="Le rappel part automatiquement le 1er de chaque mois à 9 h">M’envoyer le rappel du 1er</button><button id="dif-rappel27" title="Le rappel part automatiquement le 27 de chaque mois à 9 h">M’envoyer le rappel du 27</button><span class="muted" id="dif-info"></span></div>
+      </div>
+      <div class="carte" id="carte-nettoyage" hidden>
+        <h2>Cloudflare – nettoyage du stockage</h2>
+        <p class="aide">Repère ce qui se trouve à la racine du stockage en dehors des dossiers utilisés par l’appli (config, donnees, diffusion, sorties, releve), par exemple une ancienne copie mal rangée. Rien n’est supprimé sans votre confirmation ; la suppression est définitive.</p>
+        <button id="btn-nettoyage-analyser">Analyser</button> <button id="btn-nettoyage-suppr" style="background:#B91C1C;color:#fff;border-color:#B91C1C" hidden>Supprimer la sélection…</button>
+        <div id="nettoyage-liste" class="muted" style="margin-top:8px"></div>
       </div>
       <div class="carte" id="carte-cloud" hidden>
         <h2>Cloudflare – reprise du dossier Dropbox</h2>
