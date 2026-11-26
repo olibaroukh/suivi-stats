@@ -641,6 +641,11 @@ async function routes(request, env) {
   }
 
   // Cumul annuel des points Kaizen par magasin (zimbra-relay), pour le Magasin d'Excellence
+  // 26/11/2026 : écran « Anomalies » (administrateurs)
+  if (chemin === '/relais/anomalies' && admin) {
+    if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
+    try { return json(await env.RELAIS.anomalies(), 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
+  }
   if (chemin === '/relais/kaizen') {
     if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
     const m = url.searchParams.get('mois') || '';
