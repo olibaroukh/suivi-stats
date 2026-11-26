@@ -54,6 +54,31 @@
       } catch (e) { if (e.name !== 'AbortError') $('#copie-info').textContent = 'Erreur : ' + e.message; }
     };
   }
+  // 26/11/2026 : nettoyage du stockage Cloudflare (dossiers hors de ceux de l'appli, ex. ancienne copie mal rangée)
+  function brancherNettoyage() {
+    let intrus = [];
+    const taille = o => o > 1048576 ? (o / 1048576).toFixed(1) + ' Mo' : Math.max(1, Math.round(o / 1024)) + ' ko';
+    $('#btn-nettoyage-analyser').onclick = async () => {
+      $('#nettoyage-liste').textContent = 'Analyse…'; $('#btn-nettoyage-suppr').hidden = true;
+      try {
+        const d = await (await Store.api('/fichiers/nettoyage')).json(); if (!d.ok) throw new Error(d.erreur || 'échec');
+        intrus = d.intrus || [];
+        if (!intrus.length) { $('#nettoyage-liste').textContent = 'Rien à nettoyer : tout est rangé dans les dossiers de l’appli.'; return; }
+        $('#nettoyage-liste').innerHTML = intrus.map((x, i) => `<label style="display:block;margin:4px 0"><input type="checkbox" data-i="${i}" checked> <b>${esc(x.nom)}</b> — ${x.fichiers} fichier(s), ${taille(x.octets)}<br><small>${x.exemples.map(esc).join(' · ')}</small></label>`).join('');
+        $('#btn-nettoyage-suppr').hidden = false;
+      } catch (e) { $('#nettoyage-liste').textContent = 'Erreur : ' + e.message; }
+    };
+    $('#btn-nettoyage-suppr').onclick = async () => {
+      const choix = [...document.querySelectorAll('#nettoyage-liste input[data-i]:checked')].map(c => intrus[+c.dataset.i].nom);
+      if (!choix.length) return;
+      if (!confirm(`Supprimer définitivement ${choix.length} élément(s) du stockage Cloudflare ?\n\n${choix.join('\n')}\n\nCette suppression ne peut pas être annulée.`)) return;
+      try {
+        const d = await (await Store.api('/fichiers/nettoyage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dossiers: choix }) })).json();
+        if (!d.ok) throw new Error(d.erreur || 'échec');
+        $('#nettoyage-liste').textContent = `Supprimé : ${d.supprimes} fichier(s) (${d.dossiers.join(', ')}).`; $('#btn-nettoyage-suppr').hidden = true;
+      } catch (e) { $('#nettoyage-liste').textContent = 'Erreur : ' + e.message; }
+    };
+  }
   async function sessionPrete() {
     document.body.classList.remove('non-connecte'); $('#ecran-connexion').hidden = true;
     const p = Store.profil(), admin = Store.estAdmin();
@@ -68,7 +93,7 @@
       b.hidden = !ok || v === 'recrutement'; // Recrutement : affiché seulement si un lien est enregistré
     });
     brancherLiens(admin, p);
-    $('#carte-cloud').hidden = !admin; $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherMur(); if (admin) brancherMoment(); if (admin) brancherIddigital(); if (admin) brancherDiffusion(); if (admin) brancherEcrans(); $('#zone-zimbra').hidden = !admin;
+    $('#carte-cloud').hidden = !admin; $('#carte-nettoyage').hidden = !admin; if (admin) brancherNettoyage(); $('#carte-acces').hidden = !admin; document.body.classList.add('mode-cloud'); if (admin) brancherPins(); if (admin) brancherParis(); if (admin) brancherMur(); if (admin) brancherMoment(); if (admin) brancherIddigital(); if (admin) brancherDiffusion(); if (admin) brancherEcrans(); $('#zone-zimbra').hidden = !admin;
     await dossierPret();
     $('#etat-dossier').textContent = '☁️ ' + (p.nom || p.email);
     if (admin) brancherAcces();
@@ -269,7 +294,7 @@
       const etpDepots = Store.cloud() ? (await Promise.all(Array.from({ length: mois }, (_, i) => Store.lireJSON(`donnees/rh-etp/${annee}-${pad(i + 1)}.json`).catch(() => null)))).filter(Boolean) : [];
       // Codes connus hors référentiel (magasins fermés) : config/codes-ignores.json, sinon liste validée par Olivier le 07/11/2026
       const codesIgnores = (await Store.lireJSON('config/codes-ignores.json').catch(() => null)) || ['202011', '202012', '202013', '104002', '6028', '6701', '112003', '169001', '212001', '278301', '900001'];
-      const res = await Pipeline.construire({ codesIgnores, rhDepot, etpDepots, fichiers: S.fichiers, pastes: { lyleoo: $('#paste-lyleoo').value, ocm: $('#paste-ocm').value, site: $('#paste-site').value },
+      const res = await Pipeline.construire({ codesIgnores, rhDepot, etpDepots, fichiers: S.fichiers, pastes: { lyleoo: $('#paste-lyleoo').value, site: $('#paste-site').value },
         annee, mois, ref: S.ref, spec: S.spec, etatAnnee, photoPrecedente: precedent, workerRatings: wr, listesConfidence: listes });
       if (alerteW) res.rapport.alertes.unshift(alerteW);
       if (completer) { completerPhoto(existante, res); S.resultat = res; afficherRapport(res.rapport); $('#btn-enregistrer').disabled = false;
@@ -362,7 +387,7 @@
     A.photos = {}; CK.cle = null; S.series = null; // les cockpits relisent la photo qui vient d'être enregistrée
     await Store.ecrireJSON(`donnees/${photo.annee}/etat.json`, etatAnnee);
     for (const f of S.fichiers) await Store.ecrire(`donnees/${k}/imports/${f.name.replace(/^[0-9a-f]{8}-/, '')}`, f);
-    for (const p of ['lyleoo', 'ocm', 'site']) { const v = $('#paste-' + p).value; if (v.trim()) await Store.ecrire(`donnees/${k}/imports/copier-coller-${p}.txt`, v); }
+    for (const p of ['lyleoo', 'site']) { const v = $('#paste-' + p).value; if (v.trim()) await Store.ecrire(`donnees/${k}/imports/copier-coller-${p}.txt`, v); }
     $('#calc-info').textContent = `Photo de ${MOIS[photo.mois - 1]} ${photo.annee} enregistrée.`; $('#btn-enregistrer').disabled = true;
     // 07/11/2026 : PDF de la diffusion mensuelle préparés pour le mois précédent (envoi automatique par le serveur le 2)
     if (Store.cloud() && Store.estAdmin()) { const now = new Date(), dp = new Date(now.getFullYear(), now.getMonth() - 1, 1);
