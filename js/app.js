@@ -1493,18 +1493,23 @@
   };
   async function afficherAnomalies() {
     const c = $('#carte-anomalies'); if (!c) return;
-    c.hidden = !(Store.cloud() && Store.estAdmin()); if (c.hidden) return;
+    c.hidden = !Store.cloud(); if (c.hidden) return;
     $('#an-maj').onclick = afficherAnomalies;
     $('#an-resume').textContent = 'contrôle en cours…'; $('#an-liste').innerHTML = '';
     try {
       const d = await (await Store.api('/relais/anomalies')).json(); if (!d.ok) throw new Error(d.erreur || d.error || 'échec');
-      const l = d.items || [];
+      const l = d.items || [], adm = !!d.admin;
       $('#an-resume').textContent = l.length ? `${l.length} à traiter` : '✓ aucune anomalie';
       if (!l.length) return;
       const groupes = {}; l.forEach(x => (groupes[x.type] = groupes[x.type] || []).push(x));
       $('#an-liste').innerHTML = Object.entries(groupes).map(([t, xs]) => `<details ${xs.length <= 5 ? 'open' : ''} style="margin:6px 0"><summary><b>${esc(AN_TYPES[t] || t)}</b> <span class="muted">(${xs.length})</span></summary>
-        <table class="tab" style="width:100%;font-size:13px;margin-top:4px"><tr><th>Magasin</th><th>AR</th><th>Constat</th><th>Correction</th></tr>
-        ${xs.map(x => `<tr><td><b>${esc(x.code)}</b> ${esc(x.libelle)}</td><td>${esc(x.animateur)}</td><td>${esc(x.detail)}</td><td class="muted">${/^D1 :/.test(x.action) ? `<code style="user-select:all">${esc(x.action.replace(/^D1 : /, ''))}</code>` : esc(x.action)}</td></tr>`).join('')}</table></details>`).join('');
+        <table style="width:100%;font-size:13px;margin-top:4px"><tr><th>Magasin</th><th>AR</th><th>Constat</th><th>Correction</th>${adm ? '<th></th>' : ''}</tr>
+        ${xs.map(x => `<tr><td><b>${esc(x.code)}</b> ${esc(x.libelle)}</td><td>${esc(x.animateur)}</td><td>${esc(x.detail)}</td><td class="muted">${/^D1 :/.test(x.action || '') ? `<code style="user-select:all">${esc(x.action.replace(/^D1 : /, ''))}</code>` : esc(x.action)}</td>${adm ? `<td><button class="an-vu" data-cle="${esc(x.cle || '')}" title="Masquer cette ligne : vérifié, rien à corriger">Vu, rien à faire</button></td>` : ''}</tr>`).join('')}</table></details>`).join('');
+      if (adm) document.querySelectorAll('#an-liste .an-vu').forEach(b => b.onclick = async () => {
+        b.disabled = true;
+        try { const r = await (await Store.api('/relais/anomalies/vue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cle: b.dataset.cle }) })).json(); if (!r.ok) throw new Error(r.erreur || 'échec'); b.closest('tr').remove(); }
+        catch (e) { b.disabled = false; alert('Impossible : ' + e.message); }
+      });
     } catch (e) { $('#an-resume').textContent = 'contrôle indisponible : ' + e.message; }
   }
   async function afficherAccueil() {

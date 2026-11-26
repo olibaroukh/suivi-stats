@@ -515,6 +515,24 @@ async function routes(request, env) {
     return json({ ok: true, magasin: m }, 200, h);
   }
 
+  // 26/11/2026 : écran « Anomalies » — tous les comptes (magasins de leur périmètre) ; corrections en base et « Vu » réservés aux administrateurs
+  if (chemin === '/relais/anomalies' && request.method === 'GET') {
+    if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
+    try {
+      const d = await env.RELAIS.anomalies();
+      if (!admin) {
+        const codes = codesAutorises(p.perimetre, (await lireJSON(env, 'config/referentiel.json')) || []);
+        d.items = (d.items || []).filter(x => codes.has(String(x.code))).map(x => ({ ...x, action: /^D1 :/.test(x.action || '') ? (x.actionLecteur || 'Signalé à Olivier') : x.action, cle: undefined, id: undefined }));
+      }
+      d.admin = admin; return json(d, 200, h);
+    } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
+  }
+  if (chemin === '/relais/anomalies/vue' && request.method === 'POST') {
+    if (!admin) return erreur('Réservé aux administrateurs', 403, h);
+    const b = await request.json().catch(() => ({}));
+    try { return json(await env.RELAIS.anomalieVue(b.cle, email), 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
+  }
+
   if (!admin) return erreur('Réservé aux administrateurs', 403, h);
 
   // Fichiers bruts (administrateurs) : même logique que le dossier Dropbox
@@ -641,11 +659,6 @@ async function routes(request, env) {
   }
 
   // Cumul annuel des points Kaizen par magasin (zimbra-relay), pour le Magasin d'Excellence
-  // 26/11/2026 : écran « Anomalies » (administrateurs)
-  if (chemin === '/relais/anomalies' && admin) {
-    if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
-    try { return json(await env.RELAIS.anomalies(), 200, h); } catch (e) { return erreur('zimbra-relay : ' + e.message, 502, h); }
-  }
   if (chemin === '/relais/kaizen') {
     if (!env.RELAIS) return erreur('Lien interne vers zimbra-relay absent', 500, h);
     const m = url.searchParams.get('mois') || '';
