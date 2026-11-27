@@ -366,7 +366,7 @@ async function jetonGoogle(env) {
 async function releverSheetRecup(env) {
   if (!env.GOOGLE_SA_KEY || !env.GOOGLE_SHEET_RECUP) return 'Google Sheet taux de récup : non configuré';
   const jeton = await jetonGoogle(env), plage = encodeURIComponent("'suivi JA'!A1:Y");
-  const lire = async rendu => { const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(env.GOOGLE_SHEET_RECUP)}/values/${plage}?valueRenderOption=${rendu}`, { headers: { Authorization: 'Bearer ' + jeton } });
+  const lire = async rendu => { const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(env.GOOGLE_SHEET_RECUP)}/values/${plage}?valueRenderOption=${rendu}&dateTimeRenderOption=FORMATTED_STRING`, { headers: { Authorization: 'Bearer ' + jeton } });
     const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error((d.error && d.error.message) || ('lecture refusée ' + r.status)); return d.values || []; };
   const brut = await lire('UNFORMATTED_VALUE'), aff = await lire('FORMATTED_VALUE');
   // [colonne A, colonne Y brute, colonne Y affichée] : la conversion en % est faite dans l'appli (même règle que le fichier Excel)
