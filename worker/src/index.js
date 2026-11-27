@@ -364,15 +364,14 @@ async function jetonGoogle(env) {
 }
 async function releverSheetRecup(env) {
   if (!env.GOOGLE_SA_KEY || !env.GOOGLE_SHEET_RECUP) return 'Google Sheet taux de récup : non configuré';
-  const jeton = await jetonGoogle(env), plage = encodeURIComponent("'suivi JA'!A1:Y");
+  const jeton = await jetonGoogle(env), plage = encodeURIComponent("'suivi JA'!A1:AZ");
   const lire = async rendu => { const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(env.GOOGLE_SHEET_RECUP)}/values/${plage}?valueRenderOption=${rendu}&dateTimeRenderOption=FORMATTED_STRING`, { headers: { Authorization: 'Bearer ' + jeton } });
     const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error((d.error && d.error.message) || ('lecture refusée ' + r.status)); return d.values || []; };
+  // 27/11/2026 : feuille complète (colonnes A à AZ) : l'appli repère elle-même « Centre » et les colonnes « Total » (alertes, récupérés)
   const brut = await lire('UNFORMATTED_VALUE'), aff = await lire('FORMATTED_VALUE');
-  // [colonne A, colonne Y brute, colonne Y affichée] : la conversion en % est faite dans l'appli (même règle que le fichier Excel)
-  const lignes = brut.map((r, i) => [r[0] == null ? null : r[0], r[24] == null ? null : r[24], ((aff[i] || [])[24]) == null ? null : aff[i][24]]);
   const auj = new Date(), mois = moisDecale(auj, 0), jour = auj.toISOString().slice(0, 10);
   const nom = `taux-recup-gsheet_${jour}.json`, cle = `releve/gsheet-recup_${mois}/${nom}`;
-  const contenu = JSON.stringify({ type: 'recup-gsheet', onglet: 'suivi JA', luLe: auj.toISOString(), lignes });
+  const contenu = JSON.stringify({ type: 'recup-gsheet', version: 2, onglet: 'suivi JA', luLe: auj.toISOString(), rows: brut, rowsAff: aff });
   // une seule copie par mois de relève, remplacée chaque nuit (la plus récente sert à l'import)
   const anc = await env.DB.prepare('SELECT cle_r2 FROM releve_pieces WHERE id = ? AND part = ?').bind('gsheet-recup', mois).first();
   if (anc && anc.cle_r2 && anc.cle_r2 !== cle) await env.FICHIERS.delete(anc.cle_r2);

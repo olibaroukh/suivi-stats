@@ -202,15 +202,38 @@
     }
     return { out, entete, lignes: n, edition };
   }
+  // 27/11/2026 : lecture par en-têtes (les colonnes se décalent à chaque nouvelle édition du journal).
+  // Ligne d'en-tête = « Centre » en colonne A ; 1er « Total » = alertes, 2e « Total » = dossiers récupérés.
+  // Par magasin : BQ = récupérés ÷ alertes (%), XU = alertes, XV = récupérés (cockpits : total exact = Σ récupérés ÷ Σ alertes).
+  // Repli sur l'ancienne lecture (colonne Y) si les en-têtes sont introuvables.
+  function recupRows(rows, aff) {
+    rows = rows || [];
+    const edition = dateEdition((rows[5] || [])[0]);
+    const txt = v => String(v == null ? '' : v).trim().toLowerCase();
+    const num = v => { if (v == null || v === '') return null; if (typeof v === 'number') return v; const x = parseFloat(String(v).replace(/[\s\u00a0\u202f€]/g, '').replace(',', '.')); return isFinite(x) ? x : null; };
+    const h = rows.findIndex(r => r && txt(r[0]) === 'centre');
+    const tot = h >= 0 ? rows[h].map((v, i) => txt(v) === 'total' ? i : -1).filter(i => i >= 0) : [];
+    if (tot.length < 2) {
+      const L = rows.map((r, i) => [(r || [])[0], (r || [])[24], ((aff || [])[i] || [])[24]]);
+      return { ...recupLignes(L), edition, mode: 'colonne Y (en-têtes « Centre » / « Total » introuvables)' };
+    }
+    const [iAl, iRec] = tot, out = {}; let n = 0, totalSheet = null;
+    for (let i = h + 1; i < rows.length; i++) {
+      const r = rows[i] || [], c = code(r[0]);
+      if (!c) { if (!totalSheet && txt(r[0]) === 'total') totalSheet = { alertes: num(r[iAl]), recuperes: num(r[iRec]) }; continue; }
+      if (out[c]) continue;
+      const al = num(r[iAl]), rec = num(r[iRec]);
+      if (!(al > 0) || rec == null) continue;
+      out[c] = { BQ: Math.round(rec / al * 100000) / 1000, XU: al, XV: rec }; n++;
+    }
+    return { out, lignes: n, edition, totalSheet, mode: 'dossiers récupérés ÷ alertes par centre' };
+  }
   function recup(XLSX, wb) {
     const nom = wb.SheetNames.find(s => /^suivi\s*ja$/i.test(String(s).trim()));
-    const ws = nom && wb.Sheets[nom]; if (!ws || !ws['!ref']) return { out: {}, entete: null, lignes: 0, onglet: nom };
-    const rg = XLSX.utils.decode_range(ws['!ref']), L = [];
-    for (let r = rg.s.r; r <= rg.e.r; r++) {
-      const a = ws[XLSX.utils.encode_cell({ r, c: 0 })], y = ws[XLSX.utils.encode_cell({ r, c: 24 })];
-      L.push([a ? a.v : null, y ? y.v : null, y ? (y.t === 'n' && /%/.test(y.z || '') ? '%' : y.w || '') : null]);
-    }
-    return { ...recupLignes(L), onglet: nom };
+    const ws = nom && wb.Sheets[nom]; if (!ws || !ws['!ref']) return { out: {}, lignes: 0, onglet: nom };
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true });
+    const aff = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: null, blankrows: true });
+    return { ...recupRows(rows, aff), onglet: nom };
   }
   function avisGoogle(XLSX, wb, nomFichier) {
     const m = String(nomFichier || '').match(/(\d{2})(\d{2})(\d{4})/);
@@ -239,6 +262,6 @@
     return { avis: res, sources: src };
   }
 
-  const api = { marges, rentaSal, restesDus, confidence, visites, avoirs, rentabilites, mrQualite, recommande, recup, recupLignes, avisGoogle, fusionAvis, LISTES };
+  const api = { marges, rentaSal, restesDus, confidence, visites, avoirs, rentabilites, mrQualite, recommande, recup, recupLignes, recupRows, avisGoogle, fusionAvis, LISTES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Sources = api;
 })(typeof self !== 'undefined' ? self : this);
