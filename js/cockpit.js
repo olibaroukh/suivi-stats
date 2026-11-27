@@ -640,7 +640,7 @@
   const MUR_INDICS = {
     ca: 'Chiffre d’affaires', mdc: 'Taux de MdC', re: 'Rentabilité (RE)', indus: 'Taux d’indus', avis: 'Avis Google',
     caCollab: 'CA / mois / ETP', pc: 'Pack confort (%)', tc: 'Taux de concrétisation', panier: 'Panier moyen',
-    audio: 'CA audio', protheses: 'Prothèses', note: 'Note Google', confidence: 'Confidence', rentaSal: 'Renta salariale', absent: 'Absentéisme',
+    audio: 'CA audio', protheses: 'Prothèses', note: 'Note Google', confidence: 'Confidence', rentaSal: 'Renta salariale', absent: 'Absentéisme', recup: 'Taux de récupération',
   };
   const MUR_DEFAUT = { indicateurs: ['ca', 're', 'avis', 'indus'], couleurs: {} };
   const MUR_PALETTE = ['#6A3FA0', '#00796B', '#8E1B3A', '#B5520A', '#2E6B30', '#0E6E8C', '#7A5C00', '#4A4E69', '#9C2F7A', '#1E2547'];
@@ -719,6 +719,9 @@
       note: () => { const v = n.BL ? n.BK : null; return { v, fmt: 'note', txt: 'objectif ≥ 4,5', etat: v == null ? '' : v >= 4.5 ? 'ok' : 'ko' }; },
       confidence: () => { const v = div(n.DO, n.DP); return { v, fmt: 'pct0', txt: 'clients contactés (listes suivies)', etat: '' }; },
       rentaSal: () => { const v = pct(n.CM); return { v, fmt: 'pct1', txt: 'objectif ≤ 28 %', etat: v == null ? '' : v <= 0.28 ? 'ok' : 'ko' }; },
+      // 27/11/2026 : taux de récupération (Σ récupérés ÷ Σ alertes, journal des anomalies) ; couleurs de l'artefact : < 25 % rouge, 25-49 % orange, ≥ 50 % vert
+      recup: () => { const v = pct(n.BQ), d = nP && nP.BQ != null && v != null ? v - pct(nP.BQ) : null;
+        return { v, fmt: 'pct0', ref: d, refFmt: 'pts', sub: 'vs mois préc.' + (n.XU ? ` · ${Math.round(n.XV || 0)} / ${Math.round(n.XU)} dossiers` : ''), etat: v == null ? '' : v >= 0.5 ? 'ok' : v >= 0.25 ? 'moy' : 'ko' }; },
       absent: () => { const v = n.XS ? (n.XR || 0) / n.XS : null; return { v, fmt: 'pct1', txt: 'vert ≤ 5 % · orange ≤ 10 %', etat: v == null ? '' : v <= 0.05 ? 'ok' : v <= 0.10 ? 'moy' : 'ko' }; },
     };
     const choix = (Array.isArray(cfg.indicateurs) ? cfg.indicateurs : MUR_DEFAUT.indicateurs).filter(k => I[k]).slice(0, 4);
