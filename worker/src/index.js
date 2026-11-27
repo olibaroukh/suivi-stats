@@ -332,7 +332,7 @@ async function rappelMensuel(env, par = 'auto') {
     dejaEnregistre ? `${L}(${lib} est déjà enregistré : il suffira d'intégrer les fichiers arrivés depuis.)` : '', ``,
     `À faire aujourd'hui :`,
     `  0. Si ce n'est pas fait : import RH dans BILAN-PASSAGE (export effectif + « Rapport agenda validés » du mois écoulé) et score santé validé.`,
-    `  1. Cosium : rien à faire, la relève tourne toutes les heures aujourd'hui jusqu'à 28 / 28 (bandeau vert « Cosium complet » à l'accueil).`,
+    `  1. Cosium : rien à faire, la relève tourne toutes les heures aujourd'hui jusqu'à 28 / 28 (bandeau « Cosium complet » à l'accueil).`,
     `  2. Import du mois › « 🚐 Préparer l'activité OC Mobile avec Claude » → fichier ocm-activite_${mois}.json.`,
     `  3. Import du mois › déposer les fichiers manuels (avoirs par serveur Cosium, exports des visites External Relations, fichier OC Mobile) et coller Lyleoo / site internet.`,
     `  4. « Boucler le mois » : fichiers relevés + fichiers déposés → calcul → enregistrement (les listes Confidence du mois précédent sont reprises ; arrêt seulement si Cosium ou le score santé manquent). Coup d'œil au rapport de contrôle.`,
