@@ -180,6 +180,8 @@ function typePiece(nom, sujet, ct) {
   if (/\.xlsx?$/i.test(nom) && /^(T07.?MARGES|T12.?RENTASAL|T20|T21|T10)(?!\d)|CONSODETAIL|AVIS.?SUR.?GOOGLE|MR.?QUALIT|TCD/i.test(nom)) return 'autre';
   if (/\.zip$/i.test(nom) && /EXTERNAL.?RELATIONS?/i.test(nom)) return 'autre';
   if (/\.csv$/i.test(nom) && /(AVOIR|FACTURE)/i.test(nom)) return 'autre';
+  // 27/11/2026 : relevé du Google Sheet du taux de récupération (fait par le Worker lui-même, pas par mail)
+  if (/^taux-recup-gsheet_.*\.json$/i.test(nom)) return 'autre';
   return null;
 }
 // Fenêtre : du 20 du mois précédent (certains envois arrivent le dernier jour du mois d'avant) au 25 du mois suivant.
@@ -343,6 +345,44 @@ async function rappelMensuel(env, par = 'auto') {
   return { ok: true, detail: `Rappel envoyé à ${env.ZIMBRA_RELEVE_USER}` };
 }
 
+// ---------- Google Sheet du taux de récupération (27/11/2026) ----------
+// Lecture seule par un « compte de service » Google : clé JSON dans le secret Cloudflare GOOGLE_SA_KEY,
+// identifiant de la feuille dans la variable GOOGLE_SHEET_RECUP (jamais dans le code). La feuille doit être partagée
+// en lecture avec l'adresse du compte de service. Onglet « suivi JA » : code site en colonne A, taux en colonne Y.
+const b64url = b => btoa(typeof b === 'string' ? b : String.fromCharCode(...new Uint8Array(b))).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+async function jetonGoogle(env) {
+  const sa = JSON.parse(env.GOOGLE_SA_KEY), now = Math.floor(Date.now() / 1000);
+  const enTete = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const corps = b64url(JSON.stringify({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/spreadsheets.readonly', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
+  const der = Uint8Array.from(atob(String(sa.private_key).replace(/-----[^-]+-----/g, '').replace(/\s/g, '')), c => c.charCodeAt(0));
+  const cle = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cle, new TextEncoder().encode(enTete + '.' + corps));
+  const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + enTete + '.' + corps + '.' + b64url(sig) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.access_token) throw new Error('connexion Google refusée (' + (d.error_description || d.error || r.status) + ')');
+  return d.access_token;
+}
+async function releverSheetRecup(env) {
+  if (!env.GOOGLE_SA_KEY || !env.GOOGLE_SHEET_RECUP) return 'Google Sheet taux de récup : non configuré';
+  const jeton = await jetonGoogle(env), plage = encodeURIComponent("'suivi JA'!A1:Y");
+  const lire = async rendu => { const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(env.GOOGLE_SHEET_RECUP)}/values/${plage}?valueRenderOption=${rendu}`, { headers: { Authorization: 'Bearer ' + jeton } });
+    const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error((d.error && d.error.message) || ('lecture refusée ' + r.status)); return d.values || []; };
+  const brut = await lire('UNFORMATTED_VALUE'), aff = await lire('FORMATTED_VALUE');
+  // [colonne A, colonne Y brute, colonne Y affichée] : la conversion en % est faite dans l'appli (même règle que le fichier Excel)
+  const lignes = brut.map((r, i) => [r[0] == null ? null : r[0], r[24] == null ? null : r[24], ((aff[i] || [])[24]) == null ? null : aff[i][24]]);
+  const auj = new Date(), mois = moisDecale(auj, 0), jour = auj.toISOString().slice(0, 10);
+  const nom = `taux-recup-gsheet_${jour}.json`, cle = `releve/gsheet-recup_${mois}/${nom}`;
+  const contenu = JSON.stringify({ type: 'recup-gsheet', onglet: 'suivi JA', luLe: auj.toISOString(), lignes });
+  // une seule copie par mois de relève, remplacée chaque nuit (la plus récente sert à l'import)
+  const anc = await env.DB.prepare('SELECT cle_r2 FROM releve_pieces WHERE id = ? AND part = ?').bind('gsheet-recup', mois).first();
+  if (anc && anc.cle_r2 && anc.cle_r2 !== cle) await env.FICHIERS.delete(anc.cle_r2);
+  await env.FICHIERS.put(cle, contenu, { httpMetadata: { contentType: 'application/json' } });
+  await env.DB.prepare('INSERT OR REPLACE INTO releve_pieces (id, part, nom, type, date, sujet, taille, cle_r2, releve_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind('gsheet-recup', mois, nom, 'autre', Date.now(), 'Google Sheet – taux de récupération', contenu.length, cle, Date.now()).run();
+  return `Google Sheet taux de récup : ${brut.length} ligne(s) lue(s)`;
+}
+
 // ---------- Relève automatique (chaque nuit + bouton) ----------
 // Identifiants de la boîte dans les secrets Cloudflare ZIMBRA_RELEVE_USER / ZIMBRA_RELEVE_PASSWORD (jamais dans le code).
 // Mois traités : le mois précédent et le mois en cours (envois Cosium du dernier jour du mois). Chaque pièce n'est copiée qu'une fois.
@@ -366,7 +406,7 @@ async function releverBoite(env, par) {
   let mailsCosium = 0, exemple = '';
   for (const m of [moisDecale(now, -1), moisDecale(now, 0)]) { const l = await piecesDuMois(z.jeton, m); mailsCosium = Math.max(mailsCosium, (l.diag || {}).mailsCosium || 0); if (!exemple && l.diag && l.diag.exemple) exemple = l.diag.exemple; for (const p of l) vus.set(p.id + '|' + p.part, p); }
   let nouvelles = 0, deja = 0, erreurs = 0, restantes = 0;
-  const MAX_TELECHARGEMENTS = 30; // Cloudflare limite le nombre d'appels sortants par exécution : le reste est pris au passage suivant
+  const MAX_TELECHARGEMENTS = 27; // Cloudflare limite le nombre d'appels sortants par exécution : le reste est pris au passage suivant
   for (const p of vus.values()) {
     const ex = await env.DB.prepare('SELECT 1 FROM releve_pieces WHERE id = ? AND part = ?').bind(String(p.id), String(p.part)).first();
     if (ex) { deja++; continue; }
@@ -380,8 +420,9 @@ async function releverBoite(env, par) {
       nouvelles++;
     } catch (e) { erreurs++; console.error('relève', p.nom, e); }
   }
+  let gsheet = ''; try { gsheet = await releverSheetRecup(env); } catch (e) { gsheet = 'Google Sheet taux de récup : ' + e.message; erreurs++; }
   const nbCos = [...vus.values()].filter(p => p.type === 'cosium').length;
-  const detail = `${vus.size} pièce(s) utiles dans la boîte (dont ${nbCos} ZIP Cosium, ${mailsCosium} mail(s) Cosium vus) · ${nouvelles} nouvelle(s) copiée(s) · ${deja} déjà relevée(s)${restantes ? ' · ' + restantes + ' restante(s) : relancez' : ''}${erreurs ? ' · ' + erreurs + ' erreur(s)' : ''}${purgees ? ' · ' + purgees + ' pièce(s) hors sources effacée(s)' : ''}${!nbCos && exemple ? ' · structure d’un mail Cosium : ' + exemple.slice(0, 600) : ''}`;
+  const detail = `${vus.size} pièce(s) utiles dans la boîte (dont ${nbCos} ZIP Cosium, ${mailsCosium} mail(s) Cosium vus) · ${nouvelles} nouvelle(s) copiée(s) · ${deja} déjà relevée(s)${restantes ? ' · ' + restantes + ' restante(s) : relancez' : ''}${erreurs ? ' · ' + erreurs + ' erreur(s)' : ''}${purgees ? ' · ' + purgees + ' pièce(s) hors sources effacée(s)' : ''}${gsheet ? ' · ' + gsheet : ''}${!nbCos && exemple ? ' · structure d’un mail Cosium : ' + exemple.slice(0, 600) : ''}`;
   await env.DB.prepare('INSERT INTO releve_journal (le, par, statut, detail) VALUES (?, ?, ?, ?)').bind(Date.now(), par, erreurs ? 'partiel' : 'ok', detail).run();
   return { ok: true, nouvelles, deja, erreurs, restantes, detail };
 }
