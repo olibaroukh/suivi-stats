@@ -89,6 +89,18 @@
     const items = await deplier(fichiers, journal);
     const cosN = {}, cosN1 = {}, vendeurs = []; const ignores = []; const autres = {};
     const codesHorsRef = {};
+    // 27/11/2026 : « Ancien code site » du référentiel → nouveau code ; additionné partout, y compris l'année du changement
+    // (sauf si l'ancien code est encore une ligne du référentiel : il garde alors sa propre fiche).
+    const anciens = {}, versNouveau = {};
+    ref.forEach(r => { const a = String(r.ancienCode || '').trim().replace(/^0+/, ''), c = String(r.code);
+      if (a && a !== c && !refIdx[a]) { anciens[c] = a; versNouveau[a] = c; } });
+    // Sources par magasin : lignes de l'ancien code reportées sur le nouveau (si le nouveau est absent du fichier)
+    const doublonsCode = [];
+    const reporterAncien = (out, src) => { if (!out) return out;
+      for (const [c, a] of Object.entries(anciens)) { if (out[a] == null) continue;
+        if (out[c] == null) out[c] = out[a]; else doublonsCode.push(`${src} : ${c} et ancien code ${a} présents – seul le nouveau code est retenu, à vérifier`);
+        delete out[a]; }
+      return out; };
     for (const it of items) {
       if (/\.csv$/i.test(it.nom)) {
         const t = texte(it.buf);
@@ -124,7 +136,9 @@
       AO: (srv, terms) => terms.map((t, i) => ({ ...t, name: i % 2 === 0 ? 'TOTAL DES MONTURES 1ERE PAIRE' : 'TOTAL DES MONTURES 2EME PAIRE' })),
       EV: (srv, terms) => srv === 'ISRAEL' ? terms.map(t => ({ ...t, name: 'PERFECT CLEAN Qt' })) : [],
     };
-    const lignes = Hub.build(cosN, spec, ref, { overrides, zeroIfMissing: { IRLANDE: ['R'] } });
+    const lignes = Hub.build(cosN, spec, ref, { overrides, anciens, zeroIfMissing: { IRLANDE: ['R'] } });
+    if (Object.keys(anciens).length) { journal.push('Nouveau + ancien code additionnés : ' + Object.entries(anciens).map(([c, a]) => `${c} ← ${a}`).join(', '));
+      Object.values(anciens).forEach(a => { delete codesHorsRef[a]; delete codesHorsRef[a + 'A']; }); }
     const mag = {}; lignes.forEach(l => { mag[l.code] = { N: l, N1: {} }; });
     sources.cosium_n = srvN.length ? { statut: 'recu', detail: `${srvN.length} serveur(s) : ${srvN.join(', ')}` } : { statut: 'absent' };
     const attendus = ['EURO','CANADA','IRLANDE','SUISSE','UK','MARTINIQUE','ISRAEL'];
@@ -134,21 +148,16 @@
     const srvN1 = Object.keys(cosN1);
     if (srvN1.length) {
       const spec1 = spec.filter(s => COLS_N1.includes(s.col));
-      // Changement de code d'une année sur l'autre : le N-1 d'un magasin est lu sous son « Ancien code site »
-      const versActuel = {};
-      const refN1 = ref.map(r => { const a = String(r.ancienCode || '').trim().replace(/^0+/, '');
-        if (!a || a === String(r.code) || refIdx[a]) return r; versActuel[a] = String(r.code); return { ...r, code: a }; });
-      const l1 = Hub.build(cosN1, spec1, refN1, { zeroIfMissing: { IRLANDE: ['R'] } });
+      // Changement de code : N-1 = nouveau + ancien code additionnés (couvre aussi une année coupée en deux codes)
+      const l1 = Hub.build(cosN1, spec1, ref, { anciens, zeroIfMissing: { IRLANDE: ['R'] } });
       l1.forEach(l => { const o = {}; COLS_N1.forEach(c => o[c] = l[c]); o.ET = l.AF ? l.U * 100 / l.AF : null; o.EH = l.U != null && l.V != null ? l.U * l.V : null;
-        const c = versActuel[String(l.code)] || l.code; if (mag[c]) mag[c].N1 = o; });
-      const nAnc = Object.keys(versActuel).length;
-      if (nAnc) journal.push(`N-1 lu sous l’ancien code pour ${nAnc} magasin(s) : ` + Object.entries(versActuel).map(([a, c]) => `${c} ← ${a}`).join(', '));
-      Object.keys(versActuel).forEach(a => { delete codesHorsRef[a]; delete codesHorsRef[a + 'A']; });
+        if (mag[l.code]) mag[l.code].N1 = o; });
       sources.cosium_n1 = { statut: 'recu', detail: `${srvN1.length} serveur(s)` };
     } else sources.cosium_n1 = { statut: 'absent' };
 
     const poser = (src, out, detail) => {
       let n = 0;
+      reporterAncien(out, LIBELLE_SOURCE[src] || src);
       for (const c in out) { const m = mag[c]; if (!m) continue; Object.assign(m.N, out[c]); n++; }
       sources[src] = { statut: 'recu', detail: (detail ? detail + ' – ' : '') + n + ' magasins' };
     };
@@ -215,6 +224,7 @@
       journal.push('Lyleoo : mois chargés ' + all.map(m => cle(m.periode.annee, m.periode.mois)).join(', '));
     }
     const cl = Lyleoo.cumul(etat.lyleoo, annee, mois);
+    for (const [c, a] of Object.entries(anciens)) { const o = cl.out[a]; if (!o) continue; const x = cl.out[c] = cl.out[c] || { soumis: 0, express: 0 }; x.soumis = (x.soumis || 0) + (o.soumis || 0); x.express = (x.express || 0) + (o.express || 0); }
     if (Object.keys(etat.lyleoo).some(k => k.startsWith(annee + '-'))) {
       for (const c in mag) { const o = cl.out[c]; mag[c].N.BY = o ? o.soumis : 0; mag[c].N.BZ = o ? o.express : 0; }
       sources.lyleoo = { statut: etat.lyleoo[cle(annee, mois)] ? 'recu' : 'repris', detail: cl.manquants.length ? 'mois manquants : ' + cl.manquants.join(', ') : 'cumul complet' };
@@ -246,6 +256,7 @@
     if (Object.keys(etat.ocm).some(k => k.startsWith(annee + '-')) || (etat.ocmReprise && etat.ocmReprise.annee === annee)) {
       const rep = etat.ocmReprise && etat.ocmReprise.annee === annee ? etat.ocmReprise : null;
       const co = OCM.cumul(etat.ocm, annee, mois, rep);
+      for (const [c, a] of Object.entries(anciens)) { const o = co.out[a]; if (!o) continue; const x = co.out[c] = co.out[c] || {}; ['DB', 'DC', 'DD', 'DE', 'DF'].forEach(k => x[k] = (x[k] || 0) + (o[k] || 0)); }
       for (const c in co.out) if (mag[c]) Object.assign(mag[c].N, { DB: co.out[c].DB || 0, DC: co.out[c].DC || 0, DD: co.out[c].DD || 0, DE: co.out[c].DE || 0, DF: co.out[c].DF || 0 });
       sources.ocm = { statut: etat.ocm[cle(annee, mois)] ? 'recu' : 'repris', detail: co.manquants.length ? 'mois manquants : ' + co.manquants.join(', ') : 'cumul complet' };
     }
@@ -264,11 +275,11 @@
       for (const src in COLONNES_SOURCE) {
         if (sources[src]) continue;
         let n = 0;
-        for (const c in mag) { const prev = photoPrecedente.magasins[c]; if (!prev) continue; COLONNES_SOURCE[src].forEach(k => { if (prev.N[k] != null) { mag[c].N[k] = prev.N[k]; n++; } }); }
+        for (const c in mag) { const prev = photoPrecedente.magasins[c] || (anciens[c] && photoPrecedente.magasins[anciens[c]]); if (!prev) continue; COLONNES_SOURCE[src].forEach(k => { if (prev.N[k] != null) { mag[c].N[k] = prev.N[k]; n++; } }); }
         if (n) { sources[src] = { statut: 'repris', detail: 'valeurs du mois précédent' };
           const pp = photoPrecedente.sources && photoPrecedente.sources[src]; if (pp && pp.periode) sources[src].periode = pp.periode; }
       }
-      if (!sources.cosium_n1 || sources.cosium_n1.statut === 'absent') { for (const c in mag) if (photoPrecedente.magasins[c]) mag[c].N1 = photoPrecedente.magasins[c].N1 || {}; }
+      if (!sources.cosium_n1 || sources.cosium_n1.statut === 'absent') { for (const c in mag) { const prev = photoPrecedente.magasins[c] || (anciens[c] && photoPrecedente.magasins[anciens[c]]); if (prev) mag[c].N1 = prev.N1 || {}; } }
     }
     // Activité OC Mobile (artefact) : fichier du mois, sinon celui du mois précédent
     let ocmActivite = null;
@@ -328,6 +339,7 @@
       personnes = personnes.map(({ genre, naissance, ...reste }) => reste);
     }
     const photo = Hub.mdcIntemp({ version: 2, annee, mois, genereLe: new Date().toISOString(), sources, magasins: mag, groupe, rh: personnes, statsVendeurs: stats, equipes, ocmActivite }, ref);
+    [...new Set(doublonsCode)].forEach(x => alertes.push(x));
     return { photo, etatAnnee: etat, rapport: { journal, alertes, ignores, listesConfidence: listesTrouvees, sources } };
   }
 

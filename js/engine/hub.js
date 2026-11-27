@@ -32,6 +32,8 @@
       const code = String(mag.code), srv = mag.serveur;
       const row = { code, magasin: mag.magasin, pays: mag.pays, serveur: srv };
       const codes = CUMUL_PAYS.includes(mag.pays) ? [code, code + 'A'] : [code];
+      // 27/11/2026 : changement de code site (y compris en cours d'année) : l'ancien code est additionné au nouveau (même règle que le Canada)
+      const anc = (opts.anciens || {})[code]; if (anc) codes.push(anc);
       const parts = codes.map(c => { const o = {}; for (const s of spec) o[s.col] = valueFor(srv, s, c); return o; });
       for (const s of spec) row[s.col] = combine(s.col, parts);
       const z = (opts.zeroIfMissing || {})[srv] || [];
@@ -42,7 +44,7 @@
     return out;
   }
 
-  // Cumul de plusieurs codes (Canada) : montants additionnés, ratios pondérés par leur base.
+  // Cumul de plusieurs codes (Canada, ancien + nouveau code) : montants additionnés, ratios pondérés par leur base.
   const WEIGHT = { V: 'U', W: 'U', AC: 'U', AD: 'U', AE: 'U', AF: 'U', AG: 'U', AN: 'U', AP: 'U', AR: 'U',
                    AY: 'AW', BB: 'AW', BH: 'AW', AZ: 'AX', BA: 'AX', BD: 'AX', BF: 'AX', BC: 'Q', BE: 'U' };
   function combine(col, parts) {

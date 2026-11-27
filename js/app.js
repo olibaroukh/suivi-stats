@@ -526,14 +526,17 @@
     if (!S.photo) return {};
     const cle = `${S.photo.annee}-${pad(S.photo.mois)}`;
     if (S.series && S.series.cle === cle) return S.series.par;
-    const par = {}, prec = {};
+    const par = {}, prec = {}, versNouveau = {};
+    S.ref.forEach(r => { const a = String(r.ancienCode || '').trim().replace(/^0+/, ''); if (a && a !== String(r.code) && !S.ref.some(x => String(x.code) === a)) versNouveau[a] = String(r.code); });
     for (let mo = 1; mo <= S.photo.mois; mo++) {
       const k = `${S.photo.annee}-${pad(mo)}`;
       if (!(S.moisDispo || []).includes(k)) continue;
       const ph = mo === S.photo.mois ? S.photo : await Store.lireJSON(`donnees/${k}/photo.json`);
       if (!ph) continue;
-      for (const code in ph.magasins) {
-        const d = ph.magasins[code], n = d.N || {}, n1 = d.N1 || {}, p = prec[code] || {};
+      for (const codeLu in ph.magasins) {
+        // 27/11/2026 : mois enregistrés sous l'ancien code site → courbe rattachée au nouveau code
+        const code = versNouveau[codeLu] && !ph.magasins[versNouveau[codeLu]] ? versNouveau[codeLu] : codeLu;
+        const d = ph.magasins[codeLu], n = d.N || {}, n1 = d.N1 || {}, p = prec[code] || {};
         const caMois = n.P == null ? null : n.P - (p.mois === mo - 1 ? (p.P || 0) : (mo === 1 ? 0 : NaN));
         const caMoisN1 = n1.P == null ? null : n1.P - (p.mois === mo - 1 ? (p.P1 || 0) : (mo === 1 ? 0 : NaN));
         (par[code] = par[code] || []).push({ mois: mo, caCum: n.P, O: n.O, caMois: isFinite(caMois) ? caMois : null, caMoisN1: isFinite(caMoisN1) ? caMoisN1 : null,
