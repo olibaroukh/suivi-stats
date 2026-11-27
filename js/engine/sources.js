@@ -172,6 +172,8 @@
   // Taux de récupération (27/11/2026) : Google Sheet téléchargé en Excel (Fichier › Télécharger › Microsoft Excel).
   // Onglet « suivi JA » : code site en colonne A, taux en colonne Y (règle donnée par Olivier). Stocké en % dans BQ.
   // Le taux est repris tel quel : cellule au format % (ou valeur ≤ 1,5) = fraction → ×100 ; texte « 95,3 % » accepté.
+  // 27/11/2026 : colonne Y = « Cumul » de l'artefact « Dossiers récupérés par magasin » (dossiers récupérés / alertes,
+  // toutes éditions du journal des anomalies depuis le 12/05/2026 ; ~117 magasins ; pas de remise à zéro en janvier).
   // Valeur de la colonne Y → taux en % (brute = nombre ou texte ; affichee = texte affiché dans la feuille, si connu)
   function tauxRecup(brute, estPct) {
     if (brute == null || brute === '') return null;
