@@ -1762,6 +1762,24 @@
    "es": "Previsión",
    "nl": "Prognose",
    "de": "Prognose"
+  },
+  {
+   "base": "% MdC et Intemporelles",
+   "fr": "% MdC et Intemporelles",
+   "he": "%MDC ו-Intemporelles",
+   "en": "% PL & Intemporelles",
+   "es": "% MdC e Intemporelles",
+   "nl": "% huismerk en Intemporelles",
+   "de": "% Exklusivmarken und Intemporelles"
+  },
+  {
+   "base": "% MdC + Int.",
+   "fr": "% MdC + Int.",
+   "he": "%MDC + Int.",
+   "en": "% PL + Int.",
+   "es": "% MdC + Int.",
+   "nl": "% huismerk + Int.",
+   "de": "% Exkl. + Int."
   }
  ],
  "mois": [

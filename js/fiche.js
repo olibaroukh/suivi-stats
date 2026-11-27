@@ -263,6 +263,8 @@
     const perSrc = s => { const x = photo.sources && photo.sources[s]; if (!x) return null; if (x.periode) return x.periode;
       const m = String(x.detail || '').match(/FIN\s*(\d{4})-(\d{2})/i); return m ? { du: `${m[1]}-01-01`, au: `${m[1]}-${m[2]}-${String(new Date(+m[1], +m[2], 0).getDate()).padStart(2, '0')}` } : null; };
     const plage = p => { if (!p) return ''; const d = p.du.split('-').reverse(), a = p.au.split('-').reverse(); return `${d[0]}/${d[1]} → ${a.join('/')}`; };
+    // 27/11/2026 : succursales = % MdC + Intemporelles (règle du 25/11) → libellé explicite ; franchisés = % MdC seules
+    const succMdc = mag.type === 'Succursale', libMdc = succMdc ? t('% MdC et Intemporelles') : t('%MdC');
     const perRestes = plage(perSrc('restes_dus')), perReporting = plage(perSrc('rentabilites')), perReco = plage(perSrc('recommande')), perRecup = plage(perSrc('recup'));
     const nd = `<div class="nd">${esc(lang === 'fr' ? 'Non disponible pour ce magasin' : '–')}</div>`;
 
@@ -325,8 +327,8 @@
       const dense = nl > 9 ? (nl > 13 ? ' tres-dense' : ' dense') : '';
       return ent + `<table class="equipe${dense}"><thead>
         <tr class="grp"><th></th><th colspan="8">${esc(t('Pilotage Ca 2026').replace('2026', photo.annee))}</th><th colspan="7">${esc(t('Analyse Du Panier Moyen Optique'))}</th></tr>
-        <tr><th></th>${(lang === 'fr' ? ['Obj. ' + photo.annee, 'Cumul CA', 'Posit.', 'Reste / mois', 'NdV', 'TC', 'Seuil perf.', 'Dépist.', '% SOP', '% PC', '€ PC', 'PM 1re paire', 'Panier', 'Transit.', '% MdC']
-          : [t('Objectif 2026').replace('2026', photo.annee), t('Cumul Ca'), 'Posit.', t('Ca / Mois Restant'), t('NdV'), t('Tx De C'), t('Seuil de Performance'), t('Dépistage'), t('% SOP'), '% PC', '€ PC', t('Pmoyen 1er Paire'), t('Panier Moyen'), t('Transition'), t('%MdC')]).map(x => `<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>
+        <tr><th></th>${(lang === 'fr' ? ['Obj. ' + photo.annee, 'Cumul CA', 'Posit.', 'Reste / mois', 'NdV', 'TC', 'Seuil perf.', 'Dépist.', '% SOP', '% PC', '€ PC', 'PM 1re paire', 'Panier', 'Transit.', succMdc ? '% MdC + Int.' : '% MdC']
+          : [t('Objectif 2026').replace('2026', photo.annee), t('Cumul Ca'), 'Posit.', t('Ca / Mois Restant'), t('NdV'), t('Tx De C'), t('Seuil de Performance'), t('Dépistage'), t('% SOP'), '% PC', '€ PC', t('Pmoyen 1er Paire'), t('Panier Moyen'), t('Transition'), succMdc ? t('% MdC + Int.') : t('%MdC')]).map(x => `<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>
         ${eq.lignes.map(l => `<tr class="${l.famille}"><th><b>${esc(l.nom)}</b><small>${esc(posteCourt(l.poste))}${l.anc != null ? ' · ' + nb(l.anc, 0) + ' an' + (l.anc >= 1.5 ? 's' : '') : ''}${l.multi ? ' · multi-sites' : ''}</small></th>
           <td class="muted">${k1(l.obj)}</td><td class="fort">${k1(l.ca)}</td>${k(l.posit, 1, x => pc(x, 0))}<td>${l.restant == null ? '–' : l.restant <= 0 ? '<span class="ok">✓</span>' : e0(l.restant)}</td><td>${e0(l.ndv)}</td>${k(l.tc, c.o.tc, x => pc(x, 1))}${k(l.seuil, 1, x => pc(x, 0))}${k(l.depistage, c.o.depistage, x => pc(x, 0))}
           ${k(l.sop, c.o.sop, x => pc(x, 0))}${k(l.pcPct, c.o.pcPct, x => pc(x, 0))}${k(l.pcEur, c.o.pcEur, e0)}${k(l.pm1, c.o.pm1, e0)}${k(l.panier, c.o.panier, e0)}${k(l.transition, c.o.transition, x => pc(x, 0))}${k(l.mdc, c.o.mdc, x => pc(x, 0))}</tr>`).join('')}
@@ -402,7 +404,7 @@
       <div><div class="v">${nb(c.visites.ce)}</div><div class="l">CE</div></div></div>`);
     const secMrq = section(t('Mr Qualité'), `<div class="mini un"><div><div class="v">${c.mrq == null ? '–' : nb(c.mrq) + '<small style="font-size:9px;font-weight:600;opacity:.6">/100</small>'}</div><div class="l">${esc(t('Score global'))}</div>${c.mrq == null ? `<div class="s">${esc(t('non disponible'))}</div>` : ''}</div></div>`);
     const secRenta = section(t('RENTABILITÉ'), `<div class="tuiles8">
-    ${tuile(t('%MdC'), pc(c.renta.mdc), etatPct(c.renta.mdc, c.o.mdc))}
+    ${tuile(libMdc, pc(c.renta.mdc), etatPct(c.renta.mdc, c.o.mdc))}
     ${tuile(t('% Lukkas'), pc(c.renta.lukkas))}
     ${tuile(t('% Ouiezen Premium'), pc(c.renta.ouiezen), etatPct(c.renta.ouiezen, c.o.ouiezen))}
     ${tuile(t('% Recommande Verres'), pc(c.renta.recommande), '', perReco)}
