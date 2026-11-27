@@ -1468,6 +1468,7 @@
         try {
           if (/\.xlsx?$/i.test(p.nom)) ty = Pipeline.typeClasseur(XLSX.read(await f.arrayBuffer(), { type: 'array', sheetRows: 2 }));
           else if (/\.csv$/i.test(p.nom)) { const t = new TextDecoder('utf-8').decode((await f.arrayBuffer()).slice(0, 300)); if (/^"?Date Edition[^\n]*\n"?Factures/i.test(t)) ty = 'avoirs'; }
+          else if (/^taux-recup-gsheet_.*\.json$/i.test(p.nom)) ty = 'recup';
           else if (/\.zip$/i.test(p.nom)) ty = 'zip:' + p.nom.replace(/[\d_\-\s.]+(\.zip)$/i, '$1').toLowerCase();
         } catch (e) { console.warn(p.nom, e); }
         // France et International arrivent dans deux fichiers distincts (marges T07, renta salariale T12, rentabilités T20/T21 et T10) : on garde le plus récent de chacun

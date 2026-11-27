@@ -172,25 +172,35 @@
   // Taux de récupération (27/11/2026) : Google Sheet téléchargé en Excel (Fichier › Télécharger › Microsoft Excel).
   // Onglet « suivi JA » : code site en colonne A, taux en colonne Y (règle donnée par Olivier). Stocké en % dans BQ.
   // Le taux est repris tel quel : cellule au format % (ou valeur ≤ 1,5) = fraction → ×100 ; texte « 95,3 % » accepté.
+  // 27/11/2026 : colonne Y = « Cumul » de l'artefact « Dossiers récupérés par magasin » (dossiers récupérés / alertes,
+  // toutes éditions du journal des anomalies depuis le 12/05/2026 ; ~117 magasins ; pas de remise à zéro en janvier).
+  // Valeur de la colonne Y → taux en % (brute = nombre ou texte ; affichee = texte affiché dans la feuille, si connu)
+  function tauxRecup(brute, estPct) {
+    if (brute == null || brute === '') return null;
+    if (typeof brute === 'number') return (estPct || Math.abs(brute) <= 1.5) ? brute * 100 : brute;
+    const t = String(brute).replace(/\s/g, '').replace(',', '.'), pc = /%$/.test(t), v = parseFloat(t);
+    if (!isFinite(v)) return null; return pc ? v : (Math.abs(v) <= 1.5 ? v * 100 : v);
+  }
+  // lignes = [[colonne A, colonne Y brute, colonne Y affichée]]
+  function recupLignes(lignes) {
+    const out = {}; let entete = null, n = 0;
+    for (const [a, yb, ya] of lignes || []) {
+      const c = code(a);
+      if (!c) { if (!n && typeof yb === 'string' && yb.trim()) entete = yb.trim(); continue; }
+      const v = tauxRecup(yb, /%/.test(String(ya || ''))); if (v == null || out[c]) continue;
+      out[c] = { BQ: Math.round(v * 1000) / 1000 }; n++;
+    }
+    return { out, entete, lignes: n };
+  }
   function recup(XLSX, wb) {
     const nom = wb.SheetNames.find(s => /^suivi\s*ja$/i.test(String(s).trim()));
-    const ws = nom && wb.Sheets[nom]; const out = {}; let entete = null, lignes = 0;
-    if (!ws || !ws['!ref']) return { out, entete, lignes };
-    const rg = XLSX.utils.decode_range(ws['!ref']);
-    const lire = c => {
-      if (!c || c.v == null || c.v === '') return null;
-      if (c.t === 'n') return (/%/.test(c.z || '') || Math.abs(c.v) <= 1.5) ? c.v * 100 : c.v;
-      const t = String(c.v).replace(/\s/g, '').replace(',', '.'); const pc = /%$/.test(t); const v = parseFloat(t);
-      if (!isFinite(v)) return null; return pc ? v : (Math.abs(v) <= 1.5 ? v * 100 : v);
-    };
+    const ws = nom && wb.Sheets[nom]; if (!ws || !ws['!ref']) return { out: {}, entete: null, lignes: 0, onglet: nom };
+    const rg = XLSX.utils.decode_range(ws['!ref']), L = [];
     for (let r = rg.s.r; r <= rg.e.r; r++) {
       const a = ws[XLSX.utils.encode_cell({ r, c: 0 })], y = ws[XLSX.utils.encode_cell({ r, c: 24 })];
-      const c = code(a && a.v);
-      if (!c) { if (y && y.t === 's' && !lignes) entete = String(y.v).trim(); continue; }
-      const v = lire(y); if (v == null || out[c]) continue;
-      out[c] = { BQ: Math.round(v * 1000) / 1000 }; lignes++;
+      L.push([a ? a.v : null, y ? y.v : null, y ? (y.t === 'n' && /%/.test(y.z || '') ? '%' : y.w || '') : null]);
     }
-    return { out, entete, onglet: nom, lignes };
+    return { ...recupLignes(L), onglet: nom };
   }
   function avisGoogle(XLSX, wb, nomFichier) {
     const m = String(nomFichier || '').match(/(\d{2})(\d{2})(\d{4})/);
@@ -219,6 +229,6 @@
     return { avis: res, sources: src };
   }
 
-  const api = { marges, rentaSal, restesDus, confidence, visites, avoirs, rentabilites, mrQualite, recommande, recup, avisGoogle, fusionAvis, LISTES };
+  const api = { marges, rentaSal, restesDus, confidence, visites, avoirs, rentabilites, mrQualite, recommande, recup, recupLignes, avisGoogle, fusionAvis, LISTES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Sources = api;
 })(typeof self !== 'undefined' ? self : this);
