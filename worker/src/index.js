@@ -780,22 +780,25 @@ export default {
   },
   // Tâche planifiée (wrangler.toml › triggers) : le 1er de chaque mois, mise à jour des taux de change
   async scheduled(event, env, ctx) {
+    // 27/11/2026 : l'heure de Paris était lue « 09 h » (format français) → nombre invalide → rappels du 1er et du 27 jamais envoyés.
+    // Lecture corrigée : seule la partie « heure » (0-23) est prise.
+    const heureParis = t => { const p = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: 'numeric', hourCycle: 'h23' }).formatToParts(new Date(t || Date.now())).find(x => x.type === 'hour'); return p ? +p.value : -1; };
     // « 0 5 1 * * » : taux de change le 1er du mois ; « 0 1 * * * » : relève de la boîte Zimbra chaque nuit
     if (event.cron === '0 5 1 * *') ctx.waitUntil(majTaux(env, 'automatique').catch(e => console.error('taux', e)));
     // 07/11/2026 : diffusion du mois précédent le 1er à 15 h (heure de Paris), puis chaque jour à 15 h jusqu'au 10 tant que les PDF
     // ne sont pas prêts / envoyés. Deux déclenchements (13 h et 14 h UTC) : seul celui qui tombe à 15 h à Paris envoie (heure d'été / d'hiver).
     // 07/11/2026 : rappel à Olivier le 1er à 9 h (heure de Paris) : crons 7 h et 8 h UTC, seul celui de 9 h à Paris envoie
     else if (event.cron === '0 7 1 * *' || event.cron === '0 8 1 * *') {
-      const hP = +new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date(event.scheduledTime || Date.now()));
+      const hP = heureParis(event.scheduledTime);
       if (hP === 9) ctx.waitUntil(rappelMensuel(env).then(r => console.log('rappel', JSON.stringify(r))).catch(e => console.error('rappel', e)));
     }
     // le 27 à 9 h (heure de Paris) : rappel de préparation de la fin de mois
     else if (event.cron === '0 7 27 * *' || event.cron === '0 8 27 * *') {
-      const hP = +new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date(event.scheduledTime || Date.now()));
+      const hP = heureParis(event.scheduledTime);
       if (hP === 9) ctx.waitUntil(rappelPreparation(env).then(r => console.log('rappel prépa', JSON.stringify(r))).catch(e => console.error('rappel prépa', e)));
     }
     else if (event.cron === '0 13 1-10 * *' || event.cron === '0 14 1-10 * *') {
-      const hParis = +new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date(event.scheduledTime || Date.now()));
+      const hParis = heureParis(event.scheduledTime);
       // 10/11/2026 : envoi automatique DÉSACTIVÉ tant que la variable DIFFUSION_AUTO ne vaut pas « oui » (décision d'Olivier :
       // pas d'envoi automatique aux destinataires pour le moment ; envoi manuel par « Envoyer maintenant »).
       if (hParis === 15 && !/^(oui|1|true)$/i.test(String(env.DIFFUSION_AUTO || ''))) console.log('diffusion automatique désactivée (DIFFUSION_AUTO)');
