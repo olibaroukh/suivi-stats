@@ -18,7 +18,8 @@
     for (const per of ['N', 'N1']) {
       const cles = new Set(); items.forEach(it => Object.keys(it[per] || {}).forEach(k => { if (/^[A-Z]{1,2}$/.test(k)) cles.add(k); }));
       for (const k of cles) {
-        const w = POIDS[k];
+        // 27/11/2026 : taux de récupération = Σ récupérés ÷ Σ alertes (pondération par les alertes XU) ; ancien mois sans XU → pondéré par le CA
+        const w = k === 'BQ' && items.some(it => (it[per] || {}).XU > 0) ? 'XU' : POIDS[k];
         let s = 0, sw = 0, vu = false;
         for (const it of items) {
           const d = it[per] || {}; let v = d[k]; if (v == null || isNaN(v)) continue;

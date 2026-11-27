@@ -21,7 +21,7 @@
     avis_google: ['BJ','BK','BL','BM','BN','BO'],
     mr_qualite: ['CK'],
     recommande: ['AL'],
-    recup: ['BQ'],
+    recup: ['BQ', 'XU', 'XV'],
   };
   const LIBELLE_SOURCE = {
     cosium_n: 'Cosium – année en cours', cosium_n1: 'Cosium – année précédente (N-1)', marges: 'Marges produits', renta_sal: 'Renta salariale',
@@ -180,10 +180,13 @@
     if (un('recommande')) { const rv = Sources.recommande(XLSX, un('recommande').wb);
       poser('recommande', rv.out, rv.titre || un('recommande').nom);
       if (rv.periode) sources.recommande.periode = rv.periode; else alertes.push('% Recommande verres : période introuvable dans le titre (« Taux de recommande Mai à Octobre 2026 »).'); }
-    if (un('recup')) { const u = un('recup'), rc = u.gs ? { ...Sources.recupLignes(u.gs.lignes), onglet: u.gs.onglet } : Sources.recup(XLSX, u.wb);
-      poser('recup', rc.out, `${u.gs ? 'Google Sheet lu le ' + new Date(u.gs.luLe).toLocaleDateString('fr-FR') + ', ' : ''}onglet « ${rc.onglet} », colonne Y${rc.entete ? ' « ' + rc.entete + ' »' : ''} = cumul du journal des anomalies du 12/05/2026${rc.edition ? ' à l’édition Cosium du ' + fr(rc.edition) : ''}, sans remise à zéro en janvier`);
+    if (un('recup')) { const u = un('recup'), g = u.gs;
+      const rc = g ? (Array.isArray(g.rows) ? { ...Sources.recupRows(g.rows, g.rowsAff), onglet: g.onglet } : { ...Sources.recupLignes(g.lignes), onglet: g.onglet, mode: 'colonne Y' }) : Sources.recup(XLSX, u.wb);
+      const ts = rc.totalSheet, pc = ts && ts.alertes ? ` ; total du Sheet ${ts.recuperes} / ${ts.alertes} = ${Math.round(ts.recuperes / ts.alertes * 100)} %` : '';
+      poser('recup', rc.out, `${g ? 'Google Sheet lu le ' + new Date(g.luLe).toLocaleDateString('fr-FR') + ', ' : ''}onglet « ${rc.onglet} », ${rc.mode || 'colonne Y'}, journal des anomalies du 12/05/2026${rc.edition ? ' à l’édition Cosium du ' + fr(rc.edition) : ''} (sans remise à zéro en janvier)${pc}`);
       if (rc.edition) sources.recup.periode = { du: '2026-05-12', au: rc.edition }; else alertes.push('Taux de récupération : date d’édition Cosium introuvable en cellule A6 de l’onglet « suivi JA ».');
-      if (!rc.lignes) alertes.push('Taux de récupération : aucun code site trouvé en colonne A de l’onglet « suivi JA ».'); }
+      if (/colonne Y/.test(rc.mode || '') && g && Array.isArray(g.rows)) alertes.push('Taux de récupération : en-têtes « Centre » / « Total » introuvables, lecture de secours en colonne Y.');
+      if (!rc.lignes) alertes.push('Taux de récupération : aucun magasin lu dans l’onglet « suivi JA ».'); }
     if (un('mr_qualite')) poser('mr_qualite', Sources.mrQualite(XLSX, un('mr_qualite').wb).out, un('mr_qualite').nom);
     if (un('visites_ce')) { for (const c in mag) mag[c].N.DZ = 0; poser('visites_ce', Sources.visites(XLSX, un('visites_ce').wb).out); }
     // 07/11/2026 : un tableau des avoirs par serveur Cosium → additionnés (un même fichier déposé deux fois n'est compté qu'une fois)
