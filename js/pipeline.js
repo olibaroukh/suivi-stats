@@ -21,11 +21,12 @@
     avis_google: ['BJ','BK','BL','BM','BN','BO'],
     mr_qualite: ['CK'],
     recommande: ['AL'],
+    recup: ['BQ'],
   };
   const LIBELLE_SOURCE = {
     cosium_n: 'Cosium – année en cours', cosium_n1: 'Cosium – année précédente (N-1)', marges: 'Marges produits', renta_sal: 'Renta salariale',
     restes_dus: 'Restes dus (taux d’indus)', confidence: 'Confidence', visites_presc: 'Visites prescripteurs', visites_ce: 'Visites CE',
-    avoirs: 'Avoirs', mr_qualite: 'Mr Qualité (score global)', recommande: '% Recommande verres', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', ocm_act: 'Activité OC Mobile (artefact)', site: 'Site internet', rh: 'Export RH', stat_indiv: 'Cosium – stats par vendeur', sante: 'Score santé (dashboard)', bilans: 'Bilans de passage (actions)', absenteisme: 'Absentéisme (rapport agenda RH)',
+    avoirs: 'Avoirs', mr_qualite: 'Mr Qualité (score global)', recommande: '% Recommande verres', recup: 'Taux de récupération (Google Sheet « suivi JA »)', rentabilites: 'Rentabilités trimestrielles', avis_google: 'Avis Google', lyleoo: 'Lyleoo', ocm: 'OCM', ocm_act: 'Activité OC Mobile (artefact)', site: 'Site internet', rh: 'Export RH', stat_indiv: 'Cosium – stats par vendeur', sante: 'Score santé (dashboard)', bilans: 'Bilans de passage (actions)', absenteisme: 'Absentéisme (rapport agenda RH)',
   };
   // Colonnes N-1 utiles à la fiche (évolutions)
   const COLS_N1 = ['P','Q','R','U','V','AF','AW','AY','AX'];
@@ -64,6 +65,7 @@
     if (n.some(s => /^CLASSE PAR DR/i.test(s))) return 'renta_sal';
     if (n.some(s => /^Donn.es Restes Dus/i.test(s))) return 'restes_dus';
     if (n.some(s => /CONSODETAIL/i.test(s))) return 'rentabilites';
+    if (n.some(s => /^suivi\s*JA$/i.test(s))) return 'recup';
     if (n.some(s => /^OPTICIEN$/i.test(s)) && n.some(s => /^AUDITION$/i.test(s))) return 'avis_google';
     const h = (XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, range: 0 })[0] || []).map(v => String(v || '').trim());
     if (h.includes('Liste') && h.includes('Code Magasin')) return 'confidence';
@@ -168,6 +170,9 @@
     if (un('recommande')) { const rv = Sources.recommande(XLSX, un('recommande').wb);
       poser('recommande', rv.out, rv.titre || un('recommande').nom);
       if (rv.periode) sources.recommande.periode = rv.periode; else alertes.push('% Recommande verres : période introuvable dans le titre (« Taux de recommande Mai à Octobre 2026 »).'); }
+    if (un('recup')) { const rc = Sources.recup(XLSX, un('recup').wb);
+      poser('recup', rc.out, `onglet « ${rc.onglet} », colonne Y${rc.entete ? ' « ' + rc.entete + ' »' : ''}`);
+      if (!rc.lignes) alertes.push('Taux de récupération : aucun code site trouvé en colonne A de l’onglet « suivi JA ».'); }
     if (un('mr_qualite')) poser('mr_qualite', Sources.mrQualite(XLSX, un('mr_qualite').wb).out, un('mr_qualite').nom);
     if (un('visites_ce')) { for (const c in mag) mag[c].N.DZ = 0; poser('visites_ce', Sources.visites(XLSX, un('visites_ce').wb).out); }
     // 07/11/2026 : un tableau des avoirs par serveur Cosium → additionnés (un même fichier déposé deux fois n'est compté qu'une fois)
