@@ -172,7 +172,8 @@
       poser('recommande', rv.out, rv.titre || un('recommande').nom);
       if (rv.periode) sources.recommande.periode = rv.periode; else alertes.push('% Recommande verres : période introuvable dans le titre (« Taux de recommande Mai à Octobre 2026 »).'); }
     if (un('recup')) { const u = un('recup'), rc = u.gs ? { ...Sources.recupLignes(u.gs.lignes), onglet: u.gs.onglet } : Sources.recup(XLSX, u.wb);
-      poser('recup', rc.out, `${u.gs ? 'Google Sheet lu le ' + new Date(u.gs.luLe).toLocaleDateString('fr-FR') + ', ' : ''}onglet « ${rc.onglet} », colonne Y${rc.entete ? ' « ' + rc.entete + ' »' : ''} = cumul du journal des anomalies depuis le 12/05/2026, sans remise à zéro en janvier`);
+      poser('recup', rc.out, `${u.gs ? 'Google Sheet lu le ' + new Date(u.gs.luLe).toLocaleDateString('fr-FR') + ', ' : ''}onglet « ${rc.onglet} », colonne Y${rc.entete ? ' « ' + rc.entete + ' »' : ''} = cumul du journal des anomalies du 12/05/2026${rc.edition ? ' à l’édition Cosium du ' + fr(rc.edition) : ''}, sans remise à zéro en janvier`);
+      if (rc.edition) sources.recup.periode = { du: '2026-05-12', au: rc.edition }; else alertes.push('Taux de récupération : date d’édition Cosium introuvable en cellule A6 de l’onglet « suivi JA ».');
       if (!rc.lignes) alertes.push('Taux de récupération : aucun code site trouvé en colonne A de l’onglet « suivi JA ».'); }
     if (un('mr_qualite')) poser('mr_qualite', Sources.mrQualite(XLSX, un('mr_qualite').wb).out, un('mr_qualite').nom);
     if (un('visites_ce')) { for (const c in mag) mag[c].N.DZ = 0; poser('visites_ce', Sources.visites(XLSX, un('visites_ce').wb).out); }
