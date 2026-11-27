@@ -70,7 +70,7 @@
     gel: { lib: 'Gel de primes', f: (n) => n.BT, fmt: 'eur' },
     indus: { lib: 'Taux d’indus', f: (n) => n.BV, fmt: 'pct2', seuil: 0.01, seuil2: 0.02, inverse: true },
     evolIndus: { lib: 'Évol. indus', f: (n) => (n.XQ != null && n.XP != null) ? n.XQ - n.XP : null, fmt: 'pts2', seuil: 0, inverse: true },
-    recup: { lib: 'Tx de récup', f: (n) => pct(n.BX), fmt: 'pct1' },
+    recup: { lib: 'Tx de récup', f: (n) => pct(n.BQ), fmt: 'pct1' },
     caHt: { lib: 'CA HT (reporting)', f: (n) => n.CP, fmt: 'k' },
     re: { lib: 'RE', f: (n) => pct(n.CQ), fmt: 'pct1', seuil: 0.20 },
     marge: { lib: 'Marge produits', f: (n) => pct(n.CS), fmt: 'pct1', seuil: 0.70 },
