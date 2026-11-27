@@ -101,7 +101,7 @@
     complet: { lib: 'CA · Optique · Audio · Rentabilité', tri: 'ca',
       sections: [
         { lib: 'Chiffre d’affaires · Optique · Audio', groupes: [['Chiffre d’affaires', ['obj', 'ca', 'posit', 'evolCa']], ['Optique', ['ndv', 'evolNdv', 'panier', 'tc', 'sop', 'mdc', 'pcPct', 'pm1']], ['Audio', ['caAudio', 'evolAudio', 'protheses', 'pmProt', 'tcA', 'vadd', 'depist']]] },
-        { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'indus']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Google & qualité', ['note', 'avis', 'mrq']], ['Rentabilité salariale & effectifs', ['rentaSal', 'effOpt', 'effAud', 'effTheo', 'ecart', 'absent', 'ageMoy', 'pctF', 'caPers']]] },
+        { lib: 'Gestion & rentabilité', groupes: [['Restes dus', ['rdus', 'indus', 'recup']], ['Rentabilité (reporting trimestriel)', ['caHt', 're', 'marge', 'loyers', 'pub', 'personnel']], ['Google & qualité', ['note', 'avis', 'mrq']], ['Rentabilité salariale & effectifs', ['rentaSal', 'effOpt', 'effAud', 'effTheo', 'ecart', 'absent', 'ageMoy', 'pctF', 'caPers']]] },
       ],
       top: [['posit', 'Positionnement'], ['ndv', 'Nombre de ventes'], ['protheses', 'Nombre de prothèses'], ['re', 'Résultat d’exploitation']] },
     // 24/11/2026 : recto « mur » (affichage au bureau, lisible de loin) + verso = cockpit complet
@@ -168,7 +168,10 @@
       COL.cfG = { lib: 'Taux', f: n => n.ZN ? n.ZM / n.ZN : null, fmt: 'pct0', fort: true };
       th = { ...th, cols: cols.concat(['cfGN', 'cfG']) };
     }
-    if (th.sections && !th.cols) th.cols = [...new Set(th.sections.flatMap(se => se.groupes.flatMap(g => g[1])))];
+    // 27/11/2026 : taux de récupération (succursales France) – colonne retirée si aucun magasin du périmètre n'en a (franchises, international)
+    if (th.sections && !ref.some(r => perim.filtre(r) && ((photo.magasins[String(r.code)] || {}).N || {}).BQ != null))
+      th = { ...th, cols: null, sections: th.sections.map(se => ({ ...se, groupes: se.groupes.map(g => [g[0], g[1].filter(k => k !== 'recup')]) })) };
+    if (th.sections && !th.cols) th = { ...th, cols: [...new Set(th.sections.flatMap(se => se.groupes.flatMap(g => g[1])))] };
     const mags = ref.filter(r => r.actif === 'Oui' && perim.filtre(r) && photo.magasins[String(r.code)]);
     // Magasins non actifs : absents des lignes, mais leur chiffre compte dans les totaux (synthèses, total)
     const magsTot = ref.filter(r => perim.filtre(r) && photo.magasins[String(r.code)]);
