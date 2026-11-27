@@ -295,16 +295,16 @@ async function rappelPreparation(env) {
     `Bonjour Olivier,`, ``,
     `La fin de ${lib} approche : voici ce qui doit être à jour avant le 1er pour que le calcul du mois se passe bien.`, ``,
     `👉 Suivi Stats : https://olibaroukh.github.io/suivi-stats`, ``,
-    `D'ici la fin du mois :`,
+    `D'ici la fin du mois — seulement s'il y a eu un changement (sinon rien à faire) :`,
     `  1. Référentiel magasins — dans SUIVI STATS › Réglages › Référentiel (c'est le référentiel unique : bilan-passage, PEDLV, Suivi magasin, Kaizen… le lisent automatiquement) : exporter l'Excel, corriger, réimporter. Ouvertures / fermetures (colonne Actif), manager, AR, e-mail magasin ; nouveau code site → « Ancien code site » pour garder le N-1.`,
     `  2. Accès : comptes des nouveaux collaborateurs (Suivi Stats › Réglages › Accès des équipes) ; code PIN des nouveaux magasins (Réglages › Accès magasins).`,
-    `  3. Saisies manuelles : critères Managers Leaders / Magasins d'Excellence (relancer les AR) et réalisé des Actions de l'Année non automatiques.`,
+    `  3. Saisies manuelles : critères Managers Leaders / Magasins d'Excellence (faites par les AR, rappel du 25) et réalisé des Actions de l'Année non automatiques : vérifier.`,
     `  4. Diffusion : destinataires et écrans à jour (Réglages › Diffusion mensuelle).`, ``,
     `Le dernier jour du mois ou le 1er au matin :`,
     `  5. Import RH — dans BILAN-PASSAGE › Import (pas dans Suivi Stats) : export effectif (8 colonnes) ET « Rapport agenda validés » du mois (absences, journées école, temps partiels). Un seul dépôt : bilan-passage transmet tout seul effectifs et ETP à Suivi Stats.`,
     `  6. Score santé du mois calculé (et validé) dans bilan-passage ; Suivi Stats le reprend tout seul au calcul.`, ``,
     `Rien à faire pour les objectifs de CA : ils arrivent avec le positionnement annuel du mail Cosium 4/4. Le fichier des objectifs d'indicateurs (Réglages › Objectifs) ne change qu'en janvier.`, ``,
-    `Le 1er à 9 h, tu recevras le rappel « boucler ${lib} » avec la suite (Cosium, OC Mobile, avoirs, visites, Lyleoo, calcul, enregistrement).`, ``,
+    `Le 1er à 9 h, tu recevras le rappel « boucler ${lib} » avec la suite (OC Mobile, fichiers manuels, « Boucler le mois »).`, ``,
     `— Suivi statistique (message automatique)`].join('\n');
   await soap(z.jeton, { SendMsgRequest: { _jsns: 'urn:zimbraMail', m: { e: [{ t: 't', a: env.ZIMBRA_RELEVE_USER }], su: { _content: `🗓️ Suivi statistique : préparer la fin de ${lib}` }, mp: [{ ct: 'text/plain', content: { _content: texte } }] } } });
   return { ok: true, detail: `Rappel de préparation envoyé à ${env.ZIMBRA_RELEVE_USER}` };
@@ -331,14 +331,13 @@ async function rappelMensuel(env, par = 'auto') {
     autres.length ? `  - Autres fichiers : ${autres.join(', ')}` : `  - Autres fichiers (marges, renta salariale, rentabilités, avis Google) : arrivent au fil du mois`,
     dejaEnregistre ? `${L}(${lib} est déjà enregistré : il suffira d'intégrer les fichiers arrivés depuis.)` : '', ``,
     `À faire aujourd'hui :`,
-    `  0. Si ce n'est pas fait : import RH dans BILAN-PASSAGE (export effectif + « Rapport agenda validés » du mois écoulé) et référentiel magasins à jour dans SUIVI STATS.`,
-    `  1. Accueil › « Relever maintenant », puis attendre « Cosium complet (28 / 28) ».`,
-    `  2. Import du mois › « 🚐 Préparer l'activité OC Mobile avec Claude » → récupérer le fichier ocm-activite_${mois}.json.`,
-    `  3. Accueil › « Préparer et calculer ».`,
-    `  4. Déposer les fichiers manuels : tableaux des avoirs (un par serveur Cosium), exports des visites (External Relations), fichier OC Mobile ; coller Lyleoo si besoin.`,
-    `  5. Cocher les listes Confidence à compter, cliquer « Calculer le mois », vérifier le rapport.`,
-    `  6. « Enregistrer la photo du mois » → les PDF de diffusion se préparent (envoi depuis l'écran Diffusion, quand tu le décides).`, ``,
-    `Ensuite : quand un fichier arrive plus tard (restes dus, Confidence…), le bandeau orange de l'accueil le signale → « Préparer et calculer » → « Enregistrer ».`, ``,
+    `  0. Si ce n'est pas fait : import RH dans BILAN-PASSAGE (export effectif + « Rapport agenda validés » du mois écoulé) et score santé validé.`,
+    `  1. Cosium : rien à faire, la relève tourne toutes les heures aujourd'hui jusqu'à 28 / 28 (bandeau vert « Cosium complet » à l'accueil).`,
+    `  2. Import du mois › « 🚐 Préparer l'activité OC Mobile avec Claude » → fichier ocm-activite_${mois}.json.`,
+    `  3. Import du mois › déposer les fichiers manuels (avoirs par serveur Cosium, exports des visites External Relations, fichier OC Mobile) et coller Lyleoo / site internet.`,
+    `  4. « Boucler le mois » : fichiers relevés + fichiers déposés → calcul → enregistrement (les listes Confidence du mois précédent sont reprises ; arrêt seulement si Cosium ou le score santé manquent). Coup d'œil au rapport de contrôle.`,
+    `  5. Diffusion : envoi depuis l'écran Diffusion, quand tu le décides.`, ``,
+    `Ensuite : quand un fichier arrive plus tard (restes dus vers le 7, Confidence…), l'accueil affiche un bandeau → « Intégrer et enregistrer » (un clic).`, ``,
     `Mode d'emploi complet : PDF « Suivi statistique – mode d'emploi mensuel ».`, ``,
     `— Suivi statistique (message automatique)`].filter(x => x !== '').join(L).replace(/\n\n\n+/g, L + L);
   await soap(z.jeton, { SendMsgRequest: { _jsns: 'urn:zimbraMail', m: { e: [{ t: 't', a: env.ZIMBRA_RELEVE_USER }], su: { _content: `📊 Suivi statistique : boucler ${lib}` }, mp: [{ ct: 'text/plain', content: { _content: texte } }] } } });
@@ -796,6 +795,12 @@ export default {
     else if (event.cron === '0 7 27 * *' || event.cron === '0 8 27 * *') {
       const hP = heureParis(event.scheduledTime);
       if (hP === 9) ctx.waitUntil(rappelPreparation(env).then(r => console.log('rappel prépa', JSON.stringify(r))).catch(e => console.error('rappel prépa', e)));
+    }
+    // 27/11/2026 : le 1er, relève toutes les heures tant que les 28 envois Cosium du mois écoulé ne sont pas tous arrivés
+    else if (event.cron === '30 * 1 * *') {
+      ctx.waitUntil((async () => { await schema(env); const pcs = await piecesReleveesDuMois(env, moisDecale(new Date(), -1));
+        const nb = new Set(pcs.filter(p => p.type === 'cosium').map(p => p.nom)).size;
+        if (nb < 28) await releverBoite(env, 'nuit'); else console.log('relève horaire du 1er : Cosium déjà complet'); })().catch(e => console.error('relève du 1er', e)));
     }
     else if (event.cron === '0 13 1-10 * *' || event.cron === '0 14 1-10 * *') {
       const hParis = heureParis(event.scheduledTime);

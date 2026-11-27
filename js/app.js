@@ -145,6 +145,7 @@
     };
     $('#imp-mois').addEventListener('change', majCompleter); $('#imp-annee').addEventListener('change', majCompleter); S.majCompleter = majCompleter;
     $('#btn-enregistrer').onclick = enregistrer;
+    $('#btn-boucler').onclick = () => bouclerMois({ garderDeposes: true });
   }
   async function fichiersDepuisDrop(dt) {
     const out = [];
@@ -298,7 +299,7 @@
         annee, mois, ref: S.ref, spec: S.spec, etatAnnee, photoPrecedente: precedent, workerRatings: wr, listesConfidence: listes });
       if (alerteW) res.rapport.alertes.unshift(alerteW);
       if (completer) { completerPhoto(existante, res); S.resultat = res; afficherRapport(res.rapport); $('#btn-enregistrer').disabled = false;
-        $('#calc-info').textContent = `${MOIS[mois - 1]} ${annee} complété (${res.rapport.misesAJour.join(', ') || 'aucune source'}) – vérifie puis enregistre.`; return; }
+        $('#calc-info').textContent = `${MOIS[mois - 1]} ${annee} complété (${res.rapport.misesAJour.join(', ') || 'aucune source'}) – vérifie puis enregistre.`; return true; }
       // Mr Qualité : mis à jour une fois par an → dernier fichier connu conservé hors année (config/mr-qualite.json)
       try {
         const sm = res.rapport.sources.mr_qualite;
@@ -336,7 +337,8 @@
       S.resultat = res; afficherRapport(res.rapport);
       $('#btn-enregistrer').disabled = false;
       $('#calc-info').textContent = `${MOIS[mois - 1]} ${annee} calculé – vérifie le rapport puis enregistre.`;
-    } catch (e) { console.error(e); $('#calc-info').textContent = 'Erreur : ' + e.message; }
+      return true;
+    } catch (e) { console.error(e); $('#calc-info').textContent = 'Erreur : ' + e.message; return false; }
     finally { $('#btn-calculer').disabled = false; $('#barre-calc div').style.width = '100%'; setTimeout(() => $('#barre-calc').hidden = true, 600); }
   }
   // Complément d'un mois déjà enregistré : seules les sources reçues remplacent leurs colonnes, tout le reste est conservé
@@ -379,6 +381,34 @@
       $('#chk-confidence').innerHTML = r.listesConfidence.map(l => `<label><input type="checkbox" value="${esc(l)}" ${sel.has(l) ? 'checked' : ''}> ${esc(l)}</label>`).join('') + ' <button id="btn-reconf">Recalculer avec ces listes</button>';
       $('#btn-reconf').onclick = () => { S.listesConf = [...document.querySelectorAll('#chk-confidence input:checked')].map(i => i.value); calculer(); };
     }
+  }
+  // 27/11/2026 : « Boucler le mois » = fichiers relevés par mail + fichiers déposés / collés → calcul → enregistrement automatique.
+  // Ne s'arrête avant l'enregistrement que si une source indispensable manque (Cosium N / N-1, score santé) ou si rien de nouveau.
+  async function bouclerMois({ garderDeposes = false, annee, mois } = {}) {
+    if (annee) { $('#imp-annee').value = annee; $('#imp-mois').value = mois; }
+    if (S.majCompleter) S.majCompleter();
+    if (!garderDeposes) { S.fichiers = []; $('#liste-fichiers').innerHTML = ''; }
+    vue('import');
+    $('#btn-boucler').disabled = true;
+    try {
+      if (Store.cloud()) await recupererZimbra();
+      const completer = $('#imp-completer').checked && !$('#lbl-completer').hidden;
+      // Mois déjà enregistré : on complète seulement (Cosium exige un import complet)
+      if (completer) { S.fichiers = S.fichiers.filter(f => !/OPTI\d+.*\.zip$/i.test(f.name)); ajouterFichiers([]); }
+      const colle = ['lyleoo', 'site'].some(x => $('#paste-' + x).value.trim());
+      if (!S.fichiers.length && !colle) { $('#calc-info').textContent = 'Aucun nouveau fichier à intégrer.'; return; }
+      if (!(await calculer())) return;
+      const r = S.resultat.rapport, manque = [];
+      if (completer) { if (!(r.misesAJour || []).length) manque.push('aucune source reconnue dans les fichiers'); }
+      else {
+        for (const x of ['cosium_n', 'cosium_n1']) if (!r.sources[x] || r.sources[x].statut !== 'recu') manque.push(Pipeline.LIBELLE_SOURCE[x]);
+        if (r.sources.sante && r.sources.sante.statut === 'absent') manque.push('Score santé');
+      }
+      if (manque.length) { $('#calc-info').textContent = `Calculé mais PAS enregistré : ${manque.join(', ')}. Vérifie le rapport, puis « Enregistrer la photo du mois » si c'est voulu.`; $('#btn-enregistrer').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+      await enregistrer();
+      $('#calc-info').textContent += ' Enregistrement automatique : le rapport de contrôle reste affiché ci-dessous.';
+      $('#carte-rapport').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } finally { $('#btn-boucler').disabled = false; }
   }
   async function enregistrer() {
     const { photo, etatAnnee } = S.resultat; const k = `${photo.annee}-${pad(photo.mois)}`;
@@ -1509,7 +1539,7 @@
       if (!ph) alerte = nbCos >= 28 ? `🔔 Cosium complet (28 / 28) : le mois peut être calculé.` : nbCos ? `Cosium : ${nbCos} / 28 envois reçus pour l’instant.` : '';
       else if (nouv.length) alerte = `🔔 ${nouv.length} fichier(s) reçu(s) depuis le dernier enregistrement : ${[...new Set(nouv.map(libP))].map(esc).join(', ')}.`;
       const prete = (!ph && nbCos >= 28) || (ph && nouv.length);
-      const bandeau = alerte ? `<div class="am-alerte"><span>${alerte}</span>${prete ? '<button class="primaire" id="am-auto">Préparer et calculer</button>' : ''}</div>` : '';
+      const bandeau = alerte ? `<div class="am-alerte"><span>${alerte}</span>${prete ? `<button class="primaire" id="am-auto">${ph ? 'Intégrer et enregistrer' : 'Boucler le mois'}</button>` : ''}</div>` : '';
       z.innerHTML = bandeau + `<div class="ligne-outils" style="margin-top:12px"><b>Reçu par mail pour ${esc(MOIS[d.getMonth()])}</b>
         <span class="muted">${!x.configure ? 'relève automatique non configurée (secrets Cloudflare)' : der ? `dernière relève ${dh(der.le)} (${esc(der.par === 'nuit' ? 'automatique' : 'manuelle')}) · ${esc(der.statut)} · ${esc(der.detail)}` : 'pas encore de relève'}</span>
         <button id="am-relever" style="margin-left:auto">Relever maintenant</button><button id="am-releve-import">Préparer l'import avec ces fichiers</button></div>
@@ -1518,17 +1548,7 @@
         try { for (let i = 0; i < 6; i++) { const rr = await Store.api('/releve/lancer', { method: 'POST' }); const y = await rr.json(); if (!rr.ok || !y.ok) { alert('Relève : ' + (y.erreur || rr.status)); break; } if (!y.restantes) break; $('#am-relever').textContent = `Relève en cours… (${y.restantes} restante(s))`; } } catch (e) { alert('Relève : ' + e.message); }
         afficherReleve(k, d, ph); };
       $('#am-releve-import').onclick = () => { $('#imp-mois').value = d.getMonth() + 1; $('#imp-annee').value = d.getFullYear(); if (S.majCompleter) S.majCompleter(); vue('import'); recupererZimbra(); };
-      if ($('#am-auto')) $('#am-auto').onclick = async () => {
-        $('#imp-mois').value = d.getMonth() + 1; $('#imp-annee').value = d.getFullYear(); if (S.majCompleter) S.majCompleter();
-        S.fichiers = []; $('#liste-fichiers').innerHTML = ''; vue('import');
-        await recupererZimbra();
-        // Mois déjà enregistré : on complète seulement avec les nouveaux fichiers (Cosium exige un import complet)
-        if ($('#imp-completer').checked && !$('#lbl-completer').hidden) { S.fichiers = S.fichiers.filter(f => !/OPTI\d+.*\.zip$/i.test(f.name)); ajouterFichiers([]); }
-        if (!S.fichiers.length) { $('#calc-info').textContent = 'Aucun nouveau fichier à intégrer.'; return; }
-        await calculer();
-        $('#calc-info').textContent = 'Calcul automatique terminé : vérifie le rapport (et ajoute visites, avoirs, OC Mobile, Lyleoo si besoin), puis « Enregistrer la photo du mois ».';
-        $('#btn-enregistrer').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      };
+      if ($('#am-auto')) $('#am-auto').onclick = () => bouclerMois({ annee: d.getFullYear(), mois: d.getMonth() + 1 });
     } catch (e) { z.innerHTML = `<p class="muted" style="margin-top:12px">Relève de la boîte mail : ${esc(e.message)}</p>`; }
   }
   // 26/11/2026 : écran « Anomalies » (administrateurs, mode cloud) — contrôle calculé par zimbra-relay
