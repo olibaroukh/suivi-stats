@@ -182,15 +182,25 @@
     if (!isFinite(v)) return null; return pc ? v : (Math.abs(v) <= 1.5 ? v * 100 : v);
   }
   // lignes = [[colonne A, colonne Y brute, colonne Y affichée]]
+  // Cellule A6 = date de l'édition Cosium utilisée (Date, texte JJ/MM/AAAA ou numéro de série Sheets/Excel) → 'AAAA-MM-JJ'
+  function dateEdition(v) {
+    if (v == null || v === '') return null;
+    if (v instanceof Date && !isNaN(v)) return new Date(v.getTime() - v.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    if (typeof v === 'number' && v > 40000 && v < 60000) return new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 864e5).toISOString().slice(0, 10);
+    const m = String(v).match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/); if (!m) return null;
+    const a = m[3].length === 2 ? 2000 + +m[3] : +m[3]; return `${a}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  }
   function recupLignes(lignes) {
     const out = {}; let entete = null, n = 0;
-    for (const [a, yb, ya] of lignes || []) {
+    const edition = dateEdition(((lignes || [])[5] || [])[0]);
+    for (const [i, [a, yb, ya]] of (lignes || []).entries()) {
+      if (i === 5) continue; // A6 : date d'édition, jamais un code site
       const c = code(a);
       if (!c) { if (!n && typeof yb === 'string' && yb.trim()) entete = yb.trim(); continue; }
       const v = tauxRecup(yb, /%/.test(String(ya || ''))); if (v == null || out[c]) continue;
       out[c] = { BQ: Math.round(v * 1000) / 1000 }; n++;
     }
-    return { out, entete, lignes: n };
+    return { out, entete, lignes: n, edition };
   }
   function recup(XLSX, wb) {
     const nom = wb.SheetNames.find(s => /^suivi\s*ja$/i.test(String(s).trim()));
